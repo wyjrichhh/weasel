@@ -120,10 +120,10 @@ if %build_rime% == 0 (
   set build_weasel=1
 )))))
 
-rem quit WeaselServer.exe before building
+rem quit BangkeServer.exe before building
 cd /d %WEASEL_ROOT%
-if exist output\weaselserver.exe (
-  output\weaselserver.exe /q
+if exist output\BangkeServer.exe (
+  output\BangkeServer.exe /q
 )
 
 rem build booost

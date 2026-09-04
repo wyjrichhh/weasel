@@ -5,7 +5,7 @@
 
 fs::path WeaselUserDataPath() {
   WCHAR _path[MAX_PATH] = {0};
-  const WCHAR KEY[] = L"Software\\Rime\\Weasel";
+  const WCHAR KEY[] = L"Software\\Bangke";
   HKEY hKey;
   LSTATUS ret = RegOpenKey(HKEY_CURRENT_USER, KEY, &hKey);
   if (ret == ERROR_SUCCESS) {
@@ -13,14 +13,14 @@ fs::path WeaselUserDataPath() {
     DWORD type = 0;
     DWORD data = 0;
     ret =
-        RegQueryValueEx(hKey, L"RimeUserDir", NULL, &type, (LPBYTE)_path, &len);
+        RegQueryValueEx(hKey, L"BangkeUserDir", NULL, &type, (LPBYTE)_path, &len);
     RegCloseKey(hKey);
     if (ret == ERROR_SUCCESS && type == REG_SZ && _path[0]) {
       return fs::path(_path);
     }
   }
   // default location
-  ExpandEnvironmentStringsW(L"%AppData%\\Rime", _path, _countof(_path));
+  ExpandEnvironmentStringsW(L"%AppData%\\Bangke", _path, _countof(_path));
   return fs::path(_path);
 }
 

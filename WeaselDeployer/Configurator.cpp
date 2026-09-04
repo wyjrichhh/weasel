@@ -42,7 +42,7 @@ void Configurator::Initialize() {
   weasel_traits.distribution_name = distribution_name.c_str();
   weasel_traits.distribution_code_name = WEASEL_CODE_NAME;
   weasel_traits.distribution_version = WEASEL_VERSION;
-  weasel_traits.app_name = "rime.weasel";
+  weasel_traits.app_name = "rime.bangke";
   std::string log_dir = WeaselLogPath().u8string();
   weasel_traits.log_dir = log_dir.c_str();
   RimeApi* rime_api = rime_get_api();
@@ -114,9 +114,9 @@ int Configurator::Run(bool installing) {
 }
 
 int Configurator::UpdateWorkspace(bool report_errors) {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
+  HANDLE hMutex = CreateMutex(NULL, TRUE, L"BangkeDeployerMutex");
   if (!hMutex) {
-    LOG(ERROR) << "Error creating WeaselDeployerMutex.";
+    LOG(ERROR) << "Error creating BangkeDeployerMutex.";
     return 1;
   }
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -125,7 +125,7 @@ int Configurator::UpdateWorkspace(bool report_errors) {
     if (report_errors) {
       // MessageBox(NULL,
       // L"正在執行另一項部署任務，方纔所做的修改將在輸入法再次啓動後生效。",
-      // L"【小狼毫】", MB_OK | MB_ICONINFORMATION);
+      // L"【蚌壳拼音】", MB_OK | MB_ICONINFORMATION);
       MSG_BY_IDS(IDS_STR_DEPLOYING_RESTARTREQ, IDS_STR_WEASEL,
                  MB_OK | MB_ICONINFORMATION);
     }
@@ -156,15 +156,15 @@ int Configurator::UpdateWorkspace(bool report_errors) {
 }
 
 int Configurator::DictManagement() {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
+  HANDLE hMutex = CreateMutex(NULL, TRUE, L"BangkeDeployerMutex");
   if (!hMutex) {
-    LOG(ERROR) << "Error creating WeaselDeployerMutex.";
+    LOG(ERROR) << "Error creating BangkeDeployerMutex.";
     return 1;
   }
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
     LOG(WARNING) << "another deployer process is running; aborting operation.";
     CloseHandle(hMutex);
-    // MessageBox(NULL, L"正在執行另一項部署任務，請稍候再試。", L"【小狼毫】",
+    // MessageBox(NULL, L"正在執行另一項部署任務，請稍候再試。", L"【蚌壳拼音】",
     // MB_OK | MB_ICONINFORMATION);
     MSG_BY_IDS(IDS_STR_DEPLOYING_WAIT, IDS_STR_WEASEL,
                MB_OK | MB_ICONINFORMATION);
@@ -196,15 +196,15 @@ int Configurator::DictManagement() {
 }
 
 int Configurator::SyncUserData() {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
+  HANDLE hMutex = CreateMutex(NULL, TRUE, L"BangkeDeployerMutex");
   if (!hMutex) {
-    LOG(ERROR) << "Error creating WeaselDeployerMutex.";
+    LOG(ERROR) << "Error creating BangkeDeployerMutex.";
     return 1;
   }
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
     LOG(WARNING) << "another deployer process is running; aborting operation.";
     CloseHandle(hMutex);
-    // MessageBox(NULL, L"正在執行另一項部署任務，請稍候再試。", L"【小狼毫】",
+    // MessageBox(NULL, L"正在執行另一項部署任務，請稍候再試。", L"【蚌壳拼音】",
     // MB_OK | MB_ICONINFORMATION);
     MSG_BY_IDS(IDS_STR_DEPLOYING_WAIT, IDS_STR_WEASEL,
                MB_OK | MB_ICONINFORMATION);

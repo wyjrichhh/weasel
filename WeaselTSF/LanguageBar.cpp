@@ -37,9 +37,9 @@ static void HMENU2ITfMenu(HMENU hMenu, ITfMenu* pTfMenu) {
 static LPCWSTR GetWeaselRegName() {
   LPCWSTR WEASEL_REG_NAME_;
   if (is_wow64())
-    WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Rime\\Weasel";
+    WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Bangke";
   else
-    WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
+    WEASEL_REG_NAME_ = L"Software\\Bangke";
 
   return WEASEL_REG_NAME_;
 }
@@ -288,7 +288,7 @@ void CLangBarItemButton::SetLangbarStatus(DWORD dwStatus, BOOL fSet) {
 
 std::wstring WeaselTSF::_GetRootDir() {
   std::wstring dir{};
-  RegGetStringValue(HKEY_LOCAL_MACHINE, GetWeaselRegName(), L"WeaselRoot", dir);
+  RegGetStringValue(HKEY_LOCAL_MACHINE, GetWeaselRegName(), L"BangkeRoot", dir);
   return dir;
 }
 
@@ -298,7 +298,7 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
     case ID_WEASELTRAY_RERUN_SERVICE:
     case ID_WEASELTRAY_INSTALLDIR:
       if (RegGetStringValue(HKEY_LOCAL_MACHINE, GetWeaselRegName(),
-                            L"WeaselRoot", dir) == ERROR_SUCCESS) {
+                            L"BangkeRoot", dir) == ERROR_SUCCESS) {
         if (wID == ID_WEASELTRAY_RERUN_SERVICE) {
           std::thread th([dir]() {
             ShellExecuteW(NULL, L"open", (dir + L"\\start_service.bat").c_str(),
@@ -310,17 +310,17 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
       }
       break;
     case ID_WEASELTRAY_USERCONFIG:
-      if (FAILED(RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Rime\\Weasel",
-                                   L"RimeUserDir", dir)) ||
+      if (FAILED(RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Bangke",
+                                   L"BangkeUserDir", dir)) ||
           dir.empty()) {
         WCHAR _path[MAX_PATH] = {0};
-        ExpandEnvironmentStringsW(L"%AppData%\\Rime", _path, _countof(_path));
+        ExpandEnvironmentStringsW(L"%AppData%\\Bangke", _path, _countof(_path));
         dir = std::wstring(_path);
       }
       if (!dir.empty() && fs::exists(dir))
         open(dir);
       else
-        MessageBoxW(NULL, (L"Not found: " + dir).c_str(), L"RimeUserDir",
+        MessageBoxW(NULL, (L"Not found: " + dir).c_str(), L"BangkeUserDir",
                     MB_ICONERROR | MB_OK);
       break;
     case ID_WEASELTRAY_LOGDIR:

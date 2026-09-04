@@ -1,2 +1,2 @@
 cd "%~dp0"
-start "" WeaselServer.exe
+start "" BangkeServer.exe
