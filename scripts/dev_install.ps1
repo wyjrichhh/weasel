@@ -24,8 +24,10 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 Copy-Item $dll C:\Windows\System32\bangke.dll -Force
 
 $env:TEXTSERVICE_PROFILE = 'hans'
-& "$env:SystemRoot\System32\regsvr32.exe" /s C:\Windows\System32\bangke.dll
-if ($LASTEXITCODE -ne 0) { throw "regsvr32 failed: 0x{0:X8}" -f $LASTEXITCODE }
+# regsvr32 is a GUI-subsystem exe: PowerShell cannot capture its exit code
+# directly ($LASTEXITCODE stays null), so go through cmd.
+cmd /c "`"$env:SystemRoot\System32\regsvr32.exe`" /s C:\Windows\System32\bangke.dll"
+if ($LASTEXITCODE -ne 0) { throw ('regsvr32 failed: 0x{0:X8}' -f $LASTEXITCODE) }
 
 New-Item -Path 'HKLM:\SOFTWARE\Bangke' -Force | Out-Null
 Set-ItemProperty 'HKLM:\SOFTWARE\Bangke' -Name BangkeRoot -Value $outputDir.Path
