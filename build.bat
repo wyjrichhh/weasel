@@ -9,8 +9,8 @@ if exist env.bat call env.bat
 if not defined WEASEL_ROOT set WEASEL_ROOT=%CD%
 
 if not defined VERSION_MAJOR set VERSION_MAJOR=0
-if not defined VERSION_MINOR set VERSION_MINOR=17
-if not defined VERSION_PATCH set VERSION_PATCH=4
+if not defined VERSION_MINOR set VERSION_MINOR=1
+if not defined VERSION_PATCH set VERSION_PATCH=0
 
 if not defined WEASEL_VERSION set WEASEL_VERSION=%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%
 if not defined WEASEL_BUILD set WEASEL_BUILD=0
@@ -80,8 +80,6 @@ set build_opencc=0
 set build_rime=0
 set rime_build_variant=release
 set build_weasel=0
-set build_installer=0
-set build_arm64=0
 
 rem parse the command line options
 :parse_cmdline_options
@@ -103,16 +101,12 @@ rem parse the command line options
   if "%1" == "rime" set build_rime=1
   if "%1" == "librime" set build_rime=1
   if "%1" == "weasel" set build_weasel=1
-  if "%1" == "installer" set build_installer=1
-  if "%1" == "arm64" set build_arm64=1
   if "%1" == "all" (
     set build_boost=1
     set build_data=1
     set build_opencc=1
     set build_rime=1
     set build_weasel=1
-    set build_installer=1
-    set build_arm64=1
   )
   shift
   goto parse_cmdline_options
@@ -140,7 +134,7 @@ if %build_boost% == 1 (
 )
 
 rem -------------------------------------------------------------------------
-rem build librime x64 and Win32
+rem build x64 librime
 if %build_rime% == 1 (
   if not exist librime\build.bat (
     git submodule update --init --recursive
@@ -160,9 +154,6 @@ if %build_rime% == 1 (
   rem build x64 librime
   set ARCH=x64
   call :build_librime_platform x64 %WEASEL_ROOT%\lib64 %WEASEL_ROOT%\output
-  rem build Win32 librime
-  set ARCH=Win32
-  call :build_librime_platform Win32 %WEASEL_ROOT%\lib %WEASEL_ROOT%\output\Win32
   rem clean the modified file
   rem git checkout .
   rem git submodule foreach git checkout .
@@ -199,37 +190,9 @@ del msbuild*.log
 if defined SDKVER set build_sdk_option=/p:WindowsTargetPlatformVersion=%SDKVER%
 if not defined SDKVER set build_sdk_option=
 
-if %build_arm64% == 1 (
-
-  msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="ARM" /fl6 %build_sdk_option%
-  if errorlevel 1 goto error
-  msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="ARM64" /fl5 %build_sdk_option%
-  if errorlevel 1 goto error
-)
 
 msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="x64" /fl2 %build_sdk_option%
 if errorlevel 1 goto error
-msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="Win32" /fl1 %build_sdk_option%
-if errorlevel 1 goto error
-
-if %build_arm64% == 1 (
-  pushd arm64x_wrapper
-  call build.bat
-  if errorlevel 1 goto error
-  popd
-
-  copy arm64x_wrapper\weaselARM64X.dll output
-  if errorlevel 1 goto error
-)
-
-if %build_installer% == 1 (
-  "%ProgramFiles(x86)%"\NSIS\Bin\makensis.exe ^
-  /DWEASEL_VERSION=%WEASEL_VERSION% ^
-  /DWEASEL_BUILD=%WEASEL_BUILD% ^
-  /DPRODUCT_VERSION=%PRODUCT_VERSION% ^
-  output\install.nsi
-  if errorlevel 1 goto error
-)
 
 goto end
 
@@ -237,51 +200,23 @@ rem -------------------------------------------------------------------------
 rem build boost
 :build_boost
   set BJAM_OPTIONS_COMMON=-j%NUMBER_OF_PROCESSORS%^
-    --with-filesystem^
-    --with-json^
-    --with-locale^
-    --with-regex^
     --with-serialization^
-    --with-system^
     --with-thread^
     define=BOOST_USE_WINAPI_VERSION=0x0603^
     toolset=%BJAM_TOOLSET%^
     link=static^
     runtime-link=static^
     --build-type=complete
-  
-  set BJAM_OPTIONS_X86=%BJAM_OPTIONS_COMMON%^
-    architecture=x86^
-    address-model=32
-  
+
   set BJAM_OPTIONS_X64=%BJAM_OPTIONS_COMMON%^
     architecture=x86^
     address-model=64
-  
-  set BJAM_OPTIONS_ARM32=%BJAM_OPTIONS_COMMON%^
-    define=BOOST_USE_WINAPI_VERSION=0x0A00^
-    architecture=arm^
-    address-model=32
-  
-  set BJAM_OPTIONS_ARM64=%BJAM_OPTIONS_COMMON%^
-    define=BOOST_USE_WINAPI_VERSION=0x0A00^
-    architecture=arm^
-    address-model=64
-  
+
   cd /d %BOOST_ROOT%
   if not exist b2.exe call bootstrap.bat
   if errorlevel 1 goto error
-  b2 %BJAM_OPTIONS_X86% stage %BOOST_COMPILED_LIBS%
-  if errorlevel 1 goto error
   b2 %BJAM_OPTIONS_X64% stage %BOOST_COMPILED_LIBS%
   if errorlevel 1 goto error
-  
-  if %build_arm64% == 1 (
-    b2 %BJAM_OPTIONS_ARM32% stage %BOOST_COMPILED_LIBS%
-    if errorlevel 1 goto error
-    b2 %BJAM_OPTIONS_ARM64% stage %BOOST_COMPILED_LIBS%
-    if errorlevel 1 goto error
-  )
   exit /b
 
 rem ---------------------------------------------------------------------------

@@ -4,12 +4,10 @@
 
 #include "stdafx.h"
 #include "resource.h"
-#include "WeaselService.h"
 #include <WeaselIPC.h>
 #include <WeaselUI.h>
 #include <RimeWithWeasel.h>
 #include <WeaselUtility.h>
-#include <winsparkle.h>
 #include <functional>
 #include <ShellScalingApi.h>
 #include <WinUser.h>
