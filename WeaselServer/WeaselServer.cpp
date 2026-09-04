@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "resource.h"
+#include "WeaselServerApp.h"
 #include <WeaselIPC.h>
 #include <WeaselUI.h>
 #include <RimeWithWeasel.h>
@@ -102,11 +103,6 @@ int WINAPI _tWinMain(HINSTANCE hInstance,
         return 0;
     } else if (quit)
       return 0;
-  }
-
-  bool check_updates = !wcscmp(L"/update", lpstrCmdLine);
-  if (check_updates) {
-    WeaselServerApp::check_update();
   }
 
   CreateDirectory(WeaselUserDataPath().c_str(), NULL);
