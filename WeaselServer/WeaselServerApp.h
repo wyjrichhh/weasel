@@ -10,8 +10,6 @@
 #include <functional>
 #include <memory>
 
-#include "WeaselTrayIcon.h"
-
 namespace fs = std::filesystem;
 
 class WeaselServerApp {
@@ -48,6 +46,5 @@ class WeaselServerApp {
 
   weasel::Server m_server;
   weasel::UI m_ui;
-  WeaselTrayIcon tray_icon;
   std::unique_ptr<RimeWithWeaselHandler> m_handler;
 };

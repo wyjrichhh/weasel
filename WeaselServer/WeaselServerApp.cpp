@@ -3,15 +3,14 @@
 #include <filesystem>
 
 WeaselServerApp::WeaselServerApp()
-    : m_handler(std::make_unique<RimeWithWeaselHandler>(&m_ui)),
-      tray_icon(m_ui) {
-  // m_handler.reset(new RimeWithWeaselHandler(&m_ui));
+    : m_handler(std::make_unique<RimeWithWeaselHandler>(&m_ui)) {
   m_server.SetRequestHandler(m_handler.get());
   SetupMenuHandlers();
 }
 
 WeaselServerApp::~WeaselServerApp() {}
 
+// 托盘状态图标已移除（与 TSF 语言栏图标重复）；菜单入口保留在语言栏右键
 int WeaselServerApp::Run() {
   if (!m_server.Start())
     return -1;
@@ -19,18 +18,13 @@ int WeaselServerApp::Run() {
   m_ui.Create(m_server.GetHWnd());
 
   m_handler->Initialize();
-  m_handler->OnUpdateUI([this]() { tray_icon.RequestRefresh(); });
-
-  tray_icon.Create(m_server.GetHWnd());
-  m_server.SetTrayRefreshCallback([this]() { tray_icon.ApplyRefresh(); });
-  tray_icon.RequestRefresh();
+  m_handler->OnUpdateUI([] {});
+  m_server.SetTrayRefreshCallback([] {});
 
   int ret = m_server.Run();
 
-  tray_icon.DisableRefresh();
   m_handler->Finalize();
   m_ui.Destroy();
-  tray_icon.RemoveIcon();
 
   return ret;
 }
