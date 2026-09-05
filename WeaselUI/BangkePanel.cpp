@@ -317,7 +317,7 @@ void BangkePanel::_CaptureRect(CRect& rect) {
     ::ReleaseDC(NULL, ScreenDC);
     return;
   }
-  if (!OpenClipboard()) {
+  if (!::OpenClipboard(m_hWnd)) {
     DEBUG << "_CaptureRect: OpenClipboard failed";
     DeleteObject(bmp);
     ::ReleaseDC(NULL, ScreenDC);
@@ -553,32 +553,32 @@ void BangkePanel::_FillRoundRect(const CRect& rc,
         b = (float)rc.bottom;
   // build path: move start at left+corner, line/arc through corners
   sink->SetFillMode(D2D1_FILL_MODE_WINDING);
-  sink->BeginFigure(D2D1::PointF(l + (rd.IsTopLeftNeedToRound ? radius : 0), t),
+  sink->BeginFigure(D2D1::Point2F(l + (rd.IsTopLeftNeedToRound ? radius : 0), t),
                     D2D1_FIGURE_BEGIN_FILLED);
-  sink->AddLine(D2D1::PointF(r - (rd.IsTopRightNeedToRound ? radius : 0), t));
+  sink->AddLine(D2D1::Point2F(r - (rd.IsTopRightNeedToRound ? radius : 0), t));
   if (rd.IsTopRightNeedToRound)
     sink->AddArc(D2D1::ArcSegment(
-        D2D1::PointF(r, t + radius),
+        D2D1::Point2F(r, t + radius),
         D2D1::SizeF(radius, radius), 0.f,
         D2D1_SWEEP_DIRECTION_CLOCKWISE, D2D1_ARC_SIZE_SMALL));
   sink->AddLine(
-      D2D1::PointF(r, b - (rd.IsBottomRightNeedToRound ? radius : 0)));
+      D2D1::Point2F(r, b - (rd.IsBottomRightNeedToRound ? radius : 0)));
   if (rd.IsBottomRightNeedToRound)
     sink->AddArc(D2D1::ArcSegment(
-        D2D1::PointF(r - radius, b),
+        D2D1::Point2F(r - radius, b),
         D2D1::SizeF(radius, radius), 0.f,
         D2D1_SWEEP_DIRECTION_CLOCKWISE, D2D1_ARC_SIZE_SMALL));
   sink->AddLine(
-      D2D1::PointF(l + (rd.IsBottomLeftNeedToRound ? radius : 0), b));
+      D2D1::Point2F(l + (rd.IsBottomLeftNeedToRound ? radius : 0), b));
   if (rd.IsBottomLeftNeedToRound)
     sink->AddArc(D2D1::ArcSegment(
-        D2D1::PointF(l, b - radius),
+        D2D1::Point2F(l, b - radius),
         D2D1::SizeF(radius, radius), 0.f,
         D2D1_SWEEP_DIRECTION_CLOCKWISE, D2D1_ARC_SIZE_SMALL));
-  sink->AddLine(D2D1::PointF(l, t + (rd.IsTopLeftNeedToRound ? radius : 0)));
+  sink->AddLine(D2D1::Point2F(l, t + (rd.IsTopLeftNeedToRound ? radius : 0)));
   if (rd.IsTopLeftNeedToRound)
     sink->AddArc(D2D1::ArcSegment(
-        D2D1::PointF(l + radius, t),
+        D2D1::Point2F(l + radius, t),
         D2D1::SizeF(radius, radius), 0.f,
         D2D1_SWEEP_DIRECTION_CLOCKWISE, D2D1_ARC_SIZE_SMALL));
   sink->EndFigure(D2D1_FIGURE_END_CLOSED);
@@ -612,32 +612,32 @@ void BangkePanel::_StrokeRoundRect(const CRect& rc,
     return;
   float l = (float)rc.left, t = (float)rc.top, r = (float)rc.right,
         b = (float)rc.bottom;
-  sink->BeginFigure(D2D1::PointF(l + (rd.IsTopLeftNeedToRound ? radius : 0), t),
+  sink->BeginFigure(D2D1::Point2F(l + (rd.IsTopLeftNeedToRound ? radius : 0), t),
                     D2D1_FIGURE_BEGIN_HOLLOW);
-  sink->AddLine(D2D1::PointF(r - (rd.IsTopRightNeedToRound ? radius : 0), t));
+  sink->AddLine(D2D1::Point2F(r - (rd.IsTopRightNeedToRound ? radius : 0), t));
   if (rd.IsTopRightNeedToRound)
     sink->AddArc(D2D1::ArcSegment(
-        D2D1::PointF(r, t + radius),
+        D2D1::Point2F(r, t + radius),
         D2D1::SizeF(radius, radius), 0.f,
         D2D1_SWEEP_DIRECTION_CLOCKWISE, D2D1_ARC_SIZE_SMALL));
   sink->AddLine(
-      D2D1::PointF(r, b - (rd.IsBottomRightNeedToRound ? radius : 0)));
+      D2D1::Point2F(r, b - (rd.IsBottomRightNeedToRound ? radius : 0)));
   if (rd.IsBottomRightNeedToRound)
     sink->AddArc(D2D1::ArcSegment(
-        D2D1::PointF(r - radius, b),
+        D2D1::Point2F(r - radius, b),
         D2D1::SizeF(radius, radius), 0.f,
         D2D1_SWEEP_DIRECTION_CLOCKWISE, D2D1_ARC_SIZE_SMALL));
   sink->AddLine(
-      D2D1::PointF(l + (rd.IsBottomLeftNeedToRound ? radius : 0), b));
+      D2D1::Point2F(l + (rd.IsBottomLeftNeedToRound ? radius : 0), b));
   if (rd.IsBottomLeftNeedToRound)
     sink->AddArc(D2D1::ArcSegment(
-        D2D1::PointF(l, b - radius),
+        D2D1::Point2F(l, b - radius),
         D2D1::SizeF(radius, radius), 0.f,
         D2D1_SWEEP_DIRECTION_CLOCKWISE, D2D1_ARC_SIZE_SMALL));
-  sink->AddLine(D2D1::PointF(l, t + (rd.IsTopLeftNeedToRound ? radius : 0)));
+  sink->AddLine(D2D1::Point2F(l, t + (rd.IsTopLeftNeedToRound ? radius : 0)));
   if (rd.IsTopLeftNeedToRound)
     sink->AddArc(D2D1::ArcSegment(
-        D2D1::PointF(l + radius, t),
+        D2D1::Point2F(l + radius, t),
         D2D1::SizeF(radius, radius), 0.f,
         D2D1_SWEEP_DIRECTION_CLOCKWISE, D2D1_ARC_SIZE_SMALL));
   sink->EndFigure(D2D1_FIGURE_END_CLOSED);
