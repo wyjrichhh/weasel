@@ -21,7 +21,10 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
   throw 'requires elevation (System32 copy + HKLM writes)'
 }
 
+# the dll may be loaded by app processes (TSF in-proc COM): swap via rename
+Move-Item C:\Windows\System32\bangke.dll C:\Windows\System32\bangke.dll.old -Force -ErrorAction SilentlyContinue
 Copy-Item $dll C:\Windows\System32\bangke.dll -Force
+Remove-Item C:\Windows\System32\bangke.dll.old -Force -ErrorAction SilentlyContinue
 
 $env:TEXTSERVICE_PROFILE = 'hans'
 # regsvr32 is a GUI-subsystem exe: PowerShell cannot capture its exit code
