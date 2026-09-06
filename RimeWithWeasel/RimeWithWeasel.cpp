@@ -477,7 +477,7 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
     // 前端读快照直刷 UI——消灭"拉取时机"竞态，也不引入防抖延迟
     const char* eq = strchr(message_value, '=');
     if (eq != NULL && eq[1] != '\0')
-      _PushAiSnapshot(session_id);
+      self->_PushAiSnapshot(session_id);
   }
   if (RIME_API_AVAILABLE(rime_api, get_state_label) &&
       !strcmp(message_type, "option")) {
