@@ -90,11 +90,17 @@
                   ExeCommand="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /install"
                   Return="check" Execute="deferred" Impersonate="yes" />
 
+    <!-- 装完即用：以安装用户身份 fire-and-forget 拉起服务（cmd start 避免 CA 等待常驻进程） -->
+    <CustomAction Id="StartServer" Directory="INSTALLDIR"
+                  ExeCommand="&quot;[System64Folder]cmd.exe&quot; /c start &quot;&quot; &quot;[INSTALLDIR]BangkeServer.exe&quot;"
+                  Return="ignore" Execute="deferred" Impersonate="yes" />
+
     <InstallExecuteSequence>
       <Custom Action="StopServer" After="InstallInitialize" />
       <Custom Action="UnregisterTSF" After="StopServer" Condition="REMOVE" />
       <Custom Action="RegisterTSF" After="InstallFiles" Condition="NOT REMOVE" />
       <Custom Action="FirstDeploy" After="WriteRegistryValues" Condition="NOT REMOVE" />
+      <Custom Action="StartServer" After="FirstDeploy" Condition="NOT REMOVE" />
     </InstallExecuteSequence>
   </Package>
 </Wix>
