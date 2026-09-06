@@ -158,8 +158,7 @@ class MainWindow : public QWidget {
                        : m_job->op == MsiJob::Repair ? L"修复完成" : L"安装完成";
       m_finishTitle->setText(QString::fromWCharArray(t));
       m_finishDetail->setText(m_job->op == MsiJob::Uninstall
-                                  ? QStringLiteral(u"蚌壳拼音已卸载（用户词库保留）。
-建议注销或重启一次，输入法列表中的残留图标即会消失。")
+                                  ? QStringLiteral(u"蚌壳拼音已卸载（用户词库保留）。建议注销一次，输入法列表中的残留图标即会消失。")
                                   : QStringLiteral(u"蚌壳拼音已就绪，按 Win+空格 切换开始使用。"));
     } else {
       m_finishTitle->setText(QStringLiteral(u"操作失败 (代码 0x%1)").arg((uint)r, 8, 16, QChar('0')));
