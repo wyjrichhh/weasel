@@ -35,7 +35,7 @@ function DirId([string]$rel) {
 # 收集目录结构（相对路径集合）
 $dirs = @{}
 foreach ($f in $files) {
-  $rel = [IO.Path]::GetRelativePath($root, $f.FullName)
+  $rel = $f.FullName.Substring($root.Length + 1)
   $parent = Split-Path $rel -Parent
   if (-not $parent) { $parent = '.' }
   $name = Split-Path $rel -Leaf
@@ -81,7 +81,7 @@ foreach ($did in @($dirs.Keys)) { EmitDir $did }
 
 $i = 0
 foreach ($f in $files) {
-  $rel = [IO.Path]::GetRelativePath($root, $f.FullName)
+  $rel = $f.FullName.Substring($root.Length + 1)
   $parent = Split-Path $rel -Parent
   if (-not $parent) { $parent = '.' }
   $did = DirId $parent
