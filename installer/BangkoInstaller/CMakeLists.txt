@@ -10,11 +10,13 @@ qt_standard_project_setup()
 
 qt_add_executable(BangkoInstaller WIN32
   main.cpp
-  app.manifest
 )
 
 target_link_libraries(BangkoInstaller PRIVATE Qt6::Widgets msi.lib)
 target_compile_options(BangkoInstaller PRIVATE /utf-8)
+# 提权声明走链接器，避免与默认 manifest 合并冲突
+set_target_properties(BangkoInstaller PROPERTIES
+  LINK_FLAGS "/MANIFESTUAC:\"level='requireAdministrator'\"")
 
 # Qt 运行库与 BangkoSettings 同目录共存（output\），无需单独 windeployqt
 add_custom_command(TARGET BangkoInstaller POST_BUILD
