@@ -32,28 +32,16 @@ function DirId([string]$rel) {
   return 'dir_' + ($rel -replace '[\\./ ]', '_')
 }
 
-# 收集目录结构（相对路径集合）
+# 目录树登记：rel 为 output 下的相对路径（'.' 为根）
 $dirs = @{}
-foreach ($f in $files) {
-  $rel = $f.FullName.Substring($root.Length + 1)
-  $parent = Split-Path $rel -Parent
-  if (-not $parent) { $parent = '.' }
-  $name = Split-Path $rel -Leaf
-  $did = DirId $parent
+function EnsureDir([string]$rel) {
+  if ($rel -eq '.') { return }
+  $did = DirId $rel
   if (-not $dirs.ContainsKey($did)) {
-    $dirs[$did] = @{ Name = if ($parent -eq '.') { $null } else { (Split-Path $parent -Leaf) }; Parent = $null }
-  }
-  # 祖先目录全部登记
-  $cur = $parent
-  while ($cur -and $cur -ne '.') {
-    $pParent = Split-Path $cur -Parent
-    if (-not $pParent) { $pParent = '.' }
-    $cid = DirId $cur
-    if (-not $dirs.ContainsKey($cid)) {
-      $dirs[$cid] = @{ Name = Split-Path $cur -Leaf; Parent = $(DirId $pParent) }
-    }
-    $cur = $pParent
-    if ($pParent -eq '.') { break }
+    $pp = Split-Path $rel -Parent
+    if (-not $pp) { $pp = '.' }
+    EnsureDir $pp
+    $dirs[$did] = @{ Name = (Split-Path $rel -Leaf); Parent = (DirId $pp) }
   }
 }
 
@@ -65,34 +53,31 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('  <Fragment>')
 [void]$sb.AppendLine('    <DirectoryRef Id="INSTALLDIR">')
 
-# 目录树：先输出父目录再嵌套子目录（用栈保证深度）
+# 深度优先：先父后子输出
 $emitted = @{}
 function EmitDir([string]$did) {
-  if ($did -eq 'INSTALLDIR' -or $emitted.ContainsKey($did)) { return }
+  if (-not $did -or $did -eq 'INSTALLDIR' -or $emitted.ContainsKey($did)) { return }
   $d = $dirs[$did]
   EmitDir $d.Parent
-  $indent = '      '
-  [void]$script:sb.AppendLine("$indent<Directory Id=""$did"" Name=""$(Esc $d.Name)"" />")
+  [void]$script:sb.AppendLine("      <Directory Id=""$did"" Name=""$(Esc $d.Name)"" />")
   $script:emitted[$did] = $true
 }
-foreach ($did in @($dirs.Keys)) { EmitDir $did }
-[void]$sb.AppendLine('    </DirectoryRef>')
-[void]$sb.AppendLine('    <ComponentGroup Id="BangkeFiles">')
 
 $i = 0
 foreach ($f in $files) {
   $rel = $f.FullName.Substring($root.Length + 1)
   $parent = Split-Path $rel -Parent
   if (-not $parent) { $parent = '.' }
-  $did = DirId $parent
+  EnsureDir $parent
   $i++
-  $fid = 'file' + $i
   $src = $f.FullName -replace '/', '\'
+  $did = DirId $parent
   [void]$sb.AppendLine("      <Component Id=""comp$i"" Directory=""$did"" Guid=""*"" Win64=""yes"">")
-  [void]$sb.AppendLine("        <File Id=""$fid"" Source=""$(Esc $src)"" Name=""$(Esc $f.Name)"" KeyPath=""yes"" />")
+  [void]$sb.AppendLine("        <File Id=""file$i"" Source=""$(Esc $src)"" Name=""$(Esc $f.Name)"" KeyPath=""yes"" />")
   [void]$sb.AppendLine("      </Component>")
 }
-[void]$sb.AppendLine('    </ComponentGroup>')
+foreach ($did in @($dirs.Keys)) { EmitDir $did }
+[void]$sb.AppendLine('    </DirectoryRef>')
 [void]$sb.AppendLine('  </Fragment>')
 [void]$sb.AppendLine('</Wix>')
 
