@@ -2,6 +2,7 @@
 // 真实进度通过 MsiSetExternalUIRecord 回调获取
 #include <QApplication>
 #include <QCheckBox>
+#include <QFile>
 #include <QDir>
 #include <QFileDialog>
 #include <QFrame>
@@ -54,108 +55,51 @@ static QString InstalledVersion(const QString& code) {
   return QStringLiteral(u"未知");
 }
 
-// ---------------- MSI 执行线程 ----------------
+// ---------------- MSI 执行（msiexec 子进程，最成熟路径） ----------------
 
 struct MsiJob {
   enum Op { Install, Repair, Uninstall } op;
   QString msiPath, productCode, installDir;
-  std::atomic<int> percent{0};
-  std::atomic<bool> done{false};
-  UINT result = 0;
-  QString actionText;
 };
 
-static QString ActionText(const QString& action) {
-  static const struct { const char* a; const wchar_t* t; } kMap[] = {
-      {"StopServer", L"正在准备环境"},
-      {"InstallInitialize", L"正在初始化安装"},
-      {"InstallFiles", L"正在复制文件"},
-      {"WriteRegistryValues", L"正在写入注册表"},
-      {"RegisterTSF", L"正在注册输入法"},
-      {"FirstDeploy", L"正在部署输入方案"},
-      {"InstallFinalize", L"正在完成安装"},
-      {"RemoveFiles", L"正在移除文件"},
-      {"UnregisterTSF", L"正在注销输入法"},
-  };
-  for (auto& m : kMap)
-    if (action == QLatin1String(m.a))
-      return QString::fromWCharArray(m.t);
-  return QString();
+static QString MsiLogPath(const QString& msi) { return msi + ".log"; }
+
+static QStringList BuildArgs(const MsiJob& job) {
+  const QString log = QDir::toNativeSeparators(MsiLogPath(job.msiPath));
+  QStringList args;
+  switch (job.op) {
+    case MsiJob::Install: {
+      args << "/i" << QDir::toNativeSeparators(job.msiPath);
+      QString dir = job.installDir;
+      while (dir.endsWith('\\') || dir.endsWith('/'))
+        dir.chop(1);
+      if (!dir.isEmpty())
+        args << ("INSTALLDIR=\"" + dir + "\"");
+      break;
+    }
+    case MsiJob::Repair:
+      args << "/f" << QDir::toNativeSeparators(job.msiPath);
+      break;
+    case MsiJob::Uninstall:
+      args << "/x" << QDir::toNativeSeparators(job.msiPath);
+      break;
+  }
+  args << "/qn" << "/l*v" << log;
+  return args;
 }
 
-class MsiThread : public QThread {
- public:
-  MsiThread(MsiJob* job, QObject* notify) : m_job(job), m_notify(notify) {}
-
-  void run() override {
-    const std::wstring msiW = m_job->msiPath.toStdWString();
-    if (!msiW.empty())
-      MsiEnableLogW(INSTALLLOGMODE_VERBOSE, (msiW + L".log").c_str(), 0);
-    MsiSetInternalUI(INSTALLUILEVEL_NONE, nullptr);
-    MsiSetExternalUIRecord(&RecordHandler, INSTALLLOGMODE_PROGRESS | INSTALLLOGMODE_ACTIONSTART, this, nullptr);
-
-    QString args;
-    if (m_job->op == MsiJob::Install) {
-      if (!m_job->installDir.isEmpty())
-        args = QStringLiteral(u"INSTALLDIR=\"") + m_job->installDir + QStringLiteral(u"\"");
-      m_result = MsiInstallProductW(msiW.c_str(), args.toStdWString().c_str());
-    } else if (m_job->op == MsiJob::Repair) {
-      // 同版本重装即修复；目录取注册表里的原安装位置
-      wchar_t root[MAX_PATH] = {0};
-      DWORD sz = MAX_PATH;
-      HKEY k;
-      args.clear();
-      if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"Software\\Bangke", 0, KEY_READ, &k) == ERROR_SUCCESS) {
-        if (RegQueryValueExW(k, L"BangkeRoot", NULL, NULL, (LPBYTE)root, &sz) == ERROR_SUCCESS)
-          args = QStringLiteral(u"INSTALLDIR=\"") + QString::fromWCharArray(root) + QStringLiteral(u"\"");
-        RegCloseKey(k);
-      }
-      m_result = MsiInstallProductW(msiW.c_str(), args.toStdWString().c_str());
-    } else {
-      m_result = MsiConfigureProductW(m_job->productCode.toStdWString().c_str(),
-                                      INSTALLLEVEL_DEFAULT, INSTALLSTATE_ABSENT);
-    }
-    m_job->result = m_result;
-    m_job->done = true;
-    QMetaObject::invokeMethod(m_notify, "msiFinished", Qt::QueuedConnection);
-  }
-
-  UINT m_result = 0;
-
- private:
-  static int RecordHandler(LPVOID ctx, UINT messageType, MSIHANDLE record) {
-    auto* self = (MsiThread*)ctx;
-    MsiJob* job = self->m_job;
-    if (messageType == INSTALLMESSAGE_PROGRESS) {
-      int total = MsiRecordGetInteger(record, 2);
-      int progress = MsiRecordGetInteger(record, 3);
-      if (total > 0 && progress >= 0) {
-        job->percent = progress * 100 / total;
-        QMetaObject::invokeMethod(self->m_notify, "msiProgress", Qt::QueuedConnection);
-      }
-    } else if (messageType == INSTALLMESSAGE_ACTIONSTART) {
-      DWORD sz = 0;
-      MsiRecordGetStringW(record, 1, nullptr, &sz);
-      if (sz > 0) {
-        std::wstring name(sz, L'\0');
-        DWORD sz2 = sz + 1;
-        MsiRecordGetStringW(record, 1, &name[0], &sz2);
-        name.resize(sz2 ? sz2 - 1 : 0);
-        QString friendly = ActionText(QString::fromStdWString(name));
-        if (!friendly.isEmpty()) {
-          job->actionText = friendly;
-          QMetaObject::invokeMethod(self->m_notify, "msiProgress", Qt::QueuedConnection);
-        }
-      }
-    }
-    return 0;
-  }
-
-  MsiJob* m_job;
-  QObject* m_notify;
-};
-
 // ---------------- UI ----------------
+
+const struct { const char* first; const wchar_t* second; } MainWindow::kSteps[] = {
+    {"StopServer", L"正在准备环境"},
+    {"InstallValidate", L"正在校验安装"},
+    {"InstallFiles", L"正在复制文件"},
+    {"RegisterTSF", L"正在注册输入法"},
+    {"FirstDeploy", L"正在部署输入方案"},
+    {"StartServer", L"正在启动服务"},
+    {"RemoveFiles", L"正在移除文件"},
+    {"UnregisterTSF", L"正在注销输入法"},
+};
 
 class MainWindow : public QWidget {
   Q_OBJECT
@@ -202,23 +146,13 @@ class MainWindow : public QWidget {
   }
 
  public slots:
-  void msiProgress() {
-    if (m_job) {
-      m_bar->setValue(m_job->percent);
-      if (!m_job->actionText.isEmpty())
-        m_actionLabel->setText(m_job->actionText);
-    }
-  }
-
   void msiFinished() {
-    UINT r = m_job ? m_job->result : (UINT)-1;
-    if (m_thread) {
-      m_thread->wait();
-      delete m_thread;
-      m_thread = nullptr;
-    }
+    if (m_pollTimer) { m_pollTimer->stop(); m_pollTimer->deleteLater(); m_pollTimer = nullptr; }
+    int r = (m_exitCode >= 0) ? m_exitCode
+             : (m_proc ? (m_proc->error() == QProcess::UnknownError ? m_proc->exitCode() : 1603) : -1);
+    if (m_proc) { m_proc->deleteLater(); m_proc = nullptr; }
     m_stack->setCurrentWidget(finishPage_);
-    const bool ok = (r == ERROR_SUCCESS);
+    const bool ok = (r == 0);
     if (ok) {
       const wchar_t* t = m_job->op == MsiJob::Uninstall ? L"卸载完成"
                        : m_job->op == MsiJob::Repair ? L"修复完成" : L"安装完成";
@@ -228,7 +162,7 @@ class MainWindow : public QWidget {
 建议注销或重启一次，输入法列表中的残留图标即会消失。")
                                   : QStringLiteral(u"蚌壳拼音已就绪，按 Win+空格 切换开始使用。"));
     } else {
-      m_finishTitle->setText(QStringLiteral(u"操作失败 (代码 0x%1)").arg(r, 8, 16, QChar('0')));
+      m_finishTitle->setText(QStringLiteral(u"操作失败 (代码 0x%1)").arg((uint)r, 8, 16, QChar('0')));
       m_finishDetail->setText(QStringLiteral(u"详细日志：") +
                               QDir::toNativeSeparators(m_msiPath + ".log"));
     }
@@ -250,21 +184,48 @@ class MainWindow : public QWidget {
 
  private:
   void startJob(MsiJob::Op op) {
-    if (m_msiPath.isEmpty() && op != MsiJob::Repair && op != MsiJob::Uninstall) {
+    if (m_msiPath.isEmpty()) {
       QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"),
                            QStringLiteral(u"未找到 BangkeSetup-*.msi，请与安装程序放在同一目录。"));
       return;
     }
-    m_job = new MsiJob;
-    m_job->op = op;
-    m_job->msiPath = m_msiPath;
-    m_job->productCode = m_productCode;
-    m_job->installDir = m_dirEdit->text().trimmed();
-    m_bar->setValue(0);
+    m_job = new MsiJob{op, m_msiPath, m_productCode, m_dirEdit->text().trimmed()};
+    m_bar->setRange(0, 0);  // 不确定进度：真实完成以 msiexec 退出码为准
     m_actionLabel->setText(QStringLiteral(u"正在准备…"));
     m_stack->setCurrentWidget(progressPage_);
-    m_thread = new MsiThread(m_job, this);
-    m_thread->start();
+
+    QFile::remove(MsiLogPath(m_msiPath));
+    m_proc = new QProcess(this);
+    m_proc->setProgram("msiexec.exe");
+    m_proc->setArguments(BuildArgs(*m_job));
+    connect(m_proc, &QProcess::finished, this, &MainWindow::msiFinished);
+    connect(m_proc, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
+      m_exitCode = -1;
+      msiFinished();
+    });
+    m_proc->start();
+
+    m_pollTimer = new QTimer(this);
+    connect(m_pollTimer, &QTimer::timeout, this, &MainWindow::pollLog);
+    m_pollTimer->start(400);
+  }
+
+  void pollLog() {
+    const QString log = MsiLogPath(m_msiPath);
+    QFile f(log);
+    if (!f.open(QIODevice::ReadOnly))
+      return;
+    // 只看尾部一段，找最近的已知 Action
+    qint64 sz = f.size();
+    f.seek(sz > 8192 ? sz - 8192 : 0);
+    const QByteArray tail = f.readAll();
+    f.close();
+    for (auto it = kSteps.rbegin(); it != kSteps.rend(); ++it) {
+      if (tail.contains(it->first)) {
+        m_actionLabel->setText(QString::fromWCharArray(it->second));
+        break;
+      }
+    }
   }
 
   void refreshState() {
@@ -421,7 +382,10 @@ class MainWindow : public QWidget {
   QProgressBar* m_bar = nullptr;
   QCheckBox* m_launchCheck = nullptr;
   MsiJob* m_job = nullptr;
-  MsiThread* m_thread = nullptr;
+  QProcess* m_proc = nullptr;
+  QTimer* m_pollTimer = nullptr;
+  int m_exitCode = -1;
+  static const struct { const char* first; const wchar_t* second; } kSteps[];
   QPoint m_dragPos;
 };
 
