@@ -29,6 +29,12 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
 }
 
 void StylePage::load() {
+  if (loaded_)
+    return;
+  forceLoad();
+}
+
+void StylePage::forceLoad() {
   settings_.Load();
 
   std::vector<ColorSchemeInfo> schemes;
@@ -49,6 +55,7 @@ void StylePage::load() {
   activeFontSize_ = settings_.GetFontSize(15);
   fontSize_->setValue(activeFontSize_);
   updatePreview();
+  loaded_ = true;
 }
 
 void StylePage::updatePreview() {

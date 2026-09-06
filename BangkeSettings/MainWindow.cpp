@@ -100,8 +100,8 @@ void MainWindow::saveAndDeploy() {
     configurator_->UpdateWorkspace(true);
     QApplication::restoreOverrideCursor();
     statusBar()->showMessage(L"已保存，正在重新部署…", 5000);
-    switcherPage_->load();
-    stylePage_->load();
+    switcherPage_->forceLoad();
+    stylePage_->forceLoad();
   } else {
     statusBar()->showMessage(L"没有需要保存的修改", 5000);
   }

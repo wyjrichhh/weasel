@@ -63,28 +63,40 @@ SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   layout->addWidget(left, 3);
   layout->addWidget(right, 2);
 
-  connect(refreshBtn, &QPushButton::clicked, this, &SwitcherPage::load);
+  connect(refreshBtn, &QPushButton::clicked, this, &SwitcherPage::forceLoad);
   connect(moreBtn, &QPushButton::clicked, this, &SwitcherPage::getMoreSchemas);
   connect(schemaList_, &QListWidget::currentItemChanged, this,
           [this](QListWidgetItem* current, QListWidgetItem*) {
             if (current)
-              showDetails(reinterpret_cast<RimeSchemaInfo*>(
-                  current->data(Qt::UserRole).value<void*>()));
+              showDetails((RimeSchemaInfo*)current->data(Qt::UserRole).toULongLong());
           });
   connect(schemaList_, &QListWidget::itemChanged, this,
           [this](QListWidgetItem*) { modified_ = true; });
 }
 
 SwitcherPage::~SwitcherPage() {
+  if (available_.list)
+    api_->schema_list_destroy(&available_);
   if (settings_)
     api_->custom_settings_destroy((RimeCustomSettings*)settings_);
 }
 
 void SwitcherPage::load() {
+  if (loaded_)
+    return;
+  forceLoad();
+}
+
+void SwitcherPage::forceLoad() {
   if (!api_)
     return;
   if (!settings_)
     settings_ = api_->switcher_settings_init();
+  loadSettings();
+  loaded_ = true;
+}
+
+void SwitcherPage::loadSettings() {
   api_->load_settings((RimeCustomSettings*)settings_);
   populate();
 }
@@ -92,6 +104,10 @@ void SwitcherPage::load() {
 void SwitcherPage::populate() {
   if (!settings_)
     return;
+  if (available_.list) {
+    api_->schema_list_destroy(&available_);
+    available_ = {0};
+  }
   RimeSchemaList selected = {0};
   api_->get_available_schema_list(settings_, &available_);
   api_->get_selected_schema_list(settings_, &selected);
@@ -111,7 +127,7 @@ void SwitcherPage::populate() {
         auto* row = new QListWidgetItem(QString::fromStdString(item.name));
         row->setFlags(row->flags() | Qt::ItemIsUserCheckable);
         row->setCheckState(Qt::Checked);
-        row->setData(Qt::UserRole, QVariant::fromValue((void*)info));
+        row->setData(Qt::UserRole, (qulonglong)info);
         schemaList_->insertItem(k++, row);
         break;
       }
@@ -125,7 +141,7 @@ void SwitcherPage::populate() {
       auto* row = new QListWidgetItem(QString::fromStdString(item.name));
       row->setFlags(row->flags() | Qt::ItemIsUserCheckable);
       row->setCheckState(Qt::Unchecked);
-      row->setData(Qt::UserRole, QVariant::fromValue((void*)info));
+      row->setData(Qt::UserRole, (qulonglong)info);
       schemaList_->insertItem(k++, row);
     }
   }
@@ -154,8 +170,9 @@ void SwitcherPage::getMoreSchemas() {
   std::wstring root = GetBangkeRoot();
   if (root.empty())
     return;
-  QProcess::startDetached("cmd", {"/k", QString::fromStdWString(root) + "\\rime-install.bat"},
-                          QString::fromStdWString(root));
+  QProcess::startDetached(
+      "cmd", {"/k", QString::fromStdWString(root) + "\\rime-install.bat"},
+      QString::fromStdWString(root));
   QMessageBox::information(this, L"获取更多方案",
                            L"在弹出的命令行窗口中按提示安装方案，\n完成后点击「刷新」重新加载列表。");
 }
@@ -167,8 +184,8 @@ bool SwitcherPage::save() {
   for (int i = 0; i < schemaList_->count(); ++i) {
     if (schemaList_->item(i)->checkState() != Qt::Checked)
       continue;
-    if (auto* info = reinterpret_cast<RimeSchemaInfo*>(
-            schemaList_->item(i)->data(Qt::UserRole).value<void*>()))
+    if (auto* info =
+            (RimeSchemaInfo*)schemaList_->item(i)->data(Qt::UserRole).toULongLong())
       selection.push_back(api_->get_schema_id(info));
   }
   if (selection.empty()) {
