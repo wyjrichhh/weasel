@@ -1,7 +1,4 @@
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
-
-  <?define UpgradeCode = "8F1D4B33-9C2A-4E6D-B0F7-3A5C8E21D940"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
   <Package Name="蚌壳拼音"
            Language="2052"
@@ -9,7 +6,8 @@
            Manufacturer="Bangke"
            Scope="perMachine"
            InstallerVersion="500"
-           Compressed="yes">
+           Compressed="yes"
+           UpgradeCode="8F1D4B33-9C2A-4E6D-B0F7-3A5C8E21D940">
 
     <SummaryInformation Description="蚌壳拼音输入法 $(var.Version)" />
 
@@ -76,21 +74,21 @@
       自定义动作（deferred, noImpersonate）：
       停服 → 卸注册 → 装文件 → 注册 → 首部署
     -->
-    <SetProperty Id="StopServer" Value="&quot;[System64Folder]taskkill.exe&quot; /f /im BangkeServer.exe"
+    <SetProperty Id="StopServerCmd" Value="&quot;[System64Folder]taskkill.exe&quot; /f /im BangkeServer.exe"
                  Before="StopServer" Sequence="execute" />
-    <CustomAction Id="StopServer" Return="ignore" Execute="deferred" Impersonate="no" />
+    <CustomAction Id="StopServer" Property="StopServerCmd" Return="ignore" Execute="deferred" Impersonate="no" />
 
-    <SetProperty Id="UnregisterTSF" Value="&quot;[System64Folder]regsvr32.exe&quot; /u /s &quot;[System64Folder]bangke.dll&quot;"
+    <SetProperty Id="UnregisterTSFCmd" Value="&quot;[System64Folder]regsvr32.exe&quot; /u /s &quot;[System64Folder]bangke.dll&quot;"
                  Before="UnregisterTSF" Sequence="execute" />
-    <CustomAction Id="UnregisterTSF" Return="ignore" Execute="deferred" Impersonate="no" />
+    <CustomAction Id="UnregisterTSF" Property="UnregisterTSFCmd" Return="ignore" Execute="deferred" Impersonate="no" />
 
-    <SetProperty Id="RegisterTSF" Value="&quot;[System64Folder]regsvr32.exe&quot; /s &quot;[System64Folder]bangke.dll&quot;"
+    <SetProperty Id="RegisterTSFCmd" Value="&quot;[System64Folder]regsvr32.exe&quot; /s &quot;[System64Folder]bangke.dll&quot;"
                  Before="RegisterTSF" Sequence="execute" />
-    <CustomAction Id="RegisterTSF" Return="check" Execute="deferred" Impersonate="no" />
+    <CustomAction Id="RegisterTSF" Property="RegisterTSFCmd" Return="check" Execute="deferred" Impersonate="no" />
 
-    <SetProperty Id="FirstDeploy" Value="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /install"
+    <SetProperty Id="FirstDeployCmd" Value="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /install"
                  Before="FirstDeploy" Sequence="execute" />
-    <CustomAction Id="FirstDeploy" Return="check" Execute="deferred" Impersonate="no" />
+    <CustomAction Id="FirstDeploy" Property="FirstDeployCmd" Return="check" Execute="deferred" Impersonate="no" />
 
     <InstallExecuteSequence>
       <Custom Action="StopServer" After="InstallInitialize" />
