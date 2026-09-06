@@ -125,7 +125,7 @@ class MsiThread : public QThread {
   UINT m_result = 0;
 
  private:
-  static DWORD WINAPI RecordHandler(LPVOID ctx, UINT messageType, MSIHANDLE record) {
+  static DWORD RecordHandler(LPVOID ctx, UINT messageType, MSIHANDLE record) {
     auto* self = (MsiThread*)ctx;
     MsiJob* job = self->m_job;
     if (messageType == INSTALLMESSAGE_PROGRESS) {
