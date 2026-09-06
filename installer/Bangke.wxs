@@ -39,13 +39,13 @@
 
     <!-- System32\bangke.dll：TSF 输入法服务 -->
     <StandardDirectory Id="System64Folder">
-      <Component Id="C_BangkeDll" Guid="A9C3E5D1-7F2B-4C86-9A40-2D5E6B81C733" Win64="yes">
+      <Component Id="C_BangkeDll" Guid="A9C3E5D1-7F2B-4C86-9A40-2D5E6B81C733">
         <File Id="BangkeDll" Source="$(var.OutputDir)\bangkex64.dll" Name="bangke.dll" KeyPath="yes" />
       </Component>
     </StandardDirectory>
 
     <!-- BangkeRoot / ServerExecutable / 自启动 -->
-    <Component Id="C_Registry" Guid="3E7A9C15-6B48-4F0D-8E92-1C4D5A70F866" Win64="yes" Directory="INSTALLDIR">
+    <Component Id="C_Registry" Guid="3E7A9C15-6B48-4F0D-8E92-1C4D5A70F866" Directory="INSTALLDIR">
       <RegistryValue Root="HKLM" Key="Software\Bangke" Name="BangkeRoot"
                      Value="[INSTALLDIR]" Type="string" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="Software\Bangke" Name="ServerExecutable"
@@ -58,7 +58,7 @@
     <StandardDirectory Id="ProgramMenuFolder">
       <Directory Id="BangkeMenuDir" Name="蚌壳拼音" />
     </StandardDirectory>
-    <Component Id="C_Shortcuts" Guid="5C2E8A71-D94B-4E35-A6F0-8B1D7E24C959" Win64="yes" Directory="BangkeMenuDir">
+    <Component Id="C_Shortcuts" Guid="5C2E8A71-D94B-4E35-A6F0-8B1D7E24C959" Directory="BangkeMenuDir">
       <RegistryValue Root="HKLM" Key="Software\Bangke" Name="Shortcuts"
                      Value="1" Type="integer" KeyPath="yes" />
       <Shortcut Id="ScSettings" Name="设置"
