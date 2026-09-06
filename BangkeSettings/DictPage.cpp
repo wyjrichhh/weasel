@@ -22,13 +22,13 @@ DictPage::DictPage(QWidget* parent) : QWidget(parent) {
 
   dictList_ = new QListWidget(this);
 
-  backupBtn_ = new QPushButton(L"备份…", this);
-  restoreBtn_ = new QPushButton(L"恢复…", this);
-  exportBtn_ = new QPushButton(L"导出为文本…", this);
-  importBtn_ = new QPushButton(L"从文本导入…", this);
+  backupBtn_ = new QPushButton(QStringLiteral(u"备份…"), this);
+  restoreBtn_ = new QPushButton(QStringLiteral(u"恢复…"), this);
+  exportBtn_ = new QPushButton(QStringLiteral(u"导出为文本…"), this);
+  importBtn_ = new QPushButton(QStringLiteral(u"从文本导入…"), this);
 
   auto* layout = new QVBoxLayout(this);
-  layout->addWidget(new QLabel(L"用户词典：", this));
+  layout->addWidget(new QLabel(QStringLiteral(u"用户词典："), this));
   layout->addWidget(dictList_, 1);
   auto* btnRow = new QHBoxLayout();
   btnRow->addWidget(backupBtn_);
@@ -95,13 +95,13 @@ void DictPage::backup() {
     return;
   std::string dir = userSyncDir();
   if (dir.empty()) {
-    QMessageBox::warning(this, L"蚌壳拼音", L"无法定位同步目录。");
+    QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"), QStringLiteral(u"无法定位同步目录。"));
     return;
   }
   QString path = QDir::toNativeSeparators(
       QString::fromStdString(dir) + "\\" + dict + ".userdb.txt");
   if (!api_->backup_user_dict(dict.toStdString().c_str())) {
-    QMessageBox::warning(this, L"蚌壳拼音", L"备份失败。");
+    QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"), QStringLiteral(u"备份失败。"));
     return;
   }
   RevealInExplorer(path);
@@ -109,32 +109,32 @@ void DictPage::backup() {
 
 void DictPage::restore() {
   QString path = QFileDialog::getOpenFileName(
-      this, L"恢复词典快照", QString(),
-      L"词典快照 (*.userdb.txt *.userdb.kct.snapshot);;所有文件 (*.*)");
+      this, QStringLiteral(u"恢复词典快照"), QString(),
+      QStringLiteral(u"词典快照 (*.userdb.txt *.userdb.kct.snapshot);;所有文件 (*.*)"));
   if (path.isEmpty())
     return;
   if (!api_->restore_user_dict(path.toStdString().c_str()))
-    QMessageBox::warning(this, L"蚌壳拼音", L"恢复失败。");
+    QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"), QStringLiteral(u"恢复失败。"));
   else
-    QMessageBox::information(this, L"蚌壳拼音", L"恢复完成。");
+    QMessageBox::information(this, QStringLiteral(u"蚌壳拼音"), QStringLiteral(u"恢复完成。"));
 }
 
 void DictPage::exportDict() {
   QString dict = currentDictName(dictList_);
   if (dict.isEmpty())
     return;
-  QString path = QFileDialog::getSaveFileName(this, L"导出词典", dict + "_export.txt",
-                                              L"文本文件 (*.txt)");
+  QString path = QFileDialog::getSaveFileName(this, QStringLiteral(u"导出词典"), dict + "_export.txt",
+                                              QStringLiteral(u"文本文件 (*.txt)"));
   if (path.isEmpty())
     return;
   int result = api_->export_user_dict(dict.toStdString().c_str(),
                                       path.toStdString().c_str());
   if (result < 0) {
-    QMessageBox::warning(this, L"蚌壳拼音", L"导出失败。");
+    QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"), QStringLiteral(u"导出失败。"));
     return;
   }
-  QMessageBox::information(this, L"蚌壳拼音",
-                           QString(L"导出 %1 条记录。").arg(result));
+  QMessageBox::information(this, QStringLiteral(u"蚌壳拼音"),
+                           QStringLiteral(u"导出 %1 条记录。").arg(result));
   RevealInExplorer(path);
 }
 
@@ -142,16 +142,16 @@ void DictPage::importDict() {
   QString dict = currentDictName(dictList_);
   if (dict.isEmpty())
     return;
-  QString path = QFileDialog::getOpenFileName(this, L"导入词典", dict + "_export.txt",
-                                              L"文本文件 (*.txt);;所有文件 (*.*)");
+  QString path = QFileDialog::getOpenFileName(this, QStringLiteral(u"导入词典"), dict + "_export.txt",
+                                              QStringLiteral(u"文本文件 (*.txt);;所有文件 (*.*)"));
   if (path.isEmpty())
     return;
   int result = api_->import_user_dict(dict.toStdString().c_str(),
                                       path.toStdString().c_str());
   if (result < 0) {
-    QMessageBox::warning(this, L"蚌壳拼音", L"导入失败。");
+    QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"), QStringLiteral(u"导入失败。"));
     return;
   }
-  QMessageBox::information(this, L"蚌壳拼音",
-                           QString(L"导入 %1 条记录。").arg(result));
+  QMessageBox::information(this, QStringLiteral(u"蚌壳拼音"),
+                           QStringLiteral(u"导入 %1 条记录。").arg(result));
 }

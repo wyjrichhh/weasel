@@ -15,12 +15,12 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
   fontSize_->setRange(9, 36);
 
   auto* form = new QFormLayout();
-  form->addRow(L"配色方案：", schemeCombo_);
-  form->addRow(L"字体大小：", fontSize_);
+  form->addRow(QStringLiteral(u"配色方案："), schemeCombo_);
+  form->addRow(QStringLiteral(u"字体大小："), fontSize_);
 
   auto* layout = new QVBoxLayout(this);
   layout->addLayout(form);
-  layout->addWidget(new QLabel(L"预览：", this));
+  layout->addWidget(new QLabel(QStringLiteral(u"预览："), this));
   layout->addWidget(preview_, 0, Qt::AlignLeft | Qt::AlignTop);
   layout->addStretch();
 
@@ -66,7 +66,7 @@ void StylePage::updatePreview() {
       QString::fromStdString(settings_.GetColorSchemePreview(id.toStdString()));
   QPixmap pixmap(file);
   if (pixmap.isNull())
-    preview_->setText(L"（无预览图）");
+    preview_->setText(QStringLiteral(u"（无预览图）"));
   else
     preview_->setPixmap(pixmap.scaled(preview_->size() * 0.9,
                                       Qt::KeepAspectRatio,

@@ -37,22 +37,22 @@ SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   hotkeys_ = new QLineEdit(this);
   hotkeys_->setReadOnly(true);
 
-  auto* refreshBtn = new QPushButton(L"刷新", this);
-  auto* moreBtn = new QPushButton(L"获取更多方案…", this);
+  auto* refreshBtn = new QPushButton(QStringLiteral(u"刷新"), this);
+  auto* moreBtn = new QPushButton(QStringLiteral(u"获取更多方案…"), this);
   auto* btnRow = new QHBoxLayout();
   btnRow->addWidget(refreshBtn);
   btnRow->addWidget(moreBtn);
   btnRow->addStretch();
 
   auto* leftLayout = new QVBoxLayout();
-  leftLayout->addWidget(new QLabel(L"已选方案置顶并勾选，勾选即启用：", this));
+  leftLayout->addWidget(new QLabel(QStringLiteral(u"已选方案置顶并勾选，勾选即启用："), this));
   leftLayout->addWidget(schemaList_, 1);
   leftLayout->addLayout(btnRow);
 
   auto* rightLayout = new QVBoxLayout();
-  rightLayout->addWidget(new QLabel(L"方案说明：", this));
+  rightLayout->addWidget(new QLabel(QStringLiteral(u"方案说明："), this));
   rightLayout->addWidget(description_, 1);
-  rightLayout->addWidget(new QLabel(L"方案选单快捷键：", this));
+  rightLayout->addWidget(new QLabel(QStringLiteral(u"方案选单快捷键："), this));
   rightLayout->addWidget(hotkeys_);
 
   auto* layout = new QHBoxLayout(this);
@@ -173,8 +173,8 @@ void SwitcherPage::getMoreSchemas() {
   QProcess::startDetached(
       "cmd", {"/k", QString::fromStdWString(root) + "\\rime-install.bat"},
       QString::fromStdWString(root));
-  QMessageBox::information(this, L"获取更多方案",
-                           L"在弹出的命令行窗口中按提示安装方案，\n完成后点击「刷新」重新加载列表。");
+  QMessageBox::information(this, QStringLiteral(u"获取更多方案"),
+                           QStringLiteral(u"在弹出的命令行窗口中按提示安装方案，\n完成后点击「刷新」重新加载列表。"));
 }
 
 bool SwitcherPage::save() {
@@ -189,7 +189,7 @@ bool SwitcherPage::save() {
       selection.push_back(api_->get_schema_id(info));
   }
   if (selection.empty()) {
-    QMessageBox::warning(this, L"蚌壳拼音", L"至少要选用一项方案。");
+    QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"), QStringLiteral(u"至少要选用一项方案。"));
     return false;
   }
   api_->select_schemas(settings_, selection.data(), (int)selection.size());

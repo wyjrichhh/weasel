@@ -30,13 +30,13 @@ Mode parseMode(const QString& arg) {
 
 void showUsage(QWidget* parent) {
   QMessageBox::information(
-      parent, L"蚌壳拼音·设置",
-      L"用法: BangkeSettings.exe [选项]\n"
-      L"/deploy  - 重新部署\n"
-      L"/dict    - 词典管理\n"
-      L"/sync    - 同步用户数据\n"
-      L"/install - 静默首次部署（安装器调用）\n"
-      L"/?       - 显示本帮助");
+      parent, QStringLiteral(u"蚌壳拼音·设置"),
+      QStringLiteral(u"用法: BangkeSettings.exe [选项]\n"
+                     u"/deploy  - 重新部署\n"
+                     u"/dict    - 词典管理\n"
+                     u"/sync    - 同步用户数据\n"
+                     u"/install - 静默首次部署（安装器调用）\n"
+                     u"/?       - 显示本帮助"));
 }
 
 }  // namespace
@@ -50,8 +50,8 @@ int main(int argc, char* argv[]) {
   int ret = 0;
   {
     QApplication app(argc, argv);
-    QApplication::setApplicationName(L"蚌壳拼音·设置");
-    QApplication::setOrganizationName(L"Bangke");
+    QApplication::setApplicationName(QStringLiteral(u"蚌壳拼音·设置"));
+    QApplication::setOrganizationName(QStringLiteral(u"Bangke"));
 
     Mode mode = argc > 1 ? parseMode(QString::fromLocal8Bit(argv[1])) : Mode::Gui;
 

@@ -20,7 +20,7 @@
 MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
                        QWidget* parent)
     : QMainWindow(parent), configurator_(configurator) {
-  setWindowTitle(L"蚌壳拼音 · 设置");
+  setWindowTitle(QStringLiteral(u"蚌壳拼音 · 设置"));
   resize(860, 560);
 
   switcherPage_ = new SwitcherPage(this);
@@ -35,13 +35,13 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   nav_ = new QListWidget(this);
   nav_->setFixedWidth(120);
   nav_->setFrameShape(QFrame::NoFrame);
-  nav_->addItems({L"方案选单", L"界面样式", L"词典管理"});
+  nav_->addItems({QStringLiteral(u"方案选单"), QStringLiteral(u"界面样式"), QStringLiteral(u"词典管理")});
   nav_->setCurrentRow(openDictPage ? 2 : 0);
 
-  auto* saveBtn = new QPushButton(L"保存并重新部署", this);
+  auto* saveBtn = new QPushButton(QStringLiteral(u"保存并重新部署"), this);
   saveBtn->setDefault(true);
-  auto* userDirBtn = new QPushButton(L"打开用户文件夹", this);
-  auto* logDirBtn = new QPushButton(L"打开日志文件夹", this);
+  auto* userDirBtn = new QPushButton(QStringLiteral(u"打开用户文件夹"), this);
+  auto* logDirBtn = new QPushButton(QStringLiteral(u"打开日志文件夹"), this);
 
   auto* bottomRow = new QHBoxLayout();
   bottomRow->addWidget(userDirBtn);
@@ -57,7 +57,7 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   bodyLayout->addLayout(topRow, 1);
   bodyLayout->addLayout(bottomRow);
   setCentralWidget(body);
-  statusBar()->showMessage(L"修改后点击「保存并重新部署」生效");
+  statusBar()->showMessage(QStringLiteral(u"修改后点击「保存并重新部署」生效"));
 
   connect(nav_, &QListWidget::currentRowChanged, this,
           &MainWindow::onPageChanged);
@@ -99,11 +99,11 @@ void MainWindow::saveAndDeploy() {
     QApplication::setOverrideCursor(Qt::WaitCursor);
     configurator_->UpdateWorkspace(true);
     QApplication::restoreOverrideCursor();
-    statusBar()->showMessage(L"已保存，正在重新部署…", 5000);
+    statusBar()->showMessage(QStringLiteral(u"已保存，正在重新部署…"), 5000);
     switcherPage_->forceLoad();
     stylePage_->forceLoad();
   } else {
-    statusBar()->showMessage(L"没有需要保存的修改", 5000);
+    statusBar()->showMessage(QStringLiteral(u"没有需要保存的修改"), 5000);
   }
 }
 
