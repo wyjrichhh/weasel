@@ -40,9 +40,7 @@ static QString InstalledProductCode() {
     UINT r = MsiEnumRelatedProductsW(kUpgradeCode, 0, i, code);
     if (r != ERROR_SUCCESS)
       break;
-    wchar_t state[16] = {0};
-    DWORD ssz = 16;
-    if (MsiGetProductStateW(code) == INSTALLSTATE_DEFAULT)
+    if (MsiGetProductState(code) == INSTALLSTATE_DEFAULT)
       return QString::fromWCharArray(code);
   }
   return QString();
@@ -51,7 +49,7 @@ static QString InstalledProductCode() {
 static QString InstalledVersion(const QString& code) {
   wchar_t v[64] = {0};
   DWORD sz = 64;
-  if (MsiGetProductInfoW(code.toStdWString().c_str(), INSTALLPROPERTY_VERSIONSTRING_W, v, &sz) == ERROR_SUCCESS)
+  if (MsiGetProductInfoW(code.toStdWString().c_str(), INSTALLPROPERTY_VERSIONSTRING, v, &sz) == ERROR_SUCCESS)
     return QString::fromWCharArray(v);
   return QStringLiteral(u"未知");
 }
