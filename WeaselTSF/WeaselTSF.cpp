@@ -225,17 +225,6 @@ STDMETHODIMP WeaselTSF::OnActivated(REFCLSID clsid,
   return S_OK;
 }
 
-// 异步刷新链路诊断日志（验证后移除）
-static void BkTrace(const char* tag, const char* detail) {
-  WCHAR path[MAX_PATH] = {0};
-  GetEnvironmentVariableW(L"TEMP", path, MAX_PATH);
-  wcscat_s(path, L"\\bk_refresh.log");
-  FILE* f = _wfsopen(path, L"a", _SH_DENYNO);
-  if (f) {
-    fprintf(f, "[%u] %s %s\n", GetCurrentProcessId(), tag, detail ? detail : "");
-    fclose(f);
-  }
-}
 
 // AI 快照推送头（与服务端 AiPushHeader 对应）
 #pragma pack(push, 1)
@@ -248,12 +237,10 @@ struct AiPushHeader {
 static const DWORD kAiPushMagic = 0x314B4220;
 
 void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
-  BkTrace("tsf", "async refresh");
   // 按键活跃期间不应用快照：推送会抢先触发 _UpdateUI 使后续
   // 按键响应的 edit session 被 ctx==ctx 早退跳过，commit 丢失
   ULONGLONG now = GetTickCount64();
   if (now - _last_key_tick < 300) {
-    BkTrace("tsf", "key active, skip snapshot");
     return;
   }
   HANDLE map = OpenFileMappingW(FILE_MAP_READ, FALSE, L"Local\\BangkeAIPush");
@@ -274,7 +261,6 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   UnmapViewOfFile(view);
   CloseHandle(map);
   if (!ok) {
-    BkTrace("tsf", "snapshot stale/invalid");
     return;
   }
 
@@ -296,7 +282,6 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
 
   // 快照尚无候选（组合重建中间态）则不动当前显示
   if (context->cinfo.candies.empty() && context->aux.empty()) {
-    BkTrace("tsf", "snapshot empty, skip");
     return;
   }
   // 候选内容未变（如方向键仅改高亮）时跳过，避免快照覆盖按键路径的交互态
@@ -304,14 +289,12 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   for (auto& c : context->cinfo.candies)
     sig += c.str + L"\n";
   if (sig == _last_snapshot_sig) {
-    BkTrace("tsf", "snapshot unchanged, skip");
     return;
   }
   _last_snapshot_sig = sig;
   {
     char t[96];
     sprintf_s(t, "snapshot ok, %d candies", (int)context->cinfo.candies.size());
-    BkTrace("tsf", t);
   }
   _UpdateUI(*context, status);
 }

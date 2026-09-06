@@ -309,25 +309,12 @@ void RimeWithWeaselHandler::ClearComposition(WeaselSessionId ipc_id) {
   m_active_session = ipc_id;
 }
 
-// 异步刷新链路诊断日志（验证后移除）
-static void BkTrace(const char* tag, const char* detail) {
-  WCHAR path[MAX_PATH] = {0};
-  GetEnvironmentVariableW(L"TEMP", path, MAX_PATH);
-  wcscat_s(path, L"\\bk_refresh.log");
-  FILE* f = _wfsopen(path, L"a", _SH_DENYNO);
-  if (f) {
-    fprintf(f, "[%u] %s %s\n", GetCurrentProcessId(), tag, detail ? detail : "");
-    fclose(f);
-  }
-}
 
 void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(
     size_t index,
     WeaselSessionId ipc_id) {
   {
-    char t[64];
-    sprintf_s(t, "SelectCandidate idx=%u", (unsigned)index);
-    BkTrace("server", t);
+
   }
   DLOG(INFO) << "select candidate on current page, ipc_id = " << ipc_id
              << ", index = " << index;
@@ -460,9 +447,7 @@ void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
     if (PostMessageW(target, mid, 0, (LPARAM)seq))
       ++sent;
   }
-  char dbg[96];
-  sprintf_s(dbg, "pushed seq=%lu to %d panel(s) (%u chars)", seq, sent, (unsigned)text.size());
-  BkTrace("notify", dbg);
+
 }
 
 void RimeWithWeaselHandler::OnNotify(void* context_object,
@@ -847,9 +832,7 @@ bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat, bool i
     std::wstring commit_text_w = escape_string(u8tow(commit.text));
     body.append(L"commit=").append(commit_text_w).append(L"\n");
     {
-      char t[64];
-      sprintf_s(t, "_Respond commit len=%u", (unsigned)strlen(commit.text));
-      BkTrace("server", t);
+
     }
     rime_api->free_commit(&commit);
   }

@@ -130,17 +130,6 @@ void BangkePanel::Destroy() {
 }
 
 // 服务端推理完成后广播；所有进程同名字符串注册得到同一 ID
-// 异步刷新链路诊断日志（验证后移除）
-static void BkTrace(const char* tag, const char* detail) {
-  WCHAR path[MAX_PATH] = {0};
-  GetEnvironmentVariableW(L"TEMP", path, MAX_PATH);
-  wcscat_s(path, L"\\bk_refresh.log");
-  FILE* f = _wfsopen(path, L"a", _SH_DENYNO);
-  if (f) {
-    fprintf(f, "[%u] %s %s\n", GetCurrentProcessId(), tag, detail ? detail : "");
-    fclose(f);
-  }
-}
 
 static const UINT WM_BANGKE_ASYNC_REFRESH =
     RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
@@ -160,7 +149,6 @@ LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 
   if (uMsg == WM_BANGKE_ASYNC_REFRESH) {
-    BkTrace("panel", "got push signal");
     if (self->on_async_refresh)
       self->on_async_refresh(lParam);
     return 0;
@@ -168,10 +156,8 @@ LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
 
   switch (uMsg) {
     case WM_NCCREATE:
-      BkTrace("panel", "nccreate");
       break;
     case WM_CREATE:
-      BkTrace("panel", "create");
       self->m_mouse_entry = false;
       self->m_hoverIndex = -1;
       self->Refresh();
@@ -269,18 +255,14 @@ void BangkePanel::Refresh() {
     ::ReleaseDC(m_hWnd, dc);
     {
       CSize sz = m_layout->GetContentSize();
-      char t[96];
-      sprintf_s(t, "refresh candies=%d content=%ldx%ld", (int)m_ctx.cinfo.candies.size(), (long)sz.cx, (long)sz.cy);
-      BkTrace("panel", t);
+
     }
     _ResizeWindow();
     _RepositionWindow();
     if (m_ctx != m_octx) {
       m_octx = m_ctx;
-      BkTrace("panel", "ctx changed -> redraw");
       RedrawWindow();
     } else {
-      BkTrace("panel", "ctx UNCHANGED -> skip redraw");
     }
   }
 }
@@ -1062,9 +1044,7 @@ void BangkePanel::DoPaint() {
     CSize content = m_layout->GetContentSize();
     if (content.cx > rcw.Width() || content.cy > rcw.Height())
       rcw.SetRect(rcw.left, rcw.top, rcw.left + content.cx, rcw.top + content.cy);
-    char t[96];
-    sprintf_s(t, "paint client=%ldx%ld rcw=%ldx%ld", (long)(rcw.Width() - content.cx >= 0 ? rcw.Width() : content.cx), 0L, (long)rcw.Width(), (long)rcw.Height());
-    BkTrace("panel", t);
+
   }
   HDC hdc = ::GetDC(m_hWnd);
   HBITMAP memBitmap = NULL;
