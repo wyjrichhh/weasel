@@ -267,11 +267,20 @@ void BangkePanel::Refresh() {
     HDC dc = ::GetDC(m_hWnd);
     m_layout->DoLayout(dc, pDWR);
     ::ReleaseDC(m_hWnd, dc);
+    {
+      CSize sz = m_layout->GetContentSize();
+      char t[96];
+      sprintf_s(t, "refresh candies=%d content=%ldx%ld", (int)m_ctx.cinfo.candies.size(), (long)sz.cx, (long)sz.cy);
+      BkTrace("panel", t);
+    }
     _ResizeWindow();
     _RepositionWindow();
     if (m_ctx != m_octx) {
       m_octx = m_ctx;
+      BkTrace("panel", "ctx changed -> redraw");
       RedrawWindow();
+    } else {
+      BkTrace("panel", "ctx UNCHANGED -> skip redraw");
     }
   }
 }
@@ -1053,6 +1062,9 @@ void BangkePanel::DoPaint() {
     CSize content = m_layout->GetContentSize();
     if (content.cx > rcw.Width() || content.cy > rcw.Height())
       rcw.SetRect(rcw.left, rcw.top, rcw.left + content.cx, rcw.top + content.cy);
+    char t[96];
+    sprintf_s(t, "paint client=%ldx%ld rcw=%ldx%ld", (long)(rcw.Width() - content.cx >= 0 ? rcw.Width() : content.cx), 0L, (long)rcw.Width(), (long)rcw.Height());
+    BkTrace("panel", t);
   }
   HDC hdc = ::GetDC(m_hWnd);
   HBITMAP memBitmap = NULL;
