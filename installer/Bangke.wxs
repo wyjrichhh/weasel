@@ -1,6 +1,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
   <Package Name="蚌壳拼音"
+           Codepage="65001"
            Language="2052"
            Version="$(var.Version)"
            Manufacturer="Bangke"

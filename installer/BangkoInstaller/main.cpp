@@ -18,8 +18,8 @@
 #include <QThread>
 #include <QTimer>
 #include <QVBoxLayout>
-#include <msi.h>
 #include <windows.h>
+#include <msi.h>
 
 #include <atomic>
 
