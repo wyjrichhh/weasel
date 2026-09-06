@@ -63,6 +63,7 @@ function EmitDir([string]$did) {
   $script:emitted[$did] = $true
 }
 
+$comps = New-Object System.Text.StringBuilder
 $i = 0
 foreach ($f in $files) {
   $rel = $f.FullName.Substring($root.Length + 1)
@@ -72,12 +73,15 @@ foreach ($f in $files) {
   $i++
   $src = $f.FullName -replace '/', '\'
   $did = DirId $parent
-  [void]$sb.AppendLine("      <Component Id=""comp$i"" Directory=""$did"" Guid=""*"">")
-  [void]$sb.AppendLine("        <File Id=""file$i"" Source=""$(Esc $src)"" Name=""$(Esc $f.Name)"" KeyPath=""yes"" />")
-  [void]$sb.AppendLine("      </Component>")
+  [void]$comps.AppendLine("      <Component Id=""comp$i"" Directory=""$did"" Guid=""*"">")
+  [void]$comps.AppendLine("        <File Id=""file$i"" Source=""$(Esc $src)"" Name=""$(Esc $f.Name)"" KeyPath=""yes"" />")
+  [void]$comps.AppendLine("      </Component>")
 }
 foreach ($did in @($dirs.Keys)) { EmitDir $did }
 [void]$sb.AppendLine('    </DirectoryRef>')
+[void]$sb.AppendLine("    <ComponentGroup Id=""BangkeFiles"">")
+[void]$sb.Append($comps.ToString())
+[void]$sb.AppendLine('    </ComponentGroup>')
 [void]$sb.AppendLine('  </Fragment>')
 [void]$sb.AppendLine('</Wix>')
 
