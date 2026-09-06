@@ -160,9 +160,9 @@ LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 
   if (uMsg == WM_BANGKE_ASYNC_REFRESH) {
-    BkTrace("panel", "got broadcast");
+    BkTrace("panel", "got push signal");
     if (self->on_async_refresh)
-      self->on_async_refresh();
+      self->on_async_refresh(lParam);
     return 0;
   }
 

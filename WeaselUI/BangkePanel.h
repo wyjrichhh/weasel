@@ -25,8 +25,8 @@ class BangkePanel {
 
   bool Create(HWND parent);
 
-  // AI 候选异步就绪时（服务端广播注册窗口消息）触发的重拉回调
-  std::function<void()> on_async_refresh;
+  // AI 候选快照就绪时（服务端推送信号）触发的刷新回调，参数为快照序号
+  std::function<void(UINT_PTR)> on_async_refresh;
   void Destroy();
   bool IsWindow() const { return m_hWnd != NULL && ::IsWindow(m_hWnd); }
 

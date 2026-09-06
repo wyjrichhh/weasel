@@ -10,6 +10,7 @@
 #include "Compartment.h"
 #include "ResponseParser.h"
 #include "EditSession.h"
+#include <sstream>
 
 static void error_message(const WCHAR* msg) {
   static DWORD next_tick = 0;
@@ -236,39 +237,67 @@ static void BkTrace(const char* tag, const char* detail) {
   }
 }
 
-namespace {
-// CEditSession 的 DoEditSession 是纯虚，异步刷新需要一个具体子类
-class CRefreshEditSession : public CEditSession {
- public:
-  CRefreshEditSession(com_ptr<WeaselTSF> pTextService,
-                      com_ptr<ITfContext> pContext)
-      : CEditSession(pTextService, pContext) {}
-  STDMETHODIMP DoEditSession(TfEditCookie ec) {
-    _pTextService->_refresh_only = true;
-    HRESULT hr = _pTextService->DoEditSession(ec);
-    _pTextService->_refresh_only = false;
-    return hr;
-  }
+// AI 快照推送头（与服务端 AiPushHeader 对应）
+#pragma pack(push, 1)
+struct AiPushHeader {
+  DWORD magic;
+  DWORD seq;
+  DWORD bytes;
 };
-}  // namespace
+#pragma pack(pop)
+static const DWORD kAiPushMagic = 0x314B4220;
 
-void WeaselTSF::_AsyncRefresh() {
+void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   BkTrace("tsf", "async refresh");
-  if (_async_refreshing)
+  HANDLE map = OpenFileMappingW(FILE_MAP_READ, FALSE, L"Local\\BangkeAIPush");
+  if (!map)
     return;
-  if (!_IsComposing() || _pEditSessionContext == NULL)
+  auto* view = (BYTE*)MapViewOfFile(map, FILE_MAP_READ, 0, 0, 0);
+  if (!view) {
+    CloseHandle(map);
     return;
-  // 必须真异步（排到队尾），否则在 TSF 消息泵内联执行会重入死锁；
-  // 刷新只读上下文更新 UI，无需写权限
-  _async_refreshing = true;
-  com_ptr<CRefreshEditSession> pEditSession;
-  pEditSession.Attach(new CRefreshEditSession(this, _pEditSessionContext));
-  if (pEditSession != NULL) {
-    HRESULT hr;
-    _pEditSessionContext->RequestEditSession(_tfClientId, pEditSession,
-                                             TF_ES_READ | TF_ES_ASYNC, &hr);
   }
-  _async_refreshing = false;
+  auto* h = (AiPushHeader*)view;
+  bool ok = h->magic == kAiPushMagic && h->seq == (DWORD)seq &&
+            h->bytes > sizeof(wchar_t);
+  std::wstring text;
+  if (ok)
+    text.assign((wchar_t*)(view + sizeof(AiPushHeader)),
+                h->bytes / sizeof(wchar_t) - 1);
+  UnmapViewOfFile(view);
+  CloseHandle(map);
+  if (!ok) {
+    BkTrace("tsf", "snapshot stale/invalid");
+    return;
+  }
+
+  // 用既有响应文本协议在本地解析快照，不回服务端拉取（无时机竞态）
+  std::wstring commit;
+  weasel::Config config;
+  auto context = std::make_shared<weasel::Context>();
+  weasel::Status status;
+  weasel::ResponseParser parser(&commit, context.get(), &status, &config,
+                                &_cand->style());
+  std::wistringstream iss(text);
+  std::wstring line;
+  while (std::getline(iss, line)) {
+    if (!line.empty() && line.back() == L'\r')
+      line.pop_back();
+    if (!line.empty() && line != L".")
+      parser.Feed(line);
+  }
+
+  // 快照尚无候选（组合重建中间态）则不动当前显示
+  if (context->cinfo.candies.empty() && context->aux.empty()) {
+    BkTrace("tsf", "snapshot empty, skip");
+    return;
+  }
+  {
+    char t[96];
+    sprintf_s(t, "snapshot ok, %d candies", (int)context->cinfo.candies.size());
+    BkTrace("tsf", t);
+  }
+  _UpdateUI(*context, status);
 }
 
 void WeaselTSF::_Reconnect() {

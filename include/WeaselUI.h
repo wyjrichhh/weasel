@@ -54,7 +54,7 @@ class UI {
   void Refresh();
 
   // AI 异步候选就绪后的重拉回调（经注册窗口消息触达候选窗）
-  void SetAsyncRefresh(std::function<void()> cb);
+  void SetAsyncRefresh(std::function<void(UINT_PTR)> cb);
 
   // 置输入焦点位置（光标跟随时移动候选窗）但不重绘
   void UpdateInputPosition(RECT const& rc);
@@ -83,7 +83,7 @@ class UI {
   }
 
  private:
-  std::function<void()> async_refresh_cb_;
+  std::function<void(UINT_PTR)> async_refresh_cb_;
 
   UIImpl* pimpl_;
   PDWR pDWR;

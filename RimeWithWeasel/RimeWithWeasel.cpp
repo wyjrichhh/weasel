@@ -392,6 +392,73 @@ static void BkTrace(const char* tag, const char* detail) {
   }
 }
 
+// 共享内存布局：头(magic/seq/字节数) + 响应文本(wchar)
+struct AiPushHeader {
+  DWORD magic;
+  DWORD seq;
+  DWORD bytes;
+};
+static const DWORD kAiPushMagic = 0x314B4220;  // " BK1"
+static const size_t kAiPushTextBytes = 128 * 1024;
+static HANDLE s_ai_push_map = NULL;
+static DWORD s_ai_push_seq = 0;
+
+void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
+  // rime session -> ipc session
+  WeaselSessionId ipc_id = 0;
+  for (auto& pair : m_session_status_map) {
+    if (pair.second.session_id == rime_sid) {
+      ipc_id = pair.first;
+      break;
+    }
+  }
+  if (!ipc_id)
+    return;
+
+  std::wstring text;
+  text.reserve(4096);
+  _Respond(ipc_id, [&text](std::wstring& line) -> bool {
+    text += line;
+    return true;
+  });
+  if (text.empty())
+    return;
+  size_t bytes = (text.size() + 1) * sizeof(wchar_t);
+  if (bytes > kAiPushTextBytes)
+    return;
+
+  if (!s_ai_push_map) {
+    s_ai_push_map = CreateFileMappingW(
+        INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE,
+        0, (DWORD)(sizeof(AiPushHeader) + kAiPushTextBytes),
+        L"Local\\BangkeAIPush");
+    if (!s_ai_push_map)
+      return;
+  }
+  auto* view = (BYTE*)MapViewOfFile(s_ai_push_map, FILE_MAP_WRITE, 0, 0, 0);
+  if (!view)
+    return;
+  auto* h = (AiPushHeader*)view;
+  h->magic = kAiPushMagic;
+  h->bytes = (DWORD)bytes;
+  memcpy(view + sizeof(AiPushHeader), text.c_str(), bytes);
+  DWORD seq = ++s_ai_push_seq;
+  MemoryBarrier();
+  h->seq = seq;
+  UnmapViewOfFile(view);
+
+  UINT mid = RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
+  int sent = 0;
+  HWND target = NULL;
+  while ((target = FindWindowExW(NULL, target, L"BangkePanelWnd", NULL)) != NULL) {
+    if (PostMessageW(target, mid, 0, (LPARAM)seq))
+      ++sent;
+  }
+  char dbg[96];
+  sprintf_s(dbg, "pushed seq=%lu to %d panel(s) (%u chars)", seq, sent, (unsigned)text.size());
+  BkTrace("notify", dbg);
+}
+
 void RimeWithWeaselHandler::OnNotify(void* context_object,
                                      uintptr_t session_id,
                                      const char* message_type,
@@ -406,21 +473,11 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
   m_message_value = message_value;
   if (!strcmp(message_type, "property") &&
       strncmp(message_value, "ai_predict/", 11) == 0) {
-    // 插件每次查询会先发空值重置，只有非空值代表推理结果就绪
+    // 推送式刷新：把就绪的上下文快照写入共享内存再发信号，
+    // 前端读快照直刷 UI——消灭"拉取时机"竞态，也不引入防抖延迟
     const char* eq = strchr(message_value, '=');
-    if (eq != NULL && eq[1] != '\0') {
-    // 注册消息广播会被 UIPI 静默过滤，按窗口类逐个直投候选窗
-    UINT mid = RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
-    int sent = 0;
-    HWND target = NULL;
-    while ((target = FindWindowExW(NULL, target, L"BangkePanelWnd", NULL)) != NULL) {
-      if (PostMessageW(target, mid, 0, 0))
-        ++sent;
-    }
-      char dbg[96];
-      sprintf_s(dbg, "direct-posted to %d panel(s)", sent);
-      BkTrace("notify", dbg);
-    }
+    if (eq != NULL && eq[1] != '\0')
+      _PushAiSnapshot(session_id);
   }
   if (RIME_API_AVAILABLE(rime_api, get_state_label) &&
       !strcmp(message_type, "option")) {

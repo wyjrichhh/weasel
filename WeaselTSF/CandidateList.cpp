@@ -12,7 +12,7 @@ CCandidateList::CCandidateList(com_ptr<WeaselTSF> pTextService)
     : _ui(make_unique<UI>()), _tsf(pTextService), _pbShow(TRUE) {
   _cRef = 1;
   // AI 候选迟到时由服务端广播唤醒：重放一次编辑会话拉取最新上下文
-  _ui->SetAsyncRefresh([tsf = _tsf]() { tsf->_AsyncRefresh(); });
+  _ui->SetAsyncRefresh([tsf = _tsf](UINT_PTR seq) { tsf->_AsyncRefresh(seq); });
 }
 
 CCandidateList::~CCandidateList() {}

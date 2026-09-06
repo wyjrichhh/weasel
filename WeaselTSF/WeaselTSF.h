@@ -22,11 +22,6 @@ class WeaselTSF : public ITfTextInputProcessorEx,
                   public ITfDisplayAttributeProvider {
   friend class CCandidateList;
  public:
-  // 异步刷新会话期间为 true：DoEditSession 据此跳过空上下文（组合重建中间态）
-  bool _refresh_only = false;
-
- private:
- public:
   WeaselTSF();
   ~WeaselTSF();
 
@@ -200,8 +195,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   HRESULT _HandleCompartment(REFGUID guidCompartment);
 
   void _Reconnect();
-  void _AsyncRefresh();
-  std::atomic<bool> _async_refreshing{false};
+  void _AsyncRefresh(UINT_PTR seq);
   std::wstring _GetRootDir();
 
   bool isImmersive() const {
