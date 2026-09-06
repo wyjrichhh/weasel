@@ -309,6 +309,18 @@ void RimeWithWeaselHandler::ClearComposition(WeaselSessionId ipc_id) {
   m_active_session = ipc_id;
 }
 
+// 异步刷新链路诊断日志（验证后移除）
+static void BkTrace(const char* tag, const char* detail) {
+  WCHAR path[MAX_PATH] = {0};
+  GetEnvironmentVariableW(L"TEMP", path, MAX_PATH);
+  wcscat_s(path, L"\\bk_refresh.log");
+  FILE* f = _wfsopen(path, L"a", _SH_DENYNO);
+  if (f) {
+    fprintf(f, "[%u] %s %s\n", GetCurrentProcessId(), tag, detail ? detail : "");
+    fclose(f);
+  }
+}
+
 void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(
     size_t index,
     WeaselSessionId ipc_id) {
@@ -385,17 +397,6 @@ std::string RimeWithWeaselHandler::m_message_label;
 std::string RimeWithWeaselHandler::m_option_name;
 std::mutex RimeWithWeaselHandler::m_notifier_mutex;
 
-// 异步刷新链路诊断日志（验证后移除）
-static void BkTrace(const char* tag, const char* detail) {
-  WCHAR path[MAX_PATH] = {0};
-  GetEnvironmentVariableW(L"TEMP", path, MAX_PATH);
-  wcscat_s(path, L"\\bk_refresh.log");
-  FILE* f = _wfsopen(path, L"a", _SH_DENYNO);
-  if (f) {
-    fprintf(f, "[%u] %s %s\n", GetCurrentProcessId(), tag, detail ? detail : "");
-    fclose(f);
-  }
-}
 
 // 共享内存布局：头(magic/seq/字节数) + 响应文本(wchar)
 struct AiPushHeader {
