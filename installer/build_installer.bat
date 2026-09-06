@@ -13,9 +13,9 @@ if not exist "%QT_DIR%\lib\cmake\Qt6" (
 where cmake >nul 2>&1 || set PATH=%DEVTOOLS_PATH%%PATH%
 
 set WEASEL_OUT=%WEASEL_ROOT%\output
-cmake -S installer\BangkoInstaller -B installer\BangkoInstaller\build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH=%QT_DIR%
+cmake -S installer\BangkeInstaller -B installer\BangkeInstaller\build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH=%QT_DIR%
 if errorlevel 1 exit /b 1
-cmake --build installer\BangkoInstaller\build --config Release
+cmake --build installer\BangkeInstaller\build --config Release
 if errorlevel 1 exit /b 1
-echo Installer UI: output\BangkoInstaller.exe (shares Qt DLLs with BangkeSettings)
+echo Installer UI: output\BangkeInstaller.exe (shares Qt DLLs with BangkeSettings)
 exit /b 0
