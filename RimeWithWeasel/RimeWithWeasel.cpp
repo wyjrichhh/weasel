@@ -312,6 +312,11 @@ void RimeWithWeaselHandler::ClearComposition(WeaselSessionId ipc_id) {
 void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(
     size_t index,
     WeaselSessionId ipc_id) {
+  {
+    char t[64];
+    sprintf_s(t, "SelectCandidate idx=%u", (unsigned)index);
+    BkTrace("server", t);
+  }
   DLOG(INFO) << "select candidate on current page, ipc_id = " << ipc_id
              << ", index = " << index;
   if (m_disabled)
