@@ -1,4 +1,4 @@
-# 蚌壳拼音部署自检：验证三件套二进制、运行态、模型与配置
+﻿# 蚌壳拼音部署自检：验证三件套二进制、运行态、模型与配置
 # 用法：powershell -File scripts\preflight.ps1 [-ExpectWeasel <sha>] [-ExpectLibrime <sha>]
 param(
   [string]$ExpectWeasel = "",
