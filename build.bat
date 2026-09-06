@@ -327,7 +327,7 @@ rem ---------------------------------------------------------------------------
   if errorlevel 1 goto error
   copy /Y BangkeSettings\build\%build_config%\BangkoSettings.exe output\
   if errorlevel 1 goto error
-  "%QT_DIR%\bin\windeployqt" --no-translations --no-system-d3d-compiler --no-opengl-sw --no-compiler-runtime output\BangkeSettings.exe
+  "%QT_DIR%\bin\windeployqt" --release --no-translations --no-system-d3d-compiler --no-opengl-sw --no-compiler-runtime output\BangkeSettings.exe
   if errorlevel 1 goto error
   exit /b
 :error
