@@ -292,6 +292,15 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
     BkTrace("tsf", "snapshot empty, skip");
     return;
   }
+  // 候选内容未变（如方向键仅改高亮）时跳过，避免快照覆盖按键路径的交互态
+  std::wstring sig;
+  for (auto& c : context->cinfo.candies)
+    sig += c.str + L"\n";
+  if (sig == _last_snapshot_sig) {
+    BkTrace("tsf", "snapshot unchanged, skip");
+    return;
+  }
+  _last_snapshot_sig = sig;
   {
     char t[96];
     sprintf_s(t, "snapshot ok, %d candies", (int)context->cinfo.candies.size());

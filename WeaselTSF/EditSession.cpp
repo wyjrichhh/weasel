@@ -12,6 +12,16 @@ STDMETHODIMP WeaselTSF::DoEditSession(TfEditCookie ec) {
                                 &_cand->style());
 
   bool ok = m_client.GetResponseData(std::ref(parser));
+  if (ok && !commit.empty()) {
+    WCHAR path[MAX_PATH] = {0};
+    GetEnvironmentVariableW(L"TEMP", path, MAX_PATH);
+    wcscat_s(path, L"\\bk_refresh.log");
+    FILE* f = _wfsopen(path, L"a", _SH_DENYNO);
+    if (f) {
+      fprintf(f, "[%u] editsession commit(%u chars)\n", GetCurrentProcessId(), (unsigned)commit.size());
+      fclose(f);
+    }
+  }
 
   _UpdateLanguageBar(_status);
 
