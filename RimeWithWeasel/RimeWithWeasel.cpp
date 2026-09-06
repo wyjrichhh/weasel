@@ -844,6 +844,11 @@ bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat) {
     actions.push_back("commit");
     std::wstring commit_text_w = escape_string(u8tow(commit.text));
     body.append(L"commit=").append(commit_text_w).append(L"\n");
+    {
+      char t[64];
+      sprintf_s(t, "_Respond commit len=%u", (unsigned)strlen(commit.text));
+      BkTrace("server", t);
+    }
     rime_api->free_commit(&commit);
   }
 
