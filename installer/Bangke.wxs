@@ -76,17 +76,18 @@
       Directory 型 EXE CA：工作目录即所引目录，System32 工具用相对名调用
     -->
     <CustomAction Id="StopServer" Directory="System64Folder"
-                  ExeCommand="taskkill.exe /f /im BangkeServer.exe"
+                  ExeCommand="&quot;[System64Folder]taskkill.exe&quot; /f /im BangkeServer.exe"
                   Return="ignore" Execute="deferred" Impersonate="no" />
     <CustomAction Id="UnregisterTSF" Directory="System64Folder"
-                  ExeCommand="regsvr32.exe /u /s bangke.dll"
+                  ExeCommand="&quot;[System64Folder]regsvr32.exe&quot; /u /s &quot;[System64Folder]bangke.dll&quot;"
                   Return="ignore" Execute="deferred" Impersonate="no" />
     <CustomAction Id="RegisterTSF" Directory="System64Folder"
-                  ExeCommand="regsvr32.exe /s bangke.dll"
+                  ExeCommand="&quot;[System64Folder]regsvr32.exe&quot; /s &quot;[System64Folder]bangke.dll&quot;"
                   Return="check" Execute="deferred" Impersonate="no" />
+    <!-- 首部署写用户目录，必须以安装用户身份跑，否则落到 systemprofile -->
     <CustomAction Id="FirstDeploy" Directory="INSTALLDIR"
-                  ExeCommand="BangkeSettings.exe /install"
-                  Return="check" Execute="deferred" Impersonate="no" />
+                  ExeCommand="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /install"
+                  Return="check" Execute="deferred" Impersonate="yes" />
 
     <InstallExecuteSequence>
       <Custom Action="StopServer" After="InstallInitialize" />
