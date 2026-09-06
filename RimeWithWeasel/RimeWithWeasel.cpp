@@ -472,7 +472,7 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
   m_message_type = message_type;
   m_message_value = message_value;
   if (!strcmp(message_type, "property") &&
-      strncmp(message_value, "ai_predict/", 11) == 0) {
+      strcmp(message_value, "ai_predict/refresh=1") == 0) {
     // 推送式刷新：把就绪的上下文快照写入共享内存再发信号，
     // 前端读快照直刷 UI——消灭"拉取时机"竞态，也不引入防抖延迟
     const char* eq = strchr(message_value, '=');
