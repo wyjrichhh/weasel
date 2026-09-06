@@ -161,8 +161,16 @@ LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
 
   if (uMsg == WM_BANGKE_ASYNC_REFRESH) {
     BkTrace("panel", "got broadcast");
-    if (self->on_async_refresh)
-      self->on_async_refresh();
+    // 通知到达时服务端正处于组合重建中间态，立即拉取只会拿到空/旧
+    // 快照；延迟一拍再拉，躲开重建窗口
+    UINT_PTR kAsyncDebounceTimer = 20770401;
+    SetTimer(hwnd, kAsyncDebounceTimer, 120,
+             [](HWND h, UINT, UINT_PTR id, DWORD) {
+               KillTimer(h, id);
+               BangkePanel* self = (BangkePanel*)GetWindowLongPtr(h, GWLP_USERDATA);
+               if (self && self->on_async_refresh)
+                 self->on_async_refresh();
+             });
     return 0;
   }
 
