@@ -1,0 +1,102 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <?define UpgradeCode = "8F1D4B33-9C2A-4E6D-B0F7-3A5C8E21D940"?>
+
+  <Package Name="蚌壳拼音"
+           Language="2052"
+           Version="$(var.Version)"
+           Manufacturer="Bangke"
+           Scope="perMachine"
+           InstallerVersion="500"
+           Compressed="yes">
+
+    <SummaryInformation Description="蚌壳拼音输入法 $(var.Version)" />
+
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="已安装更高版本的蚌壳拼音，无法降级安装。" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon.ico" SourceFile="$(var.ResourceDir)\bangke.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+    <Property Id="ARPHELPLINK" Value="https://rime.im/docs/" />
+
+    <!--
+      目录：ProgramFiles\Bangke Pinyin（BangkeRoot）；
+      output\ 全量文件由 harvest.ps1 生成的 Files.wxs 提供
+    -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLDIR" Name="Bangke Pinyin" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="蚌壳拼音" Level="1">
+      <ComponentGroupRef Id="BangkeFiles" />
+      <ComponentRef Id="C_BangkeDll" />
+      <ComponentRef Id="C_Registry" />
+      <ComponentRef Id="C_Shortcuts" />
+    </Feature>
+
+    <!-- System32\bangke.dll：TSF 输入法服务 -->
+    <StandardDirectory Id="System64Folder">
+      <Component Id="C_BangkeDll" Guid="A9C3E5D1-7F2B-4C86-9A40-2D5E6B81C733" Win64="yes">
+        <File Id="BangkeDll" Source="$(var.OutputDir)\bangkex64.dll" Name="bangke.dll" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <!-- BangkeRoot / ServerExecutable / 自启动 -->
+    <Component Id="C_Registry" Guid="3E7A9C15-6B48-4F0D-8E92-1C4D5A70F866" Win64="yes" Directory="INSTALLDIR">
+      <RegistryValue Root="HKLM" Key="Software\Bangke" Name="BangkeRoot"
+                     Value="[INSTALLDIR]" Type="string" KeyPath="yes" />
+      <RegistryValue Root="HKLM" Key="Software\Bangke" Name="ServerExecutable"
+                     Value="BangkeServer.exe" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                     Name="BangkeServer" Value="[INSTALLDIR]BangkeServer.exe" Type="string" />
+    </Component>
+
+    <!-- 开始菜单 -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="BangkeMenuDir" Name="蚌壳拼音" />
+    </StandardDirectory>
+    <Component Id="C_Shortcuts" Guid="5C2E8A71-D94B-4E35-A6F0-8B1D7E24C959" Win64="yes" Directory="BangkeMenuDir">
+      <RegistryValue Root="HKLM" Key="Software\Bangke" Name="Shortcuts"
+                     Value="1" Type="integer" KeyPath="yes" />
+      <Shortcut Id="ScSettings" Name="设置"
+                Target="[INSTALLDIR]BangkeSettings.exe" WorkingDirectory="INSTALLDIR" />
+      <Shortcut Id="ScDict" Name="词典管理"
+                Target="[INSTALLDIR]BangkeSettings.exe" Arguments="/dict" WorkingDirectory="INSTALLDIR" />
+      <Shortcut Id="ScSync" Name="同步用户数据"
+                Target="[INSTALLDIR]BangkeSettings.exe" Arguments="/sync" WorkingDirectory="INSTALLDIR" />
+      <Shortcut Id="ScDeploy" Name="重新部署"
+                Target="[INSTALLDIR]BangkeSettings.exe" Arguments="/deploy" WorkingDirectory="INSTALLDIR" />
+      <RemoveFolder Id="RemoveBangkeMenuDir" On="uninstall" />
+    </Component>
+
+    <!--
+      自定义动作（deferred, noImpersonate）：
+      停服 → 卸注册 → 装文件 → 注册 → 首部署
+    -->
+    <SetProperty Id="StopServer" Value="&quot;[System64Folder]taskkill.exe&quot; /f /im BangkeServer.exe"
+                 Before="StopServer" Sequence="execute" />
+    <CustomAction Id="StopServer" Return="ignore" Execute="deferred" Impersonate="no" />
+
+    <SetProperty Id="UnregisterTSF" Value="&quot;[System64Folder]regsvr32.exe&quot; /u /s &quot;[System64Folder]bangke.dll&quot;"
+                 Before="UnregisterTSF" Sequence="execute" />
+    <CustomAction Id="UnregisterTSF" Return="ignore" Execute="deferred" Impersonate="no" />
+
+    <SetProperty Id="RegisterTSF" Value="&quot;[System64Folder]regsvr32.exe&quot; /s &quot;[System64Folder]bangke.dll&quot;"
+                 Before="RegisterTSF" Sequence="execute" />
+    <CustomAction Id="RegisterTSF" Return="check" Execute="deferred" Impersonate="no" />
+
+    <SetProperty Id="FirstDeploy" Value="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /install"
+                 Before="FirstDeploy" Sequence="execute" />
+    <CustomAction Id="FirstDeploy" Return="check" Execute="deferred" Impersonate="no" />
+
+    <InstallExecuteSequence>
+      <Custom Action="StopServer" After="InstallInitialize" />
+      <Custom Action="UnregisterTSF" After="StopServer" Condition="REMOVE" />
+      <Custom Action="RegisterTSF" After="InstallFiles" Condition="NOT REMOVE" />
+      <Custom Action="FirstDeploy" After="WriteRegistryValues" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>
