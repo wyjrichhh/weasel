@@ -313,6 +313,23 @@ rem %3 : target_path of rime.dll, base %WEASEL_ROOT% or abs path
   exit /b
 rem ---------------------------------------------------------------------------
 
+:build_settings
+  cd /d %WEASEL_ROOT%
+  if not defined QT_DIR set QT_DIR=C:\Libraries\Qt\6.8.3\msvc2022_64
+  if not exist "%QT_DIR%\lib\cmake\Qt6" (
+    echo Error: Qt6 not found at %QT_DIR%. Set QT_DIR in env.bat.
+    exit /b 1
+  )
+  where cmake >nul 2>&1 || set PATH=%DEVTOOLS_PATH%%PATH%
+  cmake -S BangkeSettings -B BangkeSettings\build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH=%QT_DIR% -DVERSION_MAJOR=%VERSION_MAJOR% -DVERSION_MINOR=%VERSION_MINOR% -DVERSION_PATCH=%VERSION_PATCH%
+  if errorlevel 1 goto error
+  cmake --build BangkeSettings\build --config %build_config%
+  if errorlevel 1 goto error
+  copy /Y BangkeSettings\build\%build_config%\BangkoSettings.exe output\
+  if errorlevel 1 goto error
+  "%QT_DIR%\bin\windeployqt" --no-translations --no-system-d3d-compiler --no-opengl-sw --no-compiler-runtime output\BangkeSettings.exe
+  if errorlevel 1 goto error
+  exit /b
 :error
 
 cd %WEASEL_ROOT%
