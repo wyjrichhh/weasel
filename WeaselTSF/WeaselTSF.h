@@ -18,6 +18,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
                   public ITfActiveLanguageProfileNotifySink,
                   public ITfEditSession,
                   public ITfDisplayAttributeProvider {
+  friend class CCandidateList;
  public:
   WeaselTSF();
   ~WeaselTSF();

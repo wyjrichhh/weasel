@@ -224,11 +224,24 @@ STDMETHODIMP WeaselTSF::OnActivated(REFCLSID clsid,
   return S_OK;
 }
 
+namespace {
+// CEditSession 的 DoEditSession 是纯虚，异步刷新需要一个具体子类
+class CRefreshEditSession : public CEditSession {
+ public:
+  CRefreshEditSession(com_ptr<WeaselTSF> pTextService,
+                      com_ptr<ITfContext> pContext)
+      : CEditSession(pTextService, pContext) {}
+  STDMETHODIMP DoEditSession(TfEditCookie ec) {
+    return _pTextService->DoEditSession(ec);
+  }
+};
+}  // namespace
+
 void WeaselTSF::_AsyncRefresh() {
   if (!_IsComposing() || _pEditSessionContext == NULL)
     return;
-  com_ptr<CEditSession> pEditSession;
-  pEditSession.Attach(new CEditSession(this, _pEditSessionContext));
+  com_ptr<CRefreshEditSession> pEditSession;
+  pEditSession.Attach(new CRefreshEditSession(this, _pEditSessionContext));
   if (pEditSession != NULL) {
     HRESULT hr;
     _pEditSessionContext->RequestEditSession(_tfClientId, pEditSession,
