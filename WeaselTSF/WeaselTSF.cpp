@@ -9,6 +9,7 @@
 #include "LanguageBar.h"
 #include "Compartment.h"
 #include "ResponseParser.h"
+#include "EditSession.h"
 
 static void error_message(const WCHAR* msg) {
   static DWORD next_tick = 0;
@@ -221,6 +222,19 @@ STDMETHODIMP WeaselTSF::OnActivated(REFCLSID clsid,
     _ShowLanguageBar(FALSE);
   }
   return S_OK;
+}
+
+void WeaselTSF::_AsyncRefresh() {
+  if (!_IsComposing() || _pEditSessionContext == NULL)
+    return;
+  com_ptr<CEditSession> pEditSession;
+  pEditSession.Attach(new CEditSession(this, _pEditSessionContext));
+  if (pEditSession != NULL) {
+    HRESULT hr;
+    _pEditSessionContext->RequestEditSession(_tfClientId, pEditSession,
+                                             TF_ES_ASYNCDONTCARE | TF_ES_READWRITE,
+                                             &hr);
+  }
 }
 
 void WeaselTSF::_Reconnect() {

@@ -192,6 +192,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   HRESULT _HandleCompartment(REFGUID guidCompartment);
 
   void _Reconnect();
+  void _AsyncRefresh();
   std::wstring _GetRootDir();
 
   bool isImmersive() const {

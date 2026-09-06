@@ -141,6 +141,11 @@ bool UI::IsShown() const {
   return pimpl_ && pimpl_->IsShown();
 }
 
+void UI::SetAsyncRefresh(std::function<void()> cb) {
+  if (pimpl_)
+    pimpl_->panel.on_async_refresh = std::move(cb);
+}
+
 void UI::Refresh() {
   if (pimpl_) {
     pimpl_->Refresh();

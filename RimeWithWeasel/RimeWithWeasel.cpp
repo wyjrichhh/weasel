@@ -392,6 +392,12 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
   std::lock_guard<std::mutex> lock(m_notifier_mutex);
   m_message_type = message_type;
   m_message_value = message_value;
+  if (!strcmp(message_type, "property") &&
+      !strncmp(message_value, "ai_predict/", 11)) {
+    // AI 候选异步就绪：广播唤醒各应用进程的候选窗重拉上下文
+    PostMessageW(HWND_BROADCAST,
+                 RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE"), 0, 0);
+  }
   if (RIME_API_AVAILABLE(rime_api, get_state_label) &&
       !strcmp(message_type, "option")) {
     Bool state = message_value[0] != '!';

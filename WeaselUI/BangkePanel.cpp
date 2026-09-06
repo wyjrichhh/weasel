@@ -129,6 +129,10 @@ void BangkePanel::Destroy() {
   }
 }
 
+// 服务端推理完成后广播；所有进程同名字符串注册得到同一 ID
+static const UINT WM_BANGKE_ASYNC_REFRESH =
+    RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
+
 LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
                                       UINT uMsg,
                                       WPARAM wParam,
@@ -142,6 +146,12 @@ LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
   }
   if (!self)
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
+
+  if (uMsg == WM_BANGKE_ASYNC_REFRESH) {
+    if (self->on_async_refresh)
+      self->on_async_refresh();
+    return 0;
+  }
 
   switch (uMsg) {
     case WM_CREATE:

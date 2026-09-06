@@ -1,4 +1,6 @@
 #pragma once
+
+#include <functional>
 #include <WeaselIPCData.h>
 #include <WeaselUI.h>
 #include "StandardLayout.h"
@@ -22,6 +24,9 @@ class BangkePanel {
   ~BangkePanel();
 
   bool Create(HWND parent);
+
+  // AI 候选异步就绪时（服务端广播注册窗口消息）触发的重拉回调
+  std::function<void()> on_async_refresh;
   void Destroy();
   bool IsWindow() const { return m_hWnd != NULL && ::IsWindow(m_hWnd); }
 
