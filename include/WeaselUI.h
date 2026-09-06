@@ -83,6 +83,8 @@ class UI {
   }
 
  private:
+  std::function<void()> async_refresh_cb_;
+
   UIImpl* pimpl_;
   PDWR pDWR;
 

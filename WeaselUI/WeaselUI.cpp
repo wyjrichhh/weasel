@@ -92,7 +92,10 @@ bool UI::Create(HWND parent) {
   if (!pimpl_)
     return false;
 
-  return pimpl_->panel.Create(parent);
+  bool ok = pimpl_->panel.Create(parent);
+  // 回调可能在 Create 之前就设置（CCandidateList 构造期），这里补下发
+  pimpl_->panel.on_async_refresh = async_refresh_cb_;
+  return ok;
 }
 
 void UI::Destroy(bool full) {
@@ -142,8 +145,9 @@ bool UI::IsShown() const {
 }
 
 void UI::SetAsyncRefresh(std::function<void()> cb) {
+  async_refresh_cb_ = std::move(cb);
   if (pimpl_)
-    pimpl_->panel.on_async_refresh = std::move(cb);
+    pimpl_->panel.on_async_refresh = async_refresh_cb_;
 }
 
 void UI::Refresh() {
