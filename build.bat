@@ -139,6 +139,8 @@ if %build_boost% == 1 (
 rem -------------------------------------------------------------------------
 rem build x64 librime
 if %build_rime% == 1 (
+  rem ai-predict: CTranslate2 静态库（/MT），存在才启用
+  if exist C:\dev\ct2-install\lib\ctranslate2.lib set CTRANSLATE2_ROOT=C:\dev\ct2-install
   if not exist librime\build.bat (
     git submodule update --init --recursive
   )
