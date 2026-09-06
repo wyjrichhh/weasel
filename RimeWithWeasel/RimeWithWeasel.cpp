@@ -406,14 +406,17 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
   m_message_value = message_value;
   if (!strcmp(message_type, "property") &&
       strncmp(message_value, "ai_predict/", 11) == 0) {
-    char dbg[128];
+    // 注册消息广播会被 UIPI 静默过滤，按窗口类逐个直投候选窗
     UINT mid = RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
-    BOOL okk = PostMessageW(HWND_BROADCAST, mid, 0, 0);
-    sprintf_s(dbg, "post msg=%u ok=%d err=%lu", mid, okk, GetLastError());
+    int sent = 0;
+    HWND target = NULL;
+    while ((target = FindWindowExW(NULL, target, L"BangkePanelWnd", NULL)) != NULL) {
+      if (PostMessageW(target, mid, 0, 0))
+        ++sent;
+    }
+    char dbg[96];
+    sprintf_s(dbg, "direct-posted to %d panel(s)", sent);
     BkTrace("notify", dbg);
-    // AI 候选异步就绪：广播唤醒各应用进程的候选窗重拉上下文
-    PostMessageW(HWND_BROADCAST,
-                 RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE"), 0, 0);
   }
   if (RIME_API_AVAILABLE(rime_api, get_state_label) &&
       !strcmp(message_type, "option")) {
