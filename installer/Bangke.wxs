@@ -89,6 +89,22 @@
                   ExeCommand="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /install"
                   Return="check" Execute="deferred" Impersonate="yes" />
 
+    <!-- 完成对话框勾选「立即启动」：UI 序列 CA 以安装用户身份在客户端执行 -->
+    <CustomAction Id="LaunchServer" Directory="INSTALLDIR" ExeCommand="BangkeServer.exe"
+                  Return="asyncNoWait" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="立即启动蚌壳拼音(&amp;L)" />
+
+    <UI>
+      <UIRef Id="WixUI_InstallDir" />
+      <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchServer"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.ResourceDir)\license.rtf" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.ResourceDir)\installer-dialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.ResourceDir)\installer-banner.bmp" />
+
     <InstallExecuteSequence>
       <Custom Action="StopServer" After="InstallInitialize" />
       <Custom Action="UnregisterTSF" After="StopServer" Condition="REMOVE" />

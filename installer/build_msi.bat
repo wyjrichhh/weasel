@@ -19,7 +19,10 @@ if not exist "%WIXEXE%" (
 powershell -NoProfile -ExecutionPolicy Bypass -File installer\harvest.ps1 -OutputDir output -OutFile installer\Files.wxs
 if errorlevel 1 goto error
 
-"%WIXEXE%" build -arch x64 installer\Bangke.wxs installer\Files.wxs ^
+"%WIXEXE%" extension list -g 2>nul | findstr /i "WixToolset.UI.wixext" >nul || "%WIXEXE%" extension add -g WixToolset.UI.wixext
+if errorlevel 1 goto error
+
+"%WIXEXE%" build -arch x64 -ext WixToolset.UI.wixext installer\Bangke.wxs installer\Files.wxs ^
   -d Version=%WEASEL_VERSION% ^
   -d OutputDir=%WEASEL_ROOT%\output ^
   -d ResourceDir=%WEASEL_ROOT%\resource ^
