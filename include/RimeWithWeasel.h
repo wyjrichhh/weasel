@@ -110,7 +110,7 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
                        uintptr_t session_id,
                        const char* message_type,
                        const char* message_value);
-  static void _PushAiSnapshot(uintptr_t rime_sid);
+  void _PushAiSnapshot(uintptr_t rime_sid);
   static std::string m_message_type;
   static std::string m_message_value;
   static std::string m_message_label;
