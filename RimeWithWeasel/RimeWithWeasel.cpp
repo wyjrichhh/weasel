@@ -426,7 +426,7 @@ void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
   _Respond(ipc_id, [&text](std::wstring& line) -> bool {
     text += line;
     return true;
-  });
+  }, /*include_commit=*/false);
   if (text.empty())
     return;
   size_t bytes = (text.size() + 1) * sizeof(wchar_t);
@@ -831,7 +831,7 @@ inline std::string _GetLabelText(const std::vector<Text>& labels,
   return wtou8(std::wstring(buffer));
 }
 
-bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat) {
+bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat, bool include_commit) {
   std::wstring body;
   body.reserve(4096);
   std::vector<const char*> actions;
@@ -840,7 +840,9 @@ bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat) {
   SessionStatus& session_status = get_session_status(ipc_id);
   RimeSessionId session_id = session_status.session_id;
   RIME_STRUCT(RimeCommit, commit);
-  if (rime_api->get_commit(session_id, &commit)) {
+  // include_commit=false 时跳过：get_commit 读一次即清空，
+  // 快照推送若先于按键响应消费 commit，管道响应将丢失上屏文本
+  if (include_commit && rime_api->get_commit(session_id, &commit)) {
     actions.push_back("commit");
     std::wstring commit_text_w = escape_string(u8tow(commit.text));
     body.append(L"commit=").append(commit_text_w).append(L"\n");
