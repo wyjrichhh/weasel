@@ -1047,6 +1047,13 @@ void BangkePanel::DoPaint() {
   SetWindowLongPtr(m_hWnd, GWL_EXSTYLE,
                    (exStyle & ~WS_EX_TRANSPARENT) | WS_EX_LAYERED);
   ::GetClientRect(m_hWnd, &rcw);
+  // 异步刷新时窗口尺寸可能尚未跟上内容（AI 候选变宽/变高），
+  // 位图按客户区与布局内容尺寸的较大者，避免新内容被裁成一角
+  if (m_layout) {
+    CSize content = m_layout->GetContentSize();
+    if (content.cx > rcw.Width() || content.cy > rcw.Height())
+      rcw.SetRect(rcw.left, rcw.top, rcw.left + content.cx, rcw.top + content.cy);
+  }
   HDC hdc = ::GetDC(m_hWnd);
   HBITMAP memBitmap = NULL;
   HDC memDC = NULL;
