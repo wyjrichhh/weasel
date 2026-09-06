@@ -2,6 +2,7 @@
 
 #include <QMessageBox>
 #include <windows.h>
+#include <cassert>
 #include <filesystem>
 #include <fstream>
 
