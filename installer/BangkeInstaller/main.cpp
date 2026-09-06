@@ -90,17 +90,6 @@ static QStringList BuildArgs(const MsiJob& job) {
 
 // ---------------- UI ----------------
 
-const struct { const char* first; const wchar_t* second; } MainWindow::kSteps[] = {
-    {"StopServer", L"正在准备环境"},
-    {"InstallValidate", L"正在校验安装"},
-    {"InstallFiles", L"正在复制文件"},
-    {"RegisterTSF", L"正在注册输入法"},
-    {"FirstDeploy", L"正在部署输入方案"},
-    {"StartServer", L"正在启动服务"},
-    {"RemoveFiles", L"正在移除文件"},
-    {"UnregisterTSF", L"正在注销输入法"},
-};
-
 class MainWindow : public QWidget {
   Q_OBJECT
 
@@ -219,9 +208,19 @@ class MainWindow : public QWidget {
     f.seek(sz > 8192 ? sz - 8192 : 0);
     const QByteArray tail = f.readAll();
     f.close();
-    for (auto it = kSteps.rbegin(); it != kSteps.rend(); ++it) {
-      if (tail.contains(it->first)) {
-        m_actionLabel->setText(QString::fromWCharArray(it->second));
+    static const struct { const char* a; const wchar_t* t; } steps[] = {
+        {"InstallValidate", L"正在校验安装"},
+        {"InstallFiles", L"正在复制文件"},
+        {"WriteRegistryValues", L"正在写入注册表"},
+        {"RegisterTSF", L"正在注册输入法"},
+        {"FirstDeploy", L"正在部署输入方案"},
+        {"StartServer", L"正在启动服务"},
+        {"RemoveFiles", L"正在移除文件"},
+        {"UnregisterTSF", L"正在注销输入法"},
+    };
+    for (int i = _countof(steps) - 1; i >= 0; --i) {
+      if (tail.contains(steps[i].a)) {
+        m_actionLabel->setText(QString::fromWCharArray(steps[i].t));
         break;
       }
     }
@@ -384,7 +383,6 @@ class MainWindow : public QWidget {
   QProcess* m_proc = nullptr;
   QTimer* m_pollTimer = nullptr;
   int m_exitCode = -1;
-  static const struct { const char* first; const wchar_t* second; } kSteps[];
   QPoint m_dragPos;
 };
 
