@@ -380,6 +380,18 @@ std::string RimeWithWeaselHandler::m_message_label;
 std::string RimeWithWeaselHandler::m_option_name;
 std::mutex RimeWithWeaselHandler::m_notifier_mutex;
 
+// 异步刷新链路诊断日志（验证后移除）
+static void BkTrace(const char* tag, const char* detail) {
+  WCHAR path[MAX_PATH] = {0};
+  GetEnvironmentVariableW(L"TEMP", path, MAX_PATH);
+  wcscat_s(path, L"\\bk_refresh.log");
+  FILE* f = _wfsopen(path, L"a", _SH_DENYNO);
+  if (f) {
+    fprintf(f, "[%u] %s %s\n", GetCurrentProcessId(), tag, detail ? detail : "");
+    fclose(f);
+  }
+}
+
 void RimeWithWeaselHandler::OnNotify(void* context_object,
                                      uintptr_t session_id,
                                      const char* message_type,
@@ -393,7 +405,8 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
   m_message_type = message_type;
   m_message_value = message_value;
   if (!strcmp(message_type, "property") &&
-      !strncmp(message_value, "ai_predict/", 11)) {
+      strncmp(message_value, "ai_predict/", 11) == 0) {
+    BkTrace("notify", message_value);
     // AI 候选异步就绪：广播唤醒各应用进程的候选窗重拉上下文
     PostMessageW(HWND_BROADCAST,
                  RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE"), 0, 0);

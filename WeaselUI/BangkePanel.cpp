@@ -130,6 +130,18 @@ void BangkePanel::Destroy() {
 }
 
 // 服务端推理完成后广播；所有进程同名字符串注册得到同一 ID
+// 异步刷新链路诊断日志（验证后移除）
+static void BkTrace(const char* tag, const char* detail) {
+  WCHAR path[MAX_PATH] = {0};
+  GetEnvironmentVariableW(L"TEMP", path, MAX_PATH);
+  wcscat_s(path, L"\\bk_refresh.log");
+  FILE* f = _wfsopen(path, L"a", _SH_DENYNO);
+  if (f) {
+    fprintf(f, "[%u] %s %s\n", GetCurrentProcessId(), tag, detail ? detail : "");
+    fclose(f);
+  }
+}
+
 static const UINT WM_BANGKE_ASYNC_REFRESH =
     RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
 
@@ -148,6 +160,7 @@ LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 
   if (uMsg == WM_BANGKE_ASYNC_REFRESH) {
+    BkTrace("panel", "got broadcast");
     if (self->on_async_refresh)
       self->on_async_refresh();
     return 0;

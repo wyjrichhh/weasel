@@ -224,6 +224,18 @@ STDMETHODIMP WeaselTSF::OnActivated(REFCLSID clsid,
   return S_OK;
 }
 
+// 异步刷新链路诊断日志（验证后移除）
+static void BkTrace(const char* tag, const char* detail) {
+  WCHAR path[MAX_PATH] = {0};
+  GetEnvironmentVariableW(L"TEMP", path, MAX_PATH);
+  wcscat_s(path, L"\\bk_refresh.log");
+  FILE* f = _wfsopen(path, L"a", _SH_DENYNO);
+  if (f) {
+    fprintf(f, "[%u] %s %s\n", GetCurrentProcessId(), tag, detail ? detail : "");
+    fclose(f);
+  }
+}
+
 namespace {
 // CEditSession 的 DoEditSession 是纯虚，异步刷新需要一个具体子类
 class CRefreshEditSession : public CEditSession {
@@ -238,6 +250,7 @@ class CRefreshEditSession : public CEditSession {
 }  // namespace
 
 void WeaselTSF::_AsyncRefresh() {
+  BkTrace("tsf", "async refresh");
   if (!_IsComposing() || _pEditSessionContext == NULL)
     return;
   com_ptr<CRefreshEditSession> pEditSession;
