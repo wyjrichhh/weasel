@@ -72,7 +72,7 @@ foreach ($f in $files) {
   $i++
   $src = $f.FullName -replace '/', '\'
   $did = DirId $parent
-  [void]$sb.AppendLine("      <Component Id=""comp$i"" Directory=""$did"" Guid=""*"" Win64=""yes"">")
+  [void]$sb.AppendLine("      <Component Id=""comp$i"" Directory=""$did"" Guid=""*"">")
   [void]$sb.AppendLine("        <File Id=""file$i"" Source=""$(Esc $src)"" Name=""$(Esc $f.Name)"" KeyPath=""yes"" />")
   [void]$sb.AppendLine("      </Component>")
 }
