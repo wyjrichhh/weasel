@@ -40,7 +40,7 @@ static QString InstalledProductCode() {
     UINT r = MsiEnumRelatedProductsW(kUpgradeCode, 0, i, code);
     if (r != ERROR_SUCCESS)
       break;
-    if (MsiGetProductState(code) == INSTALLSTATE_DEFAULT)
+    if (MsiQueryProductState(code) == INSTALLSTATE_DEFAULT)
       return QString::fromWCharArray(code);
   }
   return QString();
