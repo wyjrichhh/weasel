@@ -15,7 +15,10 @@ namespace fs = std::filesystem;
 class WeaselServerApp {
  public:
   static bool execute(const fs::path& cmd, const std::wstring& args) {
-    return (uintptr_t)ShellExecuteW(NULL, NULL, cmd.c_str(), args.c_str(), NULL,
+    // 子进程必须显式给定工作目录：server 若由计划任务等拉起，继承的
+    // System32 工作目录会让子进程初始化阶段 0xc0000022
+    return (uintptr_t)ShellExecuteW(NULL, NULL, cmd.c_str(), args.c_str(),
+                                    cmd.parent_path().c_str(),
                                     SW_SHOWNORMAL) > 32;
   }
 
