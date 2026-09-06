@@ -249,6 +249,13 @@ static const DWORD kAiPushMagic = 0x314B4220;
 
 void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   BkTrace("tsf", "async refresh");
+  // 按键活跃期间不应用快照：推送会抢先触发 _UpdateUI 使后续
+  // 按键响应的 edit session 被 ctx==ctx 早退跳过，commit 丢失
+  ULONGLONG now = GetTickCount64();
+  if (now - _last_key_tick < 300) {
+    BkTrace("tsf", "key active, skip snapshot");
+    return;
+  }
   HANDLE map = OpenFileMappingW(FILE_MAP_READ, FALSE, L"Local\\BangkeAIPush");
   if (!map)
     return;

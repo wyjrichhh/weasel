@@ -197,6 +197,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   void _Reconnect();
   void _AsyncRefresh(UINT_PTR seq);
   std::wstring _last_snapshot_sig;
+  ULONGLONG _last_key_tick = 0;
   std::wstring _GetRootDir();
 
   bool isImmersive() const {
