@@ -23,6 +23,7 @@
 #include <msiquery.h>
 
 #include <atomic>
+#include <string>
 
 static const wchar_t* kUpgradeCode = L"{8F1D4B33-9C2A-4E6D-B0F7-3A5C8E21D940}";
 
@@ -50,7 +51,7 @@ static QString InstalledProductCode() {
 static QString InstalledVersion(const QString& code) {
   wchar_t v[64] = {0};
   DWORD sz = 64;
-  if (MsiGetProductInfoW((LPCWSTR)code.constData(), INSTALLPROPERTY_VERSIONSTRING_W, v, &sz) == ERROR_SUCCESS)
+  if (MsiGetProductInfoW(code.toStdWString().c_str(), INSTALLPROPERTY_VERSIONSTRING_W, v, &sz) == ERROR_SUCCESS)
     return QString::fromWCharArray(v);
   return QStringLiteral(u"未知");
 }
@@ -89,17 +90,17 @@ class MsiThread : public QThread {
   MsiThread(MsiJob* job, QObject* notify) : m_job(job), m_notify(notify) {}
 
   void run() override {
-    if (!m_job->msiPath.isEmpty())
-      MsiEnableLogW(INSTALLLOGMODE_VERBOSE, (LPCWSTR)(m_job->msiPath + L".log").constData(), 0);
+    const std::wstring msiW = m_job->msiPath.toStdWString();
+    if (!msiW.empty())
+      MsiEnableLogW(INSTALLLOGMODE_VERBOSE, (msiW + L".log").c_str(), 0);
     MsiSetInternalUI(INSTALLUILEVEL_NONE, nullptr);
-    MsiSetExternalUIRecordW(&RecordHandler, INSTALLLOGMODE_PROGRESS | INSTALLLOGMODE_ACTIONSTART, this, nullptr);
+    MsiSetExternalUIRecord(&RecordHandler, INSTALLLOGMODE_PROGRESS | INSTALLLOGMODE_ACTIONSTART, this, nullptr);
 
     QString args;
     if (m_job->op == MsiJob::Install) {
       if (!m_job->installDir.isEmpty())
         args = QStringLiteral(u"INSTALLDIR=\"") + m_job->installDir + QStringLiteral(u"\"");
-      m_result = MsiInstallProductW((LPCWSTR)m_job->msiPath.constData(),
-                                    (LPCWSTR)args.constData());
+      m_result = MsiInstallProductW(msiW.c_str(), args.toStdWString().c_str());
     } else if (m_job->op == MsiJob::Repair) {
       // 同版本重装即修复；目录取注册表里的原安装位置
       wchar_t root[MAX_PATH] = {0};
@@ -111,10 +112,9 @@ class MsiThread : public QThread {
           args = QStringLiteral(u"INSTALLDIR=\"") + QString::fromWCharArray(root) + QStringLiteral(u"\"");
         RegCloseKey(k);
       }
-      m_result = MsiInstallProductW((LPCWSTR)m_job->msiPath.constData(),
-                                    (LPCWSTR)args.constData());
+      m_result = MsiInstallProductW(msiW.c_str(), args.toStdWString().c_str());
     } else {
-      m_result = MsiConfigureProductW((LPCWSTR)m_job->productCode.constData(),
+      m_result = MsiConfigureProductW(m_job->productCode.toStdWString().c_str(),
                                       INSTALLLEVEL_DEFAULT, INSTALLSTATE_ABSENT);
     }
     m_job->result = m_result;
