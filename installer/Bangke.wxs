@@ -73,22 +73,20 @@
     <!--
       自定义动作（deferred, noImpersonate）：
       停服 → 卸注册 → 装文件 → 注册 → 首部署
+      Directory 型 EXE CA：工作目录即所引目录，System32 工具用相对名调用
     -->
-    <SetProperty Id="StopServerCmd" Value="&quot;[System64Folder]taskkill.exe&quot; /f /im BangkeServer.exe"
-                 Before="StopServer" Sequence="execute" />
-    <CustomAction Id="StopServer" Property="StopServerCmd" Return="ignore" Execute="deferred" Impersonate="no" />
-
-    <SetProperty Id="UnregisterTSFCmd" Value="&quot;[System64Folder]regsvr32.exe&quot; /u /s &quot;[System64Folder]bangke.dll&quot;"
-                 Before="UnregisterTSF" Sequence="execute" />
-    <CustomAction Id="UnregisterTSF" Property="UnregisterTSFCmd" Return="ignore" Execute="deferred" Impersonate="no" />
-
-    <SetProperty Id="RegisterTSFCmd" Value="&quot;[System64Folder]regsvr32.exe&quot; /s &quot;[System64Folder]bangke.dll&quot;"
-                 Before="RegisterTSF" Sequence="execute" />
-    <CustomAction Id="RegisterTSF" Property="RegisterTSFCmd" Return="check" Execute="deferred" Impersonate="no" />
-
-    <SetProperty Id="FirstDeployCmd" Value="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /install"
-                 Before="FirstDeploy" Sequence="execute" />
-    <CustomAction Id="FirstDeploy" Property="FirstDeployCmd" Return="check" Execute="deferred" Impersonate="no" />
+    <CustomAction Id="StopServer" Directory="System64Folder"
+                  ExeCommand="taskkill.exe /f /im BangkeServer.exe"
+                  Return="ignore" Execute="deferred" Impersonate="no" />
+    <CustomAction Id="UnregisterTSF" Directory="System64Folder"
+                  ExeCommand="regsvr32.exe /u /s bangke.dll"
+                  Return="ignore" Execute="deferred" Impersonate="no" />
+    <CustomAction Id="RegisterTSF" Directory="System64Folder"
+                  ExeCommand="regsvr32.exe /s bangke.dll"
+                  Return="check" Execute="deferred" Impersonate="no" />
+    <CustomAction Id="FirstDeploy" Directory="INSTALLDIR"
+                  ExeCommand="BangkeSettings.exe /install"
+                  Return="check" Execute="deferred" Impersonate="no" />
 
     <InstallExecuteSequence>
       <Custom Action="StopServer" After="InstallInitialize" />
