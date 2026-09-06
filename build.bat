@@ -80,6 +80,7 @@ set build_opencc=0
 set build_rime=0
 set rime_build_variant=release
 set build_weasel=0
+set build_settings=0
 
 rem parse the command line options
 :parse_cmdline_options
@@ -101,6 +102,7 @@ rem parse the command line options
   if "%1" == "rime" set build_rime=1
   if "%1" == "librime" set build_rime=1
   if "%1" == "weasel" set build_weasel=1
+  if "%1" == "settings" set build_settings=1
   if "%1" == "all" (
     set build_boost=1
     set build_data=1
@@ -117,8 +119,9 @@ if %build_boost% == 0 (
 if %build_data% == 0 (
 if %build_opencc% == 0 (
 if %build_rime% == 0 (
+if %build_settings% == 0 (
   set build_weasel=1
-)))))
+))))))
 
 rem quit BangkeServer.exe before building
 cd /d %WEASEL_ROOT%
@@ -171,7 +174,7 @@ if %build_weasel% == 1 (
 if %build_data% == 1 call :build_data
 if %build_opencc% == 1 call :build_opencc_data
 
-if %build_weasel% == 0 goto end
+if %build_weasel% == 0 goto after_weasel
 
 cd /d %WEASEL_ROOT%
 
@@ -193,6 +196,12 @@ if not defined SDKVER set build_sdk_option=
 
 msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="x64" /fl2 %build_sdk_option%
 if errorlevel 1 goto error
+
+:after_weasel
+if %build_settings% == 1 (
+  call :build_settings
+  if errorlevel 1 goto error
+)
 
 goto end
 
