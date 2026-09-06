@@ -251,16 +251,21 @@ class CRefreshEditSession : public CEditSession {
 
 void WeaselTSF::_AsyncRefresh() {
   BkTrace("tsf", "async refresh");
+  if (_async_refreshing)
+    return;
   if (!_IsComposing() || _pEditSessionContext == NULL)
     return;
+  // 必须真异步（排到队尾），否则在 TSF 消息泵内联执行会重入死锁；
+  // 刷新只读上下文更新 UI，无需写权限
+  _async_refreshing = true;
   com_ptr<CRefreshEditSession> pEditSession;
   pEditSession.Attach(new CRefreshEditSession(this, _pEditSessionContext));
   if (pEditSession != NULL) {
     HRESULT hr;
     _pEditSessionContext->RequestEditSession(_tfClientId, pEditSession,
-                                             TF_ES_ASYNCDONTCARE | TF_ES_READWRITE,
-                                             &hr);
+                                             TF_ES_READ | TF_ES_ASYNC, &hr);
   }
+  _async_refreshing = false;
 }
 
 void WeaselTSF::_Reconnect() {

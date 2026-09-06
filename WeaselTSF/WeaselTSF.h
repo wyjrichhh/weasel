@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "Globals.h"
 #include <WeaselIPC.h>
 #include <WeaselIPCData.h>
@@ -194,6 +196,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
 
   void _Reconnect();
   void _AsyncRefresh();
+  std::atomic<bool> _async_refreshing{false};
   std::wstring _GetRootDir();
 
   bool isImmersive() const {
