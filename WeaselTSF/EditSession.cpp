@@ -13,6 +13,13 @@ STDMETHODIMP WeaselTSF::DoEditSession(TfEditCookie ec) {
 
   bool ok = m_client.GetResponseData(std::ref(parser));
 
+  // 异步刷新拉到空上下文 = 服务端组合重建的中间态，画上去会把
+  // 候选窗缩成一角；清空显示交给正常按键路径处理
+  if (ok && _refresh_only && context->cinfo.candies.empty() &&
+      context->aux.empty()) {
+    return TRUE;
+  }
+
   _UpdateLanguageBar(_status);
 
   bool compositionEnded = false;

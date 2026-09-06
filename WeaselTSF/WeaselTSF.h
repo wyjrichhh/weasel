@@ -197,6 +197,8 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   void _Reconnect();
   void _AsyncRefresh();
   std::atomic<bool> _async_refreshing{false};
+  // 异步刷新会话期间为 true：DoEditSession 据此跳过空上下文（组合重建中间态）
+  bool _refresh_only = false;
   std::wstring _GetRootDir();
 
   bool isImmersive() const {

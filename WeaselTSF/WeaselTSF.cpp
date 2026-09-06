@@ -244,7 +244,10 @@ class CRefreshEditSession : public CEditSession {
                       com_ptr<ITfContext> pContext)
       : CEditSession(pTextService, pContext) {}
   STDMETHODIMP DoEditSession(TfEditCookie ec) {
-    return _pTextService->DoEditSession(ec);
+    _pTextService->_refresh_only = true;
+    HRESULT hr = _pTextService->DoEditSession(ec);
+    _pTextService->_refresh_only = false;
+    return hr;
   }
 };
 }  // namespace

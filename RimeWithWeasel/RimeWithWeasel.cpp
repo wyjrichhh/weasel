@@ -406,6 +406,9 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
   m_message_value = message_value;
   if (!strcmp(message_type, "property") &&
       strncmp(message_value, "ai_predict/", 11) == 0) {
+    // 插件每次查询会先发空值重置，只有非空值代表推理结果就绪
+    const char* eq = strchr(message_value, '=');
+    if (eq != NULL && eq[1] != '\0') {
     // 注册消息广播会被 UIPI 静默过滤，按窗口类逐个直投候选窗
     UINT mid = RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
     int sent = 0;
@@ -414,9 +417,10 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
       if (PostMessageW(target, mid, 0, 0))
         ++sent;
     }
-    char dbg[96];
-    sprintf_s(dbg, "direct-posted to %d panel(s)", sent);
-    BkTrace("notify", dbg);
+      char dbg[96];
+      sprintf_s(dbg, "direct-posted to %d panel(s)", sent);
+      BkTrace("notify", dbg);
+    }
   }
   if (RIME_API_AVAILABLE(rime_api, get_state_label) &&
       !strcmp(message_type, "option")) {
