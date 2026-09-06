@@ -406,7 +406,11 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
   m_message_value = message_value;
   if (!strcmp(message_type, "property") &&
       strncmp(message_value, "ai_predict/", 11) == 0) {
-    BkTrace("notify", message_value);
+    char dbg[128];
+    UINT mid = RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
+    BOOL okk = PostMessageW(HWND_BROADCAST, mid, 0, 0);
+    sprintf_s(dbg, "post msg=%u ok=%d err=%lu", mid, okk, GetLastError());
+    BkTrace("notify", dbg);
     // AI 候选异步就绪：广播唤醒各应用进程的候选窗重拉上下文
     PostMessageW(HWND_BROADCAST,
                  RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE"), 0, 0);

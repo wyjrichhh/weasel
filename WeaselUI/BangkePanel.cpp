@@ -167,7 +167,11 @@ LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
   }
 
   switch (uMsg) {
+    case WM_NCCREATE:
+      BkTrace("panel", "nccreate");
+      break;
     case WM_CREATE:
+      BkTrace("panel", "create");
       self->m_mouse_entry = false;
       self->m_hoverIndex = -1;
       self->Refresh();
