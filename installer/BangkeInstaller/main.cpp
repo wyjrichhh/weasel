@@ -68,15 +68,9 @@ static QStringList BuildArgs(const MsiJob& job) {
   const QString log = QDir::toNativeSeparators(MsiLogPath(job.msiPath));
   QStringList args;
   switch (job.op) {
-    case MsiJob::Install: {
+    case MsiJob::Install:
       args << "/i" << QDir::toNativeSeparators(job.msiPath);
-      QString dir = job.installDir;
-      while (dir.endsWith('\\') || dir.endsWith('/'))
-        dir.chop(1);
-      if (!dir.isEmpty())
-        args << ("INSTALLDIR=\"" + dir + "\"");
       break;
-    }
     case MsiJob::Repair:
       args << "/f" << QDir::toNativeSeparators(job.msiPath);
       break;
@@ -177,7 +171,7 @@ class MainWindow : public QWidget {
                            QStringLiteral(u"未找到 BangkeSetup-*.msi，请与安装程序放在同一目录。"));
       return;
     }
-    m_job = new MsiJob{op, m_msiPath, m_productCode, m_dirEdit->text().trimmed()};
+    m_job = new MsiJob{op, m_msiPath, m_productCode, QString()};
     m_bar->setRange(0, 0);  // 不确定进度：真实完成以 msiexec 退出码为准
     m_actionLabel->setText(QStringLiteral(u"正在准备…"));
     m_stack->setCurrentWidget(progressPage_);
@@ -266,18 +260,10 @@ class MainWindow : public QWidget {
     auto* fresh = new QVBoxLayout(freshGroup_);
     fresh->setContentsMargins(0, 0, 0, 0);
     fresh->setSpacing(10);
-    auto* dirRow = new QHBoxLayout();
-    m_dirEdit = new QLineEdit(QStringLiteral(u"C:\\Program Files\\Bangke Pinyin"), freshGroup_);
-    auto* browse = new QPushButton(QStringLiteral(u"浏览"), freshGroup_);
-    connect(browse, &QPushButton::clicked, this, [this] {
-      QString d = QFileDialog::getExistingDirectory(this, QStringLiteral(u"选择安装目录"),
-                                                    m_dirEdit->text());
-      if (!d.isEmpty())
-        m_dirEdit->setText(d);
-    });
-    dirRow->addWidget(m_dirEdit, 1);
-    dirRow->addWidget(browse);
-    fresh->addLayout(dirRow);
+    auto* pathNote = new QLabel(QStringLiteral(u"将安装到 C:\\Program Files\\Bangke Pinyin"), freshGroup_);
+    pathNote->setObjectName("sub");
+    pathNote->setAlignment(Qt::AlignCenter);
+    fresh->addWidget(pathNote);
     auto* installBtn = accentButton(QStringLiteral(u"立即安装"));
     connect(installBtn, &QPushButton::clicked, this, [this] { startJob(MsiJob::Install); });
     fresh->addWidget(installBtn);
@@ -351,9 +337,7 @@ class MainWindow : public QWidget {
     auto* doneBtn = accentButton(QStringLiteral(u"完成"));
     connect(doneBtn, &QPushButton::clicked, this, [this] {
       if (m_launchCheck->isChecked() && m_launchCheck->isVisible()) {
-        QString dir = m_dirEdit->text().trimmed();
-        if (dir.isEmpty())
-          dir = QStringLiteral(u"C:\\Program Files\\Bangke Pinyin");
+        const QString dir = QStringLiteral(u"C:\\Program Files\\Bangke Pinyin");
         // explorer 拉起 = 用户会话、非提升，避免服务继承管理员上下文
         QProcess::startDetached("explorer",
                                 {QDir::toNativeSeparators(dir + "\\BangkeServer.exe")});
@@ -376,7 +360,6 @@ class MainWindow : public QWidget {
   QFrame *freshGroup_ = nullptr, *installedGroup_ = nullptr;
   QLabel *m_installedLabel = nullptr, *m_actionLabel = nullptr, *m_finishTitle = nullptr,
          *m_finishDetail = nullptr;
-  QLineEdit* m_dirEdit = nullptr;
   QProgressBar* m_bar = nullptr;
   QCheckBox* m_launchCheck = nullptr;
   MsiJob* m_job = nullptr;

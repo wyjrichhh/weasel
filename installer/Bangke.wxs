@@ -92,7 +92,7 @@
 
     <!-- 装完即用：以安装用户身份 fire-and-forget 拉起服务（cmd start 避免 CA 等待常驻进程） -->
     <CustomAction Id="StartServer" Directory="INSTALLDIR"
-                  ExeCommand="&quot;[System64Folder]cmd.exe&quot; /c start &quot;&quot; &quot;[INSTALLDIR]BangkeServer.exe&quot;"
+                  ExeCommand="&quot;[System64Folder]explorer.exe&quot; &quot;[INSTALLDIR]BangkeServer.exe&quot;"
                   Return="ignore" Execute="deferred" Impersonate="yes" />
 
     <InstallExecuteSequence>
