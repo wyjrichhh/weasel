@@ -102,8 +102,9 @@ STDMETHODIMP_(ULONG) CLangBarItemButton::Release() {
 STDMETHODIMP CLangBarItemButton::GetInfo(TF_LANGBARITEMINFO* pInfo) {
   pInfo->clsidService = c_clsidTextService;
   pInfo->guidItem = _guid;
-  pInfo->dwStyle = TF_LBI_STYLE_BTN_BUTTON | TF_LBI_STYLE_BTN_MENU |
-                   TF_LBI_STYLE_SHOWNINTRAY;
+  // TF_LBI_STYLE_SHOWNINTRAY 会在系统输入指示器之外再占一个托盘位，
+  // 与 Win11 输入指示器重复显示两个图标，故不启用
+  pInfo->dwStyle = TF_LBI_STYLE_BTN_BUTTON | TF_LBI_STYLE_BTN_MENU;
   pInfo->ulSort = 1;
   lstrcpyW(pInfo->szDescription, L"WeaselTSF Button");
   return S_OK;
