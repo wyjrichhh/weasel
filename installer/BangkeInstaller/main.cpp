@@ -268,6 +268,7 @@ class MainWindow : public QWidget {
 
     static const struct { const char* a; const wchar_t* t; } steps[] = {
         {"StopServer", L"正在停止输入法服务"},
+        {"ClearPendingDelete", L"正在准备文件"},
         {"InstallValidate", L"正在校验安装"},
         {"InstallFiles", L"正在复制文件"},
         {"WriteRegistryValues", L"正在写入注册表"},

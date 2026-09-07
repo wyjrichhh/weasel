@@ -8,7 +8,7 @@
 
 namespace {
 
-enum class Mode { Gui, Deploy, Sync, Install, Dict, Cleanup, Help };
+enum class Mode { Gui, Deploy, Sync, Install, Dict, Cleanup, ClearPending, Help };
 
 Mode parseMode(const QString& arg) {
   QString a = arg;
@@ -25,6 +25,8 @@ Mode parseMode(const QString& arg) {
     return Mode::Dict;
   if (a == "cleanup")
     return Mode::Cleanup;
+  if (a == "clearpending")
+    return Mode::ClearPending;
   if (a == "?" || a == "help")
     return Mode::Help;
   return Mode::Gui;
@@ -39,6 +41,7 @@ void showUsage(QWidget* parent) {
                      u"/sync    - 同步用户数据\n"
                      u"/install - 静默首次部署（安装器调用）\n"
                      u"/cleanup - 卸载残留清理（安装器调用）\n"
+                     u"/clearpending - 清除指向本产品的挂起重启删除（安装器调用）\n"
                      u"/?       - 显示本帮助"));
 }
 
@@ -58,10 +61,12 @@ int main(int argc, char* argv[]) {
 
     Mode mode = argc > 1 ? parseMode(QString::fromLocal8Bit(argv[1])) : Mode::Gui;
 
-    // /cleanup 在卸载序列里以 SYSTEM 令牌运行：提前返回，不构造 Configurator
-    // （其构造器/Initialize 会按 HKCU 定位用户目录，SYSTEM 下指向错误位置）
+    // /cleanup /clearpending 在 MSI 序列里以 SYSTEM 令牌运行：提前返回，
+    // 不构造 Configurator（其构造器/Initialize 会按 HKCU 定位用户目录，SYSTEM 下指向错误位置）
     if (mode == Mode::Cleanup)
       return Configurator::CleanupResidue();
+    if (mode == Mode::ClearPending)
+      return Configurator::ClearPendingDeletes();
 
     Configurator configurator;
     configurator.Initialize();

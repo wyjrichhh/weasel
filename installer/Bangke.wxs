@@ -104,8 +104,14 @@
                   ExeCommand="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /cleanup"
                   Return="ignore" Execute="deferred" Impersonate="no" />
 
+    <!-- 卸载挂起的重启删除若不清掉，卸载后未重启就重装会在下次重启吃掉新装文件 -->
+    <CustomAction Id="ClearPendingDelete" Directory="INSTALLDIR"
+                  ExeCommand="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /clearpending"
+                  Return="ignore" Execute="deferred" Impersonate="no" />
+
     <InstallExecuteSequence>
       <Custom Action="StopServer" After="InstallInitialize" />
+      <Custom Action="ClearPendingDelete" After="StopServer" Condition="NOT REMOVE" />
       <Custom Action="UnregisterTSF" After="StopServer" Condition="REMOVE" />
       <Custom Action="Cleanup" After="UnregisterTSF" Condition="REMOVE" />
       <Custom Action="RegisterTSF" After="InstallFiles" Condition="NOT REMOVE" />

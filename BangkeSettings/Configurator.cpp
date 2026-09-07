@@ -5,6 +5,8 @@
 #include <cassert>
 #include <filesystem>
 #include <fstream>
+#include <string>
+#include <vector>
 
 #include "Levers.h"
 #include <WeaselConstants.h>
@@ -107,6 +109,62 @@ int Configurator::CleanupResidue() {
       RegDeleteValueW(run, L"WeaselServer");
     RegCloseKey(run);
   }
+  return 0;
+}
+
+int Configurator::ClearPendingDeletes() {
+  // 静态：勿依赖实例状态（构造器会写用户目录，SYSTEM 下路径错误）
+  static const wchar_t* kProductFiles[] = {
+      L"\\??\\C:\\Windows\\System32\\bangke.dll",
+      L"\\??\\C:\\Windows\\System32\\bangke.dll.old",
+  };
+  const wchar_t* kSessionMgr =
+      L"SYSTEM\\CurrentControlSet\\Control\\Session Manager";
+  HKEY key = nullptr;
+  if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, kSessionMgr, 0, KEY_QUERY_VALUE | KEY_SET_VALUE,
+                    &key) != ERROR_SUCCESS)
+    return 0;  // 无该值 = 没有挂起操作，静默通过
+  wchar_t buf[32768] = {0};
+  DWORD sz = sizeof(buf);
+  if (RegQueryValueExW(key, L"PendingFileRenameOperations", nullptr, nullptr,
+                       (LPBYTE)buf, &sz) != ERROR_SUCCESS) {
+    RegCloseKey(key);
+    return 0;
+  }
+  // REG_MULTI_SZ：成对的 (源, 目标)，目标为空串表示删除
+  std::vector<std::wstring> entries;
+  {
+    const wchar_t* p = buf;
+    while (*p) {
+      entries.emplace_back(p);
+      p += entries.back().size() + 1;
+    }
+  }
+  bool changed = false;
+  std::vector<std::wstring> kept;
+  // PFRO 按 (源, 目标) 成对排列，目标为空串表示删除；整对取舍，绝不能拆散别人的对
+  for (size_t i = 0; i < entries.size(); i += 2) {
+    bool ours = false;
+    for (const wchar_t* f : kProductFiles)
+      if (_wcsicmp(entries[i].c_str(), f) == 0)
+        ours = true;
+    if (ours) {
+      changed = true;
+      continue;
+    }
+    kept.push_back(entries[i]);
+    if (i + 1 < entries.size())
+      kept.push_back(entries[i + 1]);
+  }
+  if (changed) {
+    std::wstring flat;
+    for (const auto& e : kept)
+      flat += e + L"\0";
+    flat += L"\0";
+    RegSetValueExW(key, L"PendingFileRenameOperations", 0, REG_MULTI_SZ,
+                   (const BYTE*)flat.c_str(), (DWORD)(flat.size() * sizeof(wchar_t)));
+  }
+  RegCloseKey(key);
   return 0;
 }
 
