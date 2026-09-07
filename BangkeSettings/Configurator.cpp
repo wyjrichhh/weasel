@@ -114,9 +114,21 @@ int Configurator::CleanupResidue() {
 
 int Configurator::ClearPendingDeletes() {
   // 静态：勿依赖实例状态（构造器会写用户目录，SYSTEM 下路径错误）
+  // PFRO 条目可能带 "*N"/"!" 等类型前缀（如 "*1\??\C:\..."），按 "\??\" 起始的
+  // 路径主体比对
   static const wchar_t* kProductFiles[] = {
       L"\\??\\C:\\Windows\\System32\\bangke.dll",
       L"\\??\\C:\\Windows\\System32\\bangke.dll.old",
+  };
+  auto isOurPath = [](const std::wstring& e) {
+    const size_t at = e.find(L"\\??\\");
+    if (at == std::wstring::npos)
+      return false;
+    const std::wstring body = e.substr(at);
+    for (const wchar_t* f : kProductFiles)
+      if (_wcsicmp(body.c_str(), f) == 0)
+        return true;
+    return false;
   };
   const wchar_t* kSessionMgr =
       L"SYSTEM\\CurrentControlSet\\Control\\Session Manager";
@@ -144,11 +156,7 @@ int Configurator::ClearPendingDeletes() {
   std::vector<std::wstring> kept;
   // PFRO 按 (源, 目标) 成对排列，目标为空串表示删除；整对取舍，绝不能拆散别人的对
   for (size_t i = 0; i < entries.size(); i += 2) {
-    bool ours = false;
-    for (const wchar_t* f : kProductFiles)
-      if (_wcsicmp(entries[i].c_str(), f) == 0)
-        ours = true;
-    if (ours) {
+    if (isOurPath(entries[i])) {
       changed = true;
       continue;
     }
