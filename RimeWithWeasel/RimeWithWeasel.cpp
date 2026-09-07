@@ -24,6 +24,9 @@ typedef enum { COLOR_ABGR = 0, COLOR_ARGB, COLOR_RGBA } ColorFormat;
 using namespace weasel;
 
 static RimeApi* rime_api;
+// ai_predict 推理完成计数（rime.dll 导出符号），Initialize 里经 GetProcAddress
+// 解析；取不到 = 插件缺席，AI 刷新轮询优雅降级为空操作
+static long long (*s_ai_completed_fn)(void) = nullptr;
 WeaselSessionId _GenerateNewWeaselSessionId(SessionStatusMap sm, DWORD pid) {
   if (sm.empty())
     return (WeaselSessionId)(pid + 1);
@@ -109,6 +112,11 @@ void RimeWithWeaselHandler::Initialize() {
   if (m_disabled) {
     return;
   }
+
+  // ai_predict 插件的推理完成计数（rime.dll 导出符号）
+  if (HMODULE rime_mod = GetModuleHandleW(L"rime.dll"))
+    s_ai_completed_fn = reinterpret_cast<long long (*)(void)>(
+        GetProcAddress(rime_mod, "rime_ai_predict_completed_inferences"));
 
   LOG(INFO) << "Initializing la rime.";
   rime_api->initialize(NULL);
@@ -396,6 +404,29 @@ static const size_t kAiPushTextBytes = 128 * 1024;
 static HANDLE s_ai_push_map = NULL;
 static DWORD s_ai_push_seq = 0;
 
+// 轮询驱动式 AI 刷新：插件工作线程只负责推理与填缓存并递增完成计数，
+// 本函数在服务端消息循环（WM_TIMER, 50ms）里以串行线程刷新组合、推送快照。
+// 此前的属性通知直推方案要求插件线程触碰 Context（rime 非线程安全）并让
+// 通知线程在 OnNotify 里等锁，两处都引发切换输入法时的整面卡死。
+void RimeWithWeaselHandler::OnTimerPoll() {
+  if (!s_ai_completed_fn || m_disabled)
+    return;
+  const long long seq = s_ai_completed_fn();
+  if (seq == m_last_ai_seq)
+    return;
+  m_last_ai_seq = seq;
+
+  std::lock_guard<std::recursive_mutex> lock(RimeWithWeaselHandler::ApiMutex());
+  if (!m_active_session)
+    return;
+  auto it = m_session_status_map.find(m_active_session);
+  if (it == m_session_status_map.end() || !it->second.session_id)
+    return;
+  if (RIME_API_AVAILABLE(rime_api, refresh_composition) &&
+      rime_api->refresh_composition(it->second.session_id))
+    _PushAiSnapshot(it->second.session_id);
+}
+
 void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
   // rime session -> ipc session
   WeaselSessionId ipc_id = 0;
@@ -459,20 +490,14 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
       reinterpret_cast<RimeWithWeaselHandler*>(context_object);
   if (!self || !message_type || !message_value)
     return;
-  // 快照推送要走 rime API 并读会话表，必须与管道路径串行，否则切换输入法时的
-  // EndSession 风暴会撞上快照迭代（未加锁的 map 迭代 = 卡死/崩溃）
+  // 与管道路径串行（递归：通知可能在 process_key 内同线程同步触发）。
+  // 注意：此处绝不做快照推送——通知可能来自 rime 内部线程，一旦在此等锁，
+  // 而持锁方又在 destroy 中 join 该线程，即成环形死锁（AI 刷新已改由
+  // OnTimerPoll 轮询驱动，见 _PushAiSnapshot）
   std::lock_guard<std::recursive_mutex> api_lock(RimeWithWeaselHandler::ApiMutex());
   std::lock_guard<std::mutex> lock(m_notifier_mutex);
   m_message_type = message_type;
   m_message_value = message_value;
-  if (!strcmp(message_type, "property") &&
-      strcmp(message_value, "ai_predict/refresh=1") == 0) {
-    // 推送式刷新：把就绪的上下文快照写入共享内存再发信号，
-    // 前端读快照直刷 UI——消灭"拉取时机"竞态，也不引入防抖延迟
-    const char* eq = strchr(message_value, '=');
-    if (eq != NULL && eq[1] != '\0')
-      self->_PushAiSnapshot(session_id);
-  }
   if (RIME_API_AVAILABLE(rime_api, get_state_label) &&
       !strcmp(message_type, "option")) {
     Bool state = message_value[0] != '!';

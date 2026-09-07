@@ -28,6 +28,7 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
   MESSAGE_HANDLER(WM_DWMCOLORIZATIONCOLORCHANGED, OnColorChange)
   MESSAGE_HANDLER(WM_SETTINGCHANGE, OnColorChange)
   MESSAGE_HANDLER(WM_COMMAND, OnCommand)
+  MESSAGE_HANDLER(WM_TIMER, OnTimer)
   MESSAGE_HANDLER(WM_WEASEL_SERVICE_NOTIFY, OnServiceNotifyMessage)
   END_MSG_MAP()
 
@@ -47,6 +48,7 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
                              LPARAM lParam,
                              BOOL& bHandled);
   LRESULT OnCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+  LRESULT OnTimer(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnServiceNotifyMessage(UINT uMsg,
                                  WPARAM wParam,
                                  LPARAM lParam,
@@ -95,6 +97,9 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
   }
 
  private:
+  // 50ms 轮询：驱动 RequestHandler::OnTimerPoll（AI 候选刷新等）
+  static constexpr UINT_PTR kPollTimerId = 0x42;
+
   void _Finailize();
   template <typename _Resp>
   void HandlePipeMessage(PipeMessage pipe_msg, _Resp resp);
