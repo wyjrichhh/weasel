@@ -132,15 +132,25 @@ int Configurator::ClearPendingDeletes() {
   };
   const wchar_t* kSessionMgr =
       L"SYSTEM\\CurrentControlSet\\Control\\Session Manager";
+  // TEMP-DEBUG: 定位 clearpending 不生效问题，验证后删除
+  FILE* dbg = _wfopen(L"C:\\Windows\\Temp\\clearpending_debug.txt", L"w");
+  auto dlog = [&](const char* s, long v = 0) {
+    if (dbg) { fprintf(dbg, "%s %ld\n", s, v); fflush(dbg); }
+  };
   HKEY key = nullptr;
-  if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, kSessionMgr, 0, KEY_QUERY_VALUE | KEY_SET_VALUE,
-                    &key) != ERROR_SUCCESS)
-    return 0;  // 无该值 = 没有挂起操作，静默通过
+  LONG or_ = RegOpenKeyExW(HKEY_LOCAL_MACHINE, kSessionMgr, 0,
+                           KEY_QUERY_VALUE | KEY_SET_VALUE, &key);
+  dlog("open", or_);
+  if (or_ != ERROR_SUCCESS) { if (dbg) fclose(dbg); return 0; }
   wchar_t buf[32768] = {0};
   DWORD sz = sizeof(buf);
-  if (RegQueryValueExW(key, L"PendingFileRenameOperations", nullptr, nullptr,
-                       (LPBYTE)buf, &sz) != ERROR_SUCCESS) {
+  LONG qr = RegQueryValueExW(key, L"PendingFileRenameOperations", nullptr, nullptr,
+                             (LPBYTE)buf, &sz);
+  dlog("query", qr);
+  dlog("bytes", sz);
+  if (qr != ERROR_SUCCESS) {
     RegCloseKey(key);
+    if (dbg) fclose(dbg);
     return 0;
   }
   // REG_MULTI_SZ：成对的 (源, 目标)，目标为空串表示删除
@@ -164,15 +174,23 @@ int Configurator::ClearPendingDeletes() {
     if (i + 1 < entries.size())
       kept.push_back(entries[i + 1]);
   }
+  dlog("entries", (long)entries.size());
+  dlog("changed", changed ? 1 : 0);
+  dlog("kept", (long)kept.size());
   if (changed) {
     std::wstring flat;
-    for (const auto& e : kept)
-      flat += e + L"\0";
-    flat += L"\0";
-    RegSetValueExW(key, L"PendingFileRenameOperations", 0, REG_MULTI_SZ,
-                   (const BYTE*)flat.c_str(), (DWORD)(flat.size() * sizeof(wchar_t)));
+    for (const auto& e : kept) {
+      flat += e;
+      flat += L'\0';  // wstring+L"\0" 会因 wcslen=0 丢分隔符，必须按字符追加
+    }
+    flat += L'\0';
+    LONG wr = RegSetValueExW(key, L"PendingFileRenameOperations", 0, REG_MULTI_SZ,
+                             (const BYTE*)flat.c_str(),
+                             (DWORD)(flat.size() * sizeof(wchar_t)));
+    dlog("write", wr);
   }
   RegCloseKey(key);
+  if (dbg) fclose(dbg);
   return 0;
 }
 
