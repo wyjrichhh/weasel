@@ -95,9 +95,19 @@
                   ExeCommand="&quot;[System64Folder]explorer.exe&quot; &quot;[INSTALLDIR]BangkeServer.exe&quot;"
                   Return="ignore" Execute="deferred" Impersonate="yes" />
 
+    <!--
+      卸载残留清理：在 RemoveFiles 之前跑（此时 BangkeSettings.exe 尚在）。
+      被应用进程加载的 System32\bangke.dll 删不掉时转由下次重启删除；
+      旧版遗留的 WeaselServer 自启键仅在目标已是幽灵时移除，不影响共存的官方小狼毫。
+    -->
+    <CustomAction Id="Cleanup" Directory="INSTALLDIR"
+                  ExeCommand="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /cleanup"
+                  Return="ignore" Execute="deferred" Impersonate="no" />
+
     <InstallExecuteSequence>
       <Custom Action="StopServer" After="InstallInitialize" />
       <Custom Action="UnregisterTSF" After="StopServer" Condition="REMOVE" />
+      <Custom Action="Cleanup" After="UnregisterTSF" Condition="REMOVE" />
       <Custom Action="RegisterTSF" After="InstallFiles" Condition="NOT REMOVE" />
       <Custom Action="FirstDeploy" After="WriteRegistryValues" Condition="NOT REMOVE" />
       <Custom Action="StartServer" After="FirstDeploy" Condition="NOT REMOVE" />

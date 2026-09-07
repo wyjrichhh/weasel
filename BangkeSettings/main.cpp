@@ -8,7 +8,7 @@
 
 namespace {
 
-enum class Mode { Gui, Deploy, Sync, Install, Dict, Help };
+enum class Mode { Gui, Deploy, Sync, Install, Dict, Cleanup, Help };
 
 Mode parseMode(const QString& arg) {
   QString a = arg;
@@ -23,6 +23,8 @@ Mode parseMode(const QString& arg) {
     return Mode::Install;
   if (a == "dict")
     return Mode::Dict;
+  if (a == "cleanup")
+    return Mode::Cleanup;
   if (a == "?" || a == "help")
     return Mode::Help;
   return Mode::Gui;
@@ -36,6 +38,7 @@ void showUsage(QWidget* parent) {
                      u"/dict    - 词典管理\n"
                      u"/sync    - 同步用户数据\n"
                      u"/install - 静默首次部署（安装器调用）\n"
+                     u"/cleanup - 卸载残留清理（安装器调用）\n"
                      u"/?       - 显示本帮助"));
 }
 
@@ -54,6 +57,11 @@ int main(int argc, char* argv[]) {
     QApplication::setOrganizationName(QStringLiteral(u"Bangke"));
 
     Mode mode = argc > 1 ? parseMode(QString::fromLocal8Bit(argv[1])) : Mode::Gui;
+
+    // /cleanup 在卸载序列里以 SYSTEM 令牌运行：提前返回，不构造 Configurator
+    // （其构造器/Initialize 会按 HKCU 定位用户目录，SYSTEM 下指向错误位置）
+    if (mode == Mode::Cleanup)
+      return Configurator::CleanupResidue();
 
     Configurator configurator;
     configurator.Initialize();

@@ -82,6 +82,34 @@ int Configurator::UpdateWorkspace(bool report_errors) {
   return 0;
 }
 
+int Configurator::CleanupResidue() {
+  // 静态：勿依赖实例状态（构造器会写用户目录，SYSTEM 下路径错误）
+  // 被应用进程加载的 TSF dll 删不掉时转由下次重启删除；WeaselServer 自启键
+  // 仅在目标文件已成幽灵时移除，避免误伤共存的官方小狼毫
+  const wchar_t* residues[] = {L"C:\\Windows\\System32\\bangke.dll",
+                               L"C:\\Windows\\System32\\bangke.dll.old"};
+  for (const wchar_t* f : residues) {
+    if (GetFileAttributesW(f) == INVALID_FILE_ATTRIBUTES)
+      continue;
+    if (!DeleteFileW(f))
+      MoveFileExW(f, nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
+  }
+
+  HKEY run = nullptr;
+  if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 0,
+                    KEY_QUERY_VALUE | KEY_SET_VALUE, &run) == ERROR_SUCCESS) {
+    wchar_t val[1024] = {0};
+    DWORD sz = sizeof(val);
+    if (RegQueryValueExW(run, L"WeaselServer", nullptr, nullptr, (LPBYTE)val, &sz) ==
+            ERROR_SUCCESS &&
+        GetFileAttributesW(val) == INVALID_FILE_ATTRIBUTES)
+      RegDeleteValueW(run, L"WeaselServer");
+    RegCloseKey(run);
+  }
+  return 0;
+}
+
 int Configurator::SyncUserData() {
   HANDLE hMutex = CreateMutexW(NULL, TRUE, L"BangkeDeployerMutex");
   if (!hMutex)

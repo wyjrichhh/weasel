@@ -1,12 +1,27 @@
 # Dev-mode install for Bangke Pinyin (x64-only, coexists with official Weasel).
 # Run from an elevated PowerShell in the desktop session.
-# Usage: .\scripts\dev_install.ps1 [-UserDir <path>] [-NoStart]
+# Usage: .\scripts\dev_install.ps1 [-UserDir <path>] [-NoStart] [-Force]
 param(
   [string]$UserDir = "$env:APPDATA\Bangke",
-  [switch]$NoStart
+  [switch]$NoStart,
+  [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Refuse to shadow an MSI-installed product: mixing a dev dll (from output\)
+# over "C:\Program Files\Bangke Pinyin" leaves the machine in a hybrid state
+# that an MSI repair/uninstall would silently regress.
+if (-not $Force) {
+  $msiProduct = Get-ItemProperty `
+      'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*', `
+      'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*' `
+      -ErrorAction SilentlyContinue |
+    Where-Object { $_.Publisher -eq 'Bangke' }
+  if ($msiProduct) {
+    throw ("MSI product is installed (version {0}). Uninstall it first, or rerun with -Force." -f $msiProduct.DisplayVersion)
+  }
+}
 $outputDir = Join-Path $PSScriptRoot '..\output' | Resolve-Path
 $dll = Join-Path $outputDir 'bangkex64.dll'
 $server = Join-Path $outputDir 'BangkeServer.exe'
