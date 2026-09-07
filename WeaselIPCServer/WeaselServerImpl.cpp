@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <resource.h>
 #include <WeaselUtility.h>
+#include <RimeWithWeasel.h>
 
 namespace weasel {
 class PipeServer : public PipeChannel<DWORD, PipeMessage> {
@@ -175,8 +176,6 @@ int ServerImpl::Stop() {
   return 0;
 }
 
-static std::mutex g_api_mutex;
-
 int ServerImpl::Run() {
   // This workaround causes a VC internal error:
   // void PipeServer::Listen(ServerHandler handler);
@@ -185,7 +184,7 @@ int ServerImpl::Run() {
   // auto listener = boost::bind(&PipeServer::Listen, channel.get(), handler);
   //
   auto listener = [this](PipeMessage msg, PipeServer::Respond resp) -> void {
-    std::lock_guard guard(g_api_mutex);
+    std::lock_guard guard(RimeWithWeaselHandler::ApiMutex());
     HandlePipeMessage(msg, resp);
   };
   pipeThread = std::make_unique<boost::thread>(

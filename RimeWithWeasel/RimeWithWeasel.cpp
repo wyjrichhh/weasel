@@ -459,6 +459,9 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
       reinterpret_cast<RimeWithWeaselHandler*>(context_object);
   if (!self || !message_type || !message_value)
     return;
+  // 快照推送要走 rime API 并读会话表，必须与管道路径串行，否则切换输入法时的
+  // EndSession 风暴会撞上快照迭代（未加锁的 map 迭代 = 卡死/崩溃）
+  std::lock_guard<std::recursive_mutex> api_lock(RimeWithWeaselHandler::ApiMutex());
   std::lock_guard<std::mutex> lock(m_notifier_mutex);
   m_message_type = message_type;
   m_message_value = message_value;

@@ -35,6 +35,13 @@ typedef std::map<DWORD, SessionStatus> SessionStatusMap;
 typedef DWORD WeaselSessionId;
 class RimeWithWeaselHandler : public weasel::RequestHandler {
  public:
+  // rime API 与会话表的全局串行锁：管道路径(ServerImpl)与通知线程(OnNotify)
+  // 共用。必须递归：process_key→Compose→filter 会在同一线程内同步触发属性通知
+  static std::recursive_mutex& ApiMutex() {
+    static std::recursive_mutex m;
+    return m;
+  }
+
   RimeWithWeaselHandler(weasel::UI* ui);
   virtual ~RimeWithWeaselHandler();
   virtual void Initialize();
