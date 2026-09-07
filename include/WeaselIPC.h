@@ -28,16 +28,12 @@ enum WEASEL_IPC_COMMAND {
   WEASEL_IPC_END_MAINTENANCE,
   WEASEL_IPC_COMMIT_COMPOSITION,
   WEASEL_IPC_CLEAR_COMPOSITION,
-  WEASEL_IPC_TRAY_COMMAND,
+  WEASEL_IPC_SET_ASCII,
   WEASEL_IPC_SELECT_CANDIDATE_ON_CURRENT_PAGE,
   WEASEL_IPC_HIGHLIGHT_CANDIDATE_ON_CURRENT_PAGE,
   WEASEL_IPC_CHANGE_PAGE,
   WEASEL_IPC_LAST_COMMAND
 };
-
-// Posted by WeaselTrayIcon to the server window so that Shell_NotifyIcon runs
-// on the server message thread instead of a pipe worker thread.
-#define WM_WEASEL_SERVICE_NOTIFY (WEASEL_IPC_LAST_COMMAND + 200)
 
 // rime 通知的"入队投递"通道：OnNotify 可能跑在 rime 内部线程（含插件 worker），
 // 只允许 PostMessage 本消息后立即返回，实际工作由服务端消息循环在串行线程做
@@ -101,11 +97,8 @@ struct RequestHandler {
 // 處理server端回應之物件
 typedef std::function<bool(LPWSTR buffer, DWORD length)> ResponseHandler;
 
-// 事件處理函數
-typedef std::function<bool()> CommandHandler;
-
 // 啟動服務進程之物件
-typedef CommandHandler ServerLauncher;
+typedef std::function<bool()> ServerLauncher;
 
 // IPC實現類聲明
 
@@ -153,8 +146,8 @@ class Client {
   void FocusIn();
   // 输入窗口失去焦点
   void FocusOut();
-  // 托盤菜單
-  void TrayCommand(UINT menuId);
+  // 切换中/英文模式（原托盘命令专道，现仅剩这一个用途，索性正名）
+  void SetAsciiMode(bool ascii);
   // 读取server返回的数据
   bool GetResponseData(ResponseHandler handler);
 
@@ -175,12 +168,7 @@ class Server {
   int Run();
 
   void SetRequestHandler(RequestHandler* pHandler);
-  void AddMenuHandler(UINT uID, CommandHandler handler);
   HWND GetHWnd();
-
-  // Callback invoked on the server message thread when a tray icon refresh is
-  // requested from a pipe worker thread.
-  void SetTrayRefreshCallback(std::function<void()> callback);
 
  private:
   ServerImpl* m_pImpl;

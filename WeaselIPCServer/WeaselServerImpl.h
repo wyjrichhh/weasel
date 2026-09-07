@@ -29,7 +29,6 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
   MESSAGE_HANDLER(WM_SETTINGCHANGE, OnColorChange)
   MESSAGE_HANDLER(WM_COMMAND, OnCommand)
   MESSAGE_HANDLER(WM_BK_RIME_EVENT, OnRimeEvent)
-  MESSAGE_HANDLER(WM_WEASEL_SERVICE_NOTIFY, OnServiceNotifyMessage)
   END_MSG_MAP()
 
   LRESULT OnColorChange(UINT uMsg,
@@ -49,12 +48,8 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
                              BOOL& bHandled);
   LRESULT OnCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnRimeEvent(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-  LRESULT OnServiceNotifyMessage(UINT uMsg,
-                                 WPARAM wParam,
-                                 LPARAM lParam,
-                                 BOOL& bHandled);
-  DWORD OnCommand(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
   DWORD OnEcho(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
+  DWORD OnSetAscii(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
   DWORD OnStartSession(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
   DWORD OnEndSession(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
   DWORD OnKeyEvent(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
@@ -89,12 +84,6 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
   void SetRequestHandler(RequestHandler* pHandler) {
     m_pRequestHandler = pHandler;
   }
-  void AddMenuHandler(UINT uID, CommandHandler& handler) {
-    m_MenuHandlers[uID] = handler;
-  }
-  void SetTrayRefreshCallback(std::function<void()> callback) {
-    m_trayRefreshCallback = callback;
-  }
 
  private:
   void _Finailize();
@@ -104,8 +93,6 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
   std::unique_ptr<PipeServer> channel;
   std::unique_ptr<boost::thread> pipeThread;
   RequestHandler* m_pRequestHandler;  // reference
-  std::map<UINT, CommandHandler> m_MenuHandlers;
-  std::function<void()> m_trayRefreshCallback;
   HMODULE m_hUser32Module;
   SecurityAttribute sa;
   BOOL m_darkMode;

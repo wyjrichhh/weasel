@@ -26,7 +26,7 @@ class ClientImpl {
   void UpdateInputPosition(RECT const& rc);
   void FocusIn();
   void FocusOut();
-  void TrayCommand(UINT menuId);
+  void SetAsciiMode(bool ascii);
   bool GetResponseData(ResponseHandler const& handler);
 
  protected:

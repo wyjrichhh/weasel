@@ -153,8 +153,7 @@ STDMETHODIMP CLangBarItemButton::OnClick(TfLBIClick click,
                                          POINT pt,
                                          const RECT* prcArea) {
   if (click == TF_LBI_CLK_LEFT) {
-    _pTextService->_HandleLangBarMenuSelect(
-        ascii_mode ? ID_WEASELTRAY_DISABLE_ASCII : ID_WEASELTRAY_ENABLE_ASCII);
+    _pTextService->_SetAsciiMode(!ascii_mode);
     ascii_mode = !ascii_mode;
     if (_pLangBarItemSink) {
       _pLangBarItemSink->OnUpdate(TF_LBI_STATUS | TF_LBI_ICON);
@@ -177,7 +176,7 @@ STDMETHODIMP CLangBarItemButton::OnClick(TfLBIClick click,
           popupMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_HORPOSANIMATION, pt.x,
           pt.y, hwnd, NULL);
       DestroyMenu(menu);
-      _pTextService->_HandleLangBarMenuSelect(wID);
+      _pTextService->_ExecuteMenuCommand(wID);
     }
   }
   return S_OK;
@@ -192,7 +191,7 @@ STDMETHODIMP CLangBarItemButton::InitMenu(ITfMenu* pMenu) {
 }
 
 STDMETHODIMP CLangBarItemButton::OnMenuSelect(UINT wID) {
-  _pTextService->_HandleLangBarMenuSelect(wID);
+  _pTextService->_ExecuteMenuCommand(wID);
   return S_OK;
 }
 
@@ -293,22 +292,33 @@ std::wstring WeaselTSF::_GetRootDir() {
   return dir;
 }
 
-void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
+void WeaselTSF::_LaunchSettings(const std::wstring& args) {
+  std::wstring dir = _GetRootDir();
+  if (dir.empty())
+    return;
+  // 工作目录必须显式给：本 dll 宿主于任意应用进程，继承的 cwd 不可靠
+  std::thread th([dir, args]() {
+    ShellExecuteW(NULL, NULL, (dir + L"\\BangkeSettings.exe").c_str(),
+                  args.c_str(), dir.c_str(), SW_SHOWNORMAL);
+  });
+  th.detach();
+}
+
+// 菜单唯一派发点：全部命令在 dll 内就地处理，server 不再承载任何菜单逻辑
+void WeaselTSF::_ExecuteMenuCommand(UINT wID) {
   std::wstring dir{};
   switch (wID) {
-    case ID_WEASELTRAY_RERUN_SERVICE:
-    case ID_WEASELTRAY_INSTALLDIR:
-      if (RegGetStringValue(HKEY_LOCAL_MACHINE, GetWeaselRegName(),
-                            L"BangkeRoot", dir) == ERROR_SUCCESS) {
-        if (wID == ID_WEASELTRAY_RERUN_SERVICE) {
-          std::thread th([dir]() {
-            ShellExecuteW(NULL, L"open", (dir + L"\\start_service.bat").c_str(),
-                          NULL, dir.c_str(), SW_HIDE);
-          });
-          th.detach();
-        } else
-          open(dir);
-      }
+    case ID_WEASELTRAY_SETTINGS:
+      _LaunchSettings(L"");
+      break;
+    case ID_WEASELTRAY_DICT_MANAGEMENT:
+      _LaunchSettings(L"/dict");
+      break;
+    case ID_WEASELTRAY_DEPLOY:
+      _LaunchSettings(L"/deploy");
+      break;
+    case ID_WEASELTRAY_SYNC:
+      _LaunchSettings(L"/sync");
       break;
     case ID_WEASELTRAY_USERCONFIG:
       if (FAILED(RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Bangke",
@@ -327,14 +337,18 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
     case ID_WEASELTRAY_LOGDIR:
       open(WeaselLogPath().wstring());
       break;
-    case ID_WEASELTRAY_WIKI:
-      open(L"https://rime.im/docs/");
+    case ID_WEASELTRAY_RERUN_SERVICE:
+      dir = _GetRootDir();
+      if (!dir.empty()) {
+        std::thread th([dir]() {
+          ShellExecuteW(NULL, L"open", (dir + L"\\start_service.bat").c_str(),
+                        NULL, dir.c_str(), SW_HIDE);
+        });
+        th.detach();
+      }
       break;
-    case ID_WEASELTRAY_FORUM:
-      open(L"https://rime.im/discuss/");
-      break;
-    default:
-      m_client.TrayCommand(wID);
+    case ID_WEASELTRAY_QUIT:
+      m_client.ShutdownServer();
       break;
   }
 }

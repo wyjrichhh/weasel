@@ -124,45 +124,17 @@ LRESULT ServerImpl::OnCommand(UINT uMsg,
                               WPARAM wParam,
                               LPARAM lParam,
                               BOOL& bHandled) {
-  UINT uID = LOWORD(wParam);
-  switch (uID) {
-    case ID_WEASELTRAY_ENABLE_ASCII:
-      m_pRequestHandler->SetOption(lParam, "ascii_mode", true);
-      return 0;
-    case ID_WEASELTRAY_DISABLE_ASCII:
-      m_pRequestHandler->SetOption(lParam, "ascii_mode", false);
-      return 0;
-    default:;
-  }
+  bHandled = FALSE;
+  return 0;
+}
 
-  std::map<UINT, CommandHandler>::iterator it = m_MenuHandlers.find(uID);
-  if (it == m_MenuHandlers.end()) {
-    bHandled = FALSE;
+DWORD ServerImpl::OnSetAscii(WEASEL_IPC_COMMAND uMsg,
+                             DWORD wParam,
+                             DWORD lParam) {
+  if (!m_pRequestHandler)
     return 0;
-  }
-  it->second();  // execute command
+  m_pRequestHandler->SetOption(lParam, "ascii_mode", wParam != 0);
   return 0;
-}
-
-LRESULT ServerImpl::OnServiceNotifyMessage(UINT uMsg,
-                                           WPARAM wParam,
-                                           LPARAM lParam,
-                                           BOOL& bHandled) {
-  // Runs on the server message thread, NOT on a pipe worker thread and
-  // without holding g_api_mutex, so that Shell_NotifyIcon inside the tray
-  // update can never deadlock against the taskbar UI thread.
-  if (m_trayRefreshCallback) {
-    m_trayRefreshCallback();
-  }
-  return 0;
-}
-
-DWORD ServerImpl::OnCommand(WEASEL_IPC_COMMAND uMsg,
-                            DWORD wParam,
-                            DWORD lParam) {
-  BOOL handled = TRUE;
-  OnCommand(uMsg, wParam, lParam, handled);
-  return handled;
 }
 
 HWND ServerImpl::Start() {
@@ -420,7 +392,7 @@ void ServerImpl::HandlePipeMessage(PipeMessage pipe_msg, _Resp resp) {
   PIPE_MSG_HANDLE(WEASEL_IPC_HIGHLIGHT_CANDIDATE_ON_CURRENT_PAGE,
                   OnHighlightCandidateOnCurrentPage);
   PIPE_MSG_HANDLE(WEASEL_IPC_CHANGE_PAGE, OnChangePage);
-  PIPE_MSG_HANDLE(WEASEL_IPC_TRAY_COMMAND, OnCommand);
+  PIPE_MSG_HANDLE(WEASEL_IPC_SET_ASCII, OnSetAscii);
   END_MAP_PIPE_MSG_HANDLE(result);
 
   resp(result);
@@ -484,14 +456,6 @@ int Server::Run() {
 
 void Server::SetRequestHandler(RequestHandler* pHandler) {
   m_pImpl->SetRequestHandler(pHandler);
-}
-
-void Server::AddMenuHandler(UINT uID, CommandHandler handler) {
-  m_pImpl->AddMenuHandler(uID, handler);
-}
-
-void Server::SetTrayRefreshCallback(std::function<void()> callback) {
-  m_pImpl->SetTrayRefreshCallback(callback);
 }
 
 HWND Server::GetHWnd() {

@@ -138,8 +138,8 @@ void ClientImpl::FocusOut() {
   _SendMessage(WEASEL_IPC_FOCUS_OUT, 0, session_id);
 }
 
-void ClientImpl::TrayCommand(UINT menuId) {
-  _SendMessage(WEASEL_IPC_TRAY_COMMAND, menuId, session_id);
+void ClientImpl::SetAsciiMode(bool ascii) {
+  _SendMessage(WEASEL_IPC_SET_ASCII, ascii ? TRUE : FALSE, session_id);
 }
 
 void ClientImpl::StartSession() {
@@ -272,8 +272,8 @@ void Client::EndMaintenance() {
   m_pImpl->EndMaintenance();
 }
 
-void Client::TrayCommand(UINT menuId) {
-  m_pImpl->TrayCommand(menuId);
+void Client::SetAsciiMode(bool ascii) {
+  m_pImpl->SetAsciiMode(ascii);
 }
 
 bool Client::Echo() {

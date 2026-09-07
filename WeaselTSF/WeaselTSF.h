@@ -131,7 +131,9 @@ class WeaselTSF : public ITfTextInputProcessorEx,
 
   /* Language bar */
   HWND _GetFocusedContextWindow();
-  void _HandleLangBarMenuSelect(UINT wID);
+  void _ExecuteMenuCommand(UINT wID);
+  void _LaunchSettings(const std::wstring& args);
+  void _SetAsciiMode(bool ascii) { m_client.SetAsciiMode(ascii); }
 
   /* IPC */
   bool _EnsureServerConnected();

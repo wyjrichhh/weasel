@@ -45,8 +45,6 @@ class WeaselServerApp {
   int Run();
 
  protected:
-  void SetupMenuHandlers();
-
   weasel::Server m_server;
   weasel::UI m_ui;
   std::unique_ptr<RimeWithWeaselHandler> m_handler;
