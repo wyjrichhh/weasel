@@ -39,6 +39,13 @@ enum WEASEL_IPC_COMMAND {
 // on the server message thread instead of a pipe worker thread.
 #define WM_WEASEL_SERVICE_NOTIFY (WEASEL_IPC_LAST_COMMAND + 200)
 
+// rime 通知的"入队投递"通道：OnNotify 可能跑在 rime 内部线程（含插件 worker），
+// 只允许 PostMessage 本消息后立即返回，实际工作由服务端消息循环在串行线程做
+#define WM_BK_RIME_EVENT (WM_APP + 0x42)
+enum BkRimeEvent {
+  BK_EVENT_AI_REFRESH = 1,  // AI 候选就绪（属性 _refresh_ui），待推送快照
+};
+
 namespace weasel {
 struct PipeMessage {
   WEASEL_IPC_COMMAND Msg;
@@ -85,6 +92,10 @@ struct RequestHandler {
   virtual void EndMaintenance() {}
   virtual void SetOption(DWORD session_id, const std::string& opt, bool val) {}
   virtual void UpdateColorTheme(BOOL darkMode) {}
+  // 服务端窗口就绪后注入 HWND，供 OnNotify 投递 WM_BK_RIME_EVENT
+  virtual void SetEventWindow(HWND wnd) {}
+  // 在服务端消息循环（串行线程）上消费投递来的 rime 事件
+  virtual void OnDeferredEvent(int event, uintptr_t rime_session_id) {}
 };
 
 // 處理server端回應之物件

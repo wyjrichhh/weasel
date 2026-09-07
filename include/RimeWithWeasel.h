@@ -35,8 +35,10 @@ typedef std::map<DWORD, SessionStatus> SessionStatusMap;
 typedef DWORD WeaselSessionId;
 class RimeWithWeaselHandler : public weasel::RequestHandler {
  public:
-  // rime API 与会话表的全局串行锁：管道路径(ServerImpl)与通知线程(OnNotify)
-  // 共用。必须递归：process_key→Compose→filter 会在同一线程内同步触发属性通知
+  // rime API 与会话表的串行锁：管道路径(ServerImpl)与延迟事件消费
+  // (OnDeferredEvent)共用。必须递归：process_key→Compose→filter 会在同一线程
+  // 内同步触发属性通知。OnNotify 本身绝不取此锁——它可能跑在 rime 内部线程上，
+  // 一旦等锁即可与销毁路径的 worker join 互等成死锁
   static std::recursive_mutex& ApiMutex() {
     static std::recursive_mutex m;
     return m;
@@ -69,6 +71,8 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
                          const std::string& opt,
                          bool val);
   virtual void UpdateColorTheme(BOOL darkMode);
+  void SetEventWindow(HWND wnd) override;
+  void OnDeferredEvent(int event, uintptr_t rime_session_id) override;
 
   void OnUpdateUI(std::function<void()> const& cb);
 
@@ -105,6 +109,7 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
   AppOptionsByAppName m_app_options;
   weasel::UI* m_ui;  // reference
   DWORD m_active_session;
+  HWND m_event_wnd = nullptr;  // OnNotify 投递 WM_BK_RIME_EVENT 用
   bool m_disabled;
   std::string m_last_schema_id;
   std::string m_last_app_name;

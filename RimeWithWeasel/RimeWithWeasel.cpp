@@ -454,35 +454,54 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
                                      uintptr_t session_id,
                                      const char* message_type,
                                      const char* message_value) {
-  // may be running in a thread when deploying rime
+  // rime 的通知在触发线程上同步回调——包括部署线程与插件 worker 线程。
+  // 本函数只允许拷贝字符串 + PostMessage，绝不调用 rime API、绝不等待任何锁
+  // （fcitx5-rime 的 eventDispatcher_.schedule / squirrel 的 GCD 同款纪律）。
+  // 在此等锁或做重活，会与"销毁会话时 join 工作线程"互等成死锁。
   RimeWithWeaselHandler* self =
       reinterpret_cast<RimeWithWeaselHandler*>(context_object);
   if (!self || !message_type || !message_value)
     return;
-  // 快照推送要走 rime API 并读会话表，必须与管道路径串行，否则切换输入法时的
-  // EndSession 风暴会撞上快照迭代（未加锁的 map 迭代 = 卡死/崩溃）
-  std::lock_guard<std::recursive_mutex> api_lock(RimeWithWeaselHandler::ApiMutex());
-  std::lock_guard<std::mutex> lock(m_notifier_mutex);
-  m_message_type = message_type;
-  m_message_value = message_value;
-  if (!strcmp(message_type, "property") &&
-      strcmp(message_value, "ai_predict/refresh=1") == 0) {
-    // 推送式刷新：把就绪的上下文快照写入共享内存再发信号，
-    // 前端读快照直刷 UI——消灭"拉取时机"竞态，也不引入防抖延迟
-    const char* eq = strchr(message_value, '=');
-    if (eq != NULL && eq[1] != '\0')
-      self->_PushAiSnapshot(session_id);
+
+  if (!strcmp(message_type, "property")) {
+    // 插件 worker 在 Compose 完成后发 _refresh_ui（菜单已完整填充），
+    // 此刻的快照推送投递给服务端消息循环，由串行线程执行
+    if (!strncmp(message_value, "_refresh_ui=", 12) && self->m_event_wnd)
+      PostMessageW(self->m_event_wnd, WM_BK_RIME_EVENT, BK_EVENT_AI_REFRESH,
+                   (LPARAM)session_id);
+    return;
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(m_notifier_mutex);
+    m_message_type = message_type;
+    m_message_value = message_value;
   }
   if (RIME_API_AVAILABLE(rime_api, get_state_label) &&
       !strcmp(message_type, "option")) {
+    // option 通知只来自按键处理（管道路径，已持有 API 串行权），就地补标签安全
     Bool state = message_value[0] != '!';
     const char* option_name = message_value + !state;
-    m_option_name = option_name;
     const char* state_label =
         rime_api->get_state_label(session_id, option_name, state);
+    std::lock_guard<std::mutex> lock(m_notifier_mutex);
+    m_option_name = option_name;
     if (state_label) {
       m_message_label = std::string(state_label);
     }
+  }
+}
+
+void RimeWithWeaselHandler::SetEventWindow(HWND wnd) {
+  m_event_wnd = wnd;
+}
+
+void RimeWithWeaselHandler::OnDeferredEvent(int event,
+                                            uintptr_t rime_session_id) {
+  if (event == BK_EVENT_AI_REFRESH) {
+    // 消息循环线程：与管道路径共用 API 串行锁，读会话表安全
+    std::lock_guard<std::recursive_mutex> lock(RimeWithWeaselHandler::ApiMutex());
+    _PushAiSnapshot(rime_session_id);
   }
 }
 

@@ -71,6 +71,18 @@ LRESULT ServerImpl::OnCreate(UINT uMsg,
                              BOOL& bHandled) {
   // not neccessary...
   ::SetWindowText(m_hWnd, WEASEL_IPC_WINDOW);
+  // OnNotify 可能跑在 rime 内部线程，需此窗口把事件转投回消息循环（串行线程）
+  if (m_pRequestHandler)
+    m_pRequestHandler->SetEventWindow(m_hWnd);
+  return 0;
+}
+
+LRESULT ServerImpl::OnRimeEvent(UINT uMsg,
+                                WPARAM wParam,
+                                LPARAM lParam,
+                                BOOL& bHandled) {
+  if (m_pRequestHandler)
+    m_pRequestHandler->OnDeferredEvent((int)wParam, (uintptr_t)lParam);
   return 0;
 }
 
