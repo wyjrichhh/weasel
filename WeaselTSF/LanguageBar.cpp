@@ -106,7 +106,7 @@ STDMETHODIMP CLangBarItemButton::GetInfo(TF_LANGBARITEMINFO* pInfo) {
   // 与 Win11 输入指示器重复显示两个图标，故不启用
   pInfo->dwStyle = TF_LBI_STYLE_BTN_BUTTON | TF_LBI_STYLE_BTN_MENU;
   pInfo->ulSort = 1;
-  lstrcpyW(pInfo->szDescription, L"WeaselTSF Button");
+  lstrcpyW(pInfo->szDescription, get_weasel_ime_name().c_str());
   return S_OK;
 }
 
@@ -222,7 +222,7 @@ STDMETHODIMP CLangBarItemButton::GetIcon(HICON* phIcon) {
 }
 
 STDMETHODIMP CLangBarItemButton::GetText(BSTR* pbstrText) {
-  *pbstrText = SysAllocString(L"WeaselTSF Button");
+  *pbstrText = SysAllocString(get_weasel_ime_name().c_str());
   return (*pbstrText == NULL) ? E_OUTOFMEMORY : S_OK;
 }
 
