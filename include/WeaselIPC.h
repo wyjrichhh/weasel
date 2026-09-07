@@ -85,8 +85,6 @@ struct RequestHandler {
   virtual void EndMaintenance() {}
   virtual void SetOption(DWORD session_id, const std::string& opt, bool val) {}
   virtual void UpdateColorTheme(BOOL darkMode) {}
-  // 服务端消息循环的轮询钩子（WM_TIMER 驱动，50ms）
-  virtual void OnTimerPoll() {}
 };
 
 // 處理server端回應之物件

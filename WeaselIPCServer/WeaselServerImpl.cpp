@@ -71,16 +71,6 @@ LRESULT ServerImpl::OnCreate(UINT uMsg,
                              BOOL& bHandled) {
   // not neccessary...
   ::SetWindowText(m_hWnd, WEASEL_IPC_WINDOW);
-  SetTimer(kPollTimerId, 50);
-  return 0;
-}
-
-LRESULT ServerImpl::OnTimer(UINT uMsg,
-                            WPARAM wParam,
-                            LPARAM lParam,
-                            BOOL& bHandled) {
-  if (wParam == kPollTimerId && m_pRequestHandler)
-    m_pRequestHandler->OnTimerPoll();
   return 0;
 }
 

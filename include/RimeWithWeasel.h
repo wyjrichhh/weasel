@@ -42,8 +42,6 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
     return m;
   }
 
-  void OnTimerPoll() override;
-
   RimeWithWeaselHandler(weasel::UI* ui);
   virtual ~RimeWithWeaselHandler();
   virtual void Initialize();
@@ -107,8 +105,6 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
   AppOptionsByAppName m_app_options;
   weasel::UI* m_ui;  // reference
   DWORD m_active_session;
-  // 上次看到的 ai_predict 推理完成计数（OnTimerPoll 轮询比较）
-  long long m_last_ai_seq = 0;
   bool m_disabled;
   std::string m_last_schema_id;
   std::string m_last_app_name;
