@@ -23,13 +23,19 @@ typedef std::map<std::string, AppOptions, CaseInsensitiveCompare>
     AppOptionsByAppName;
 
 struct SessionStatus {
-  SessionStatus() : style(weasel::UIStyle()), __synced(false), session_id(0) {
+  SessionStatus()
+      : style(weasel::UIStyle()),
+        __synced(false),
+        session_id(0),
+        proto_v2(false) {
     RIME_STRUCT(RimeStatus, status);
   }
   weasel::UIStyle style;
   RimeStatus status;
   bool __synced;
   RimeSessionId session_id;
+  // 客户端在 StartSession 声明 proto=2 后,响应改走二进制快照帧
+  bool proto_v2;
 };
 typedef std::map<DWORD, SessionStatus> SessionStatusMap;
 typedef DWORD WeaselSessionId;
@@ -86,6 +92,8 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
                                 bool ignore_app_name = false);
   bool _ShowMessage(weasel::Context& ctx, weasel::Status& status);
   bool _Respond(WeaselSessionId ipc_id, EatLine eat, bool include_commit = true);
+  // proto=2 会话的响应渲染:同一份数据收集与副作用,输出二进制帧
+  bool _RespondFrame(WeaselSessionId ipc_id, EatLine eat, bool include_commit);
   void _ReadClientInfo(WeaselSessionId ipc_id, LPWSTR buffer);
   void _GetCandidateInfo(weasel::CandidateInfo& cinfo, RimeContext& ctx);
   void _GetStatus(weasel::Status& stat,

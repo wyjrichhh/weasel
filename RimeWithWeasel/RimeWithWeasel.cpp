@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include <logging.h>
+#include <BangkeProtocol.h>
 #include <RimeWithWeasel.h>
 #include <StringAlgorithm.hpp>
 #include <WeaselConstants.h>
@@ -508,6 +509,7 @@ void RimeWithWeaselHandler::OnDeferredEvent(int event,
 void RimeWithWeaselHandler::_ReadClientInfo(WeaselSessionId ipc_id,
                                             LPWSTR buffer) {
   std::string app_name;
+  bool proto_v2 = false;
   // parse request text
   wbufferstream bs(buffer, WEASEL_IPC_BUFFER_LENGTH);
   std::wstring line;
@@ -524,6 +526,9 @@ void RimeWithWeaselHandler::_ReadClientInfo(WeaselSessionId ipc_id,
       to_lower(lwr);
       app_name = wtou8(lwr.substr(kClientAppKey.length()));
     }
+    // proto 协商:客户端声明 proto=2 后本会话响应改走二进制帧
+    if (line == L"session.proto=2")
+      proto_v2 = true;
   }
   SessionStatus& session_status = get_session_status(ipc_id);
   RimeSessionId session_id = session_status.session_id;
@@ -838,7 +843,11 @@ inline std::string _GetLabelText(const std::vector<Text>& labels,
   return wtou8(std::wstring(buffer));
 }
 
-bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat, bool include_commit) {
+bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat,
+                                     bool include_commit) {
+  if (get_session_status(ipc_id).proto_v2)
+    return _RespondFrame(ipc_id, eat, include_commit);
+  std::wstring body;
   std::wstring body;
   body.reserve(4096);
   std::vector<const char*> actions;
@@ -1040,6 +1049,144 @@ bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat, bool i
     return false;
 
   return true;
+}
+
+// proto=2 渲染:与 _Respond 相同的数据收集与副作用,输出二进制帧。
+// 帧字节偶数补零后按 wchar 重解释经 eat 传输——管道体本就是不透明字节块,
+// ③ 的客户端按字节取回。key_serial 暂为 0,由后续步骤引入单调序号。
+bool RimeWithWeaselHandler::_RespondFrame(WeaselSessionId ipc_id,
+                                          EatLine eat,
+                                          bool include_commit) {
+  SessionStatus& session_status = get_session_status(ipc_id);
+  RimeSessionId session_id = session_status.session_id;
+
+  std::wstring commit;
+  bool has_commit = false;
+  RIME_STRUCT(RimeCommit, rime_commit);
+  if (include_commit && rime_api->get_commit(session_id, &rime_commit)) {
+    commit = u8tow(rime_commit.text);
+    has_commit = true;
+    rime_api->free_commit(&rime_commit);
+  }
+
+  weasel::Status status;
+  RIME_STRUCT(RimeStatus, rime_status);
+  if (rime_api->get_status(session_id, &rime_status)) {
+    status.schema_name = rime_status.schema_name ? u8tow(rime_status.schema_name)
+                                                 : std::wstring();
+    status.schema_id = rime_status.schema_id ? u8tow(rime_status.schema_id)
+                                             : std::wstring();
+    status.ascii_mode = !!rime_status.is_ascii_mode;
+    status.composing = !!rime_status.is_composing;
+    status.disabled = !!rime_status.is_disabled;
+    status.full_shape = !!rime_status.is_full_shape;
+    if (m_global_ascii_mode &&
+        (session_status.status.is_ascii_mode != rime_status.is_ascii_mode)) {
+      for (auto& pair : m_session_status_map) {
+        if (pair.first != ipc_id)
+          rime_api->set_option(to_session_id(pair.first), "ascii_mode",
+                               !!rime_status.is_ascii_mode);
+      }
+    }
+    session_status.status = rime_status;
+    rime_api->free_status(&rime_status);
+  }
+
+  weasel::Context ctx;
+  bool has_ctx = false;
+  RIME_STRUCT(RimeContext, rime_ctx);
+  if (rime_api->get_context(session_id, &rime_ctx)) {
+    has_ctx = true;
+    const bool has_candidates = rime_ctx.menu.num_candidates > 0;
+    if (has_candidates)
+      _GetCandidateInfo(ctx.cinfo, rime_ctx);
+
+    if (rime_ctx.composition.length > 0) {
+      const char* preedit = rime_ctx.composition.preedit;
+      const int start = rime_ctx.composition.sel_start;
+      const int end = rime_ctx.composition.sel_end;
+      const int cursor = rime_ctx.composition.cursor_pos;
+      static const auto u8pos = [](const char* u8str, int wlen) {
+        return utf8towcslen(u8str, wlen);
+      };
+      switch (session_status.style.preedit_type) {
+        case UIStyle::PREVIEW: {
+          if (rime_ctx.commit_text_preview) {
+            ctx.preedit.str = u8tow(rime_ctx.commit_text_preview);
+            const int len = u8pos(rime_ctx.commit_text_preview, 0);
+            ctx.preedit.attributes.push_back(
+                weasel::TextAttribute(0, len, weasel::HIGHLIGHTED));
+            ctx.preedit.attributes.back().range.cursor = len;
+            break;
+          }
+          [[fallthrough]];
+        }
+        case UIStyle::COMPOSITION: {
+          ctx.preedit.str = u8tow(preedit);
+          if (start <= end) {
+            ctx.preedit.attributes.push_back(weasel::TextAttribute(
+                u8pos(preedit, start), u8pos(preedit, end),
+                weasel::HIGHLIGHTED));
+            ctx.preedit.attributes.back().range.cursor = u8pos(preedit, cursor);
+          }
+          break;
+        }
+        case UIStyle::PREVIEW_ALL: {
+          // 与文本协议相同的内联拼装:标记 + 标签 + 候选 + 注释
+          auto label_valid = session_status.style.label_font_point > 0;
+          auto comment_valid = session_status.style.comment_font_point > 0;
+          const std::wstring mark =
+              session_status.style.mark_text.empty()
+                  ? std::wstring(L"*")
+                  : session_status.style.mark_text;
+          std::wstring& s = ctx.preedit.str;
+          s = u8tow(preedit) + L"  [";
+          for (auto i = 0; i < rime_ctx.menu.num_candidates; i++) {
+            std::wstring label;
+            if (label_valid) {
+              wchar_t buf[128];
+              swprintf_s<128>(buf, session_status.style.label_text_format.c_str(),
+                              ctx.cinfo.labels.at(i).str.c_str());
+              label = buf;
+            }
+            const std::wstring comment =
+                comment_valid ? ctx.cinfo.comments.at(i).str : std::wstring();
+            const std::wstring prefix =
+                (i != rime_ctx.menu.highlighted_candidate_index)
+                    ? std::wstring()
+                    : mark;
+            s += L" " + prefix + label + u8tow(rime_ctx.menu.candidates[i].text) +
+                 L" " + comment;
+          }
+          s += L" ]";
+          if (start <= end) {
+            ctx.preedit.attributes.push_back(weasel::TextAttribute(
+                u8pos(preedit, start), u8pos(preedit, end),
+                weasel::HIGHLIGHTED));
+            ctx.preedit.attributes.back().range.cursor = u8pos(preedit, cursor);
+          }
+          break;
+        }
+      }
+    }
+    rime_api->free_context(&rime_ctx);
+  }
+
+  weasel::Config config;
+  config.inline_preedit = session_status.style.inline_preedit;
+
+  const bool send_style = !session_status.__synced;
+
+  auto frame = bangke::BuildFrame(ipc_id, 0, has_commit ? &commit : nullptr,
+                                  has_ctx ? &ctx : nullptr, &status, &config,
+                                  send_style ? &session_status.style : nullptr);
+  if (send_style)
+    session_status.__synced = true;
+  if (frame.size() % 2)
+    frame.push_back(0);
+  std::wstring wire(reinterpret_cast<const wchar_t*>(frame.data()),
+                    frame.size() / 2);
+  return eat(wire);
 }
 
 // Blend foreground and background ARGB colors taking alpha into account.
