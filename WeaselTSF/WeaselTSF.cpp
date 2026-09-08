@@ -276,11 +276,8 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   weasel::Config config;
   auto context = std::make_shared<weasel::Context>();
   weasel::Status status;
-  uint32_t magic = 0;
-  if (text.size() * sizeof(wchar_t) >= sizeof(bangke::FrameHeader)) {
-    std::memcpy(&magic, text.c_str(), sizeof(magic));
-  }
-  if (magic == bangke::kFrameMagic) {
+  // ok 为真即槽头 magic 已验,内容必为帧(槽只由 v2 服务端写入)
+  if (ok) {
     if (!bangke::ParseFramePrefix(
             reinterpret_cast<const uint8_t*>(text.c_str()),
             text.size() * sizeof(wchar_t), nullptr, &commit, context.get(),
