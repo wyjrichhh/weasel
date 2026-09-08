@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include <BangkeProtocol.h>
+#include <cstddef>
 #include <cstring>
 
 #include <WeaselIPCData.h>
@@ -254,9 +255,10 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   bool ok = magic == bangke::kFrameMagic;
   std::wstring text;
   if (ok) {
-    // 帧自描述长度:按 FrameHeader.payload_len 取字节(偶数补零无害)
+    // 帧自描述长度(payload_len 位于帧头第 16 字节,勿与 ipc_sid@8 混淆)
     uint32_t payload_len = 0;
-    memcpy(&payload_len, view + 8, sizeof(payload_len));
+    memcpy(&payload_len, view + offsetof(bangke::FrameHeader, payload_len),
+           sizeof(payload_len));
     const size_t frame_bytes =
         sizeof(bangke::FrameHeader) + payload_len;
     if (frame_bytes > 128 * 1024 || frame_bytes % 2)
