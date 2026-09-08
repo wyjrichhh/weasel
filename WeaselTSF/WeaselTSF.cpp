@@ -363,10 +363,12 @@ void WeaselTSF::_StartSnapshotListener() {
   _snap_thread = std::thread([sid, this]() {
     wchar_t evt_name[64];
     swprintf_s(evt_name, L"Local\\BangkeSnapEvt_%u", sid);
+    BkTraceLog(L"listener start sid=%u\r\n", sid);
     // server 竞态下可能尚未建事件:有限重试
     HANDLE evt = NULL;
     for (int i = 0; i < 10 && !evt && !_snap_stop; ++i) {
       evt = OpenEventW(SYNCHRONIZE, FALSE, evt_name);
+      BkTraceLog(L"open evt try=%d got=%d\r\n", i, evt ? 1 : 0);
       if (!evt)
         Sleep(100);
     }

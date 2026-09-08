@@ -447,13 +447,37 @@ void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
 
   wchar_t map_name[64], evt_name[64];
   _SnapSlotNames(ipc_id, map_name, 64, evt_name, 64);
-  LOG(INFO) << "TRACE push ipc=" << ipc_id << " wire=" << wire.size()  // TEMP-DEBUG
-              << " map_pending";
+  {  // TEMP-DEBUG
+    wchar_t p[MAX_PATH] = {0};
+    ExpandEnvironmentStringsW(L"%TEMP%\\bk_push_trace_srv.log", p, MAX_PATH);
+    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f != INVALID_HANDLE_VALUE) {
+      wchar_t line[128];
+      swprintf_s(line, L"push ipc=%llu wire=%u\r\n", (unsigned long long)ipc_id, (unsigned)wire.size());
+      DWORD w;
+      WriteFile(f, line, lstrlenW(line) * 2, &w, NULL);
+      CloseHandle(f);
+    }
+  }
   HANDLE map = OpenFileMappingW(FILE_MAP_WRITE, FALSE, map_name);
   if (!map)
     return;
   auto* view = (BYTE*)MapViewOfFile(map, FILE_MAP_WRITE, 0, 0, 0);
   HANDLE evt = OpenEventW(EVENT_MODIFY_STATE, FALSE, evt_name);
+  {  // TEMP-DEBUG
+    wchar_t p[MAX_PATH] = {0};
+    ExpandEnvironmentStringsW(L"%TEMP%\\bk_push_trace_srv.log", p, MAX_PATH);
+    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f != INVALID_HANDLE_VALUE) {
+      wchar_t line[128];
+      swprintf_s(line, L"push2 map=%d evt=%d\r\n", map ? 1 : 0, evt ? 1 : 0);
+      DWORD w;
+      WriteFile(f, line, lstrlenW(line) * 2, &w, NULL);
+      CloseHandle(f);
+    }
+  }
   if (view && wire.size() * sizeof(wchar_t) <= kSnapSlotBytes) {
     memcpy(view, wire.c_str(), wire.size() * sizeof(wchar_t));
     if (evt)
@@ -514,7 +538,19 @@ void RimeWithWeaselHandler::SetEventWindow(HWND wnd) {
 
 void RimeWithWeaselHandler::OnDeferredEvent(int event,
                                             uintptr_t rime_session_id) {
-  LOG(INFO) << "TRACE defev event=" << event << " sid=" << rime_session_id;  // TEMP-DEBUG
+  {  // TEMP-DEBUG 直写,绕过 glog 缓冲
+    wchar_t p[MAX_PATH] = {0};
+    ExpandEnvironmentStringsW(L"%TEMP%\\bk_push_trace_srv.log", p, MAX_PATH);
+    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f != INVALID_HANDLE_VALUE) {
+      wchar_t line[128];
+      swprintf_s(line, L"defev event=%d sid=%llu\r\n", event, (unsigned long long)rime_session_id);
+      DWORD w;
+      WriteFile(f, line, lstrlenW(line) * 2, &w, NULL);
+      CloseHandle(f);
+    }
+  }
   if (event == BK_EVENT_AI_REFRESH) {
     // 消息循环线程：与管道路径共用 API 串行锁，读会话表安全
     std::lock_guard<std::recursive_mutex> lock(RimeWithWeaselHandler::ApiMutex());
