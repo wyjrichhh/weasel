@@ -132,4 +132,15 @@ bool ParseFrame(const uint8_t* data,
                 weasel::Config* config,
                 weasel::UIStyle* style);
 
+// 前缀容错版:cap 是容量上限而非精确长度(管道缓冲按容量传入,帧自描述长度,
+// 尾部残留无害)。帧的实际解码边界仍由 payload_len 决定。
+bool ParseFramePrefix(const uint8_t* data,
+                      size_t cap,
+                      FrameHeader* hdr,
+                      std::wstring* commit,
+                      weasel::Context* ctx,
+                      weasel::Status* status,
+                      weasel::Config* config,
+                      weasel::UIStyle* style);
+
 }  // namespace bangke

@@ -1,4 +1,6 @@
 ﻿#include "stdafx.h"
+#include <BangkeProtocol.h>
+#include <cstring>
 
 #include <WeaselIPCData.h>
 #include <thread>
@@ -264,20 +266,33 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
     return;
   }
 
-  // 用既有响应文本协议在本地解析快照，不回服务端拉取（无时机竞态）
+  // 本地解析快照，不回服务端拉取（无时机竞态）。
+  // 服务端按会话协商结果产出:v2 会话给二进制帧,旧会话给行文本
   std::wstring commit;
   weasel::Config config;
   auto context = std::make_shared<weasel::Context>();
   weasel::Status status;
-  weasel::ResponseParser parser(&commit, context.get(), &status, &config,
-                                &_cand->style());
-  std::wistringstream iss(text);
-  std::wstring line;
-  while (std::getline(iss, line)) {
-    if (!line.empty() && line.back() == L'\r')
-      line.pop_back();
-    if (!line.empty() && line != L".")
-      parser.Feed(line);
+  uint32_t magic = 0;
+  if (text.size() * sizeof(wchar_t) >= sizeof(bangke::FrameHeader)) {
+    std::memcpy(&magic, text.c_str(), sizeof(magic));
+  }
+  if (magic == bangke::kFrameMagic) {
+    if (!bangke::ParseFramePrefix(
+            reinterpret_cast<const uint8_t*>(text.c_str()),
+            text.size() * sizeof(wchar_t), nullptr, &commit, context.get(),
+            &status, &config, &_cand->style()))
+      return;
+  } else {
+    weasel::ResponseParser parser(&commit, context.get(), &status, &config,
+                                  &_cand->style());
+    std::wistringstream iss(text);
+    std::wstring line;
+    while (std::getline(iss, line)) {
+      if (!line.empty() && line.back() == L'\r')
+        line.pop_back();
+      if (!line.empty() && line != L".")
+        parser.Feed(line);
+    }
   }
 
   // 快照尚无候选（组合重建中间态）则不动当前显示

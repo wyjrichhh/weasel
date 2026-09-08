@@ -1,4 +1,6 @@
 #include "stdafx.h"
+#include <BangkeProtocol.h>
+#include <cstring>
 #include <StringAlgorithm.hpp>
 #include <WeaselIPC.h>
 #include "Deserializer.h"
@@ -19,6 +21,16 @@ ResponseParser::ResponseParser(std::wstring* commit,
 }
 
 bool ResponseParser::operator()(LPWSTR buffer, UINT length) {
+  // v2 帧嗅探:响应体是不透明字节块,帧头 magic 决定解释方式;
+  // length 是 wchar 容量,帧自描述长度,尾部残留无害
+  if (length >= sizeof(bangke::FrameHeader) / sizeof(wchar_t)) {
+    uint32_t magic = 0;
+    std::memcpy(&magic, buffer, sizeof(magic));
+    if (magic == bangke::kFrameMagic)
+      return bangke::ParseFramePrefix(reinterpret_cast<const uint8_t*>(buffer),
+                                      length * sizeof(wchar_t), nullptr, p_commit,
+                                      p_context, p_status, p_config, p_style);
+  }
   wbufferstream bs(buffer, length);
   std::wstring line;
   while (bs.good()) {

@@ -292,7 +292,20 @@ bool ParseFrame(const uint8_t* data,
                 weasel::Status* status,
                 weasel::Config* config,
                 weasel::UIStyle* style) {
-  if (len < sizeof(FrameHeader))
+  // 严格版:载荷长度必须与 len 精确一致(用于已知边界的场景)
+  return ParseFramePrefix(data, len, hdr, commit, ctx, status, config, style) &&
+         hdr && hdr->payload_len + sizeof(FrameHeader) == len;
+}
+
+bool ParseFramePrefix(const uint8_t* data,
+                      size_t cap,
+                      FrameHeader* hdr,
+                      std::wstring* commit,
+                      weasel::Context* ctx,
+                      weasel::Status* status,
+                      weasel::Config* config,
+                      weasel::UIStyle* style) {
+  if (cap < sizeof(FrameHeader))
     return false;
   FrameHeader h;
   std::memcpy(&h, data, sizeof(h));
@@ -300,7 +313,7 @@ bool ParseFrame(const uint8_t* data,
     *hdr = h;
   if (h.magic != kFrameMagic || h.version != kProtoVersion)
     return false;
-  if (h.payload_len != len - sizeof(FrameHeader))
+  if (h.payload_len > cap - sizeof(FrameHeader))
     return false;
 
   Reader r(data + sizeof(FrameHeader), h.payload_len);
