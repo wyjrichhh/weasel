@@ -99,16 +99,9 @@ inline std::string wstring_to_string(const std::wstring& wstr,
   return res;
 }
 
-inline BOOL is_wow64() {
-  DWORD errorCode;
-  if (GetSystemWow64DirectoryW(NULL, 0) == 0)
-    if ((errorCode = GetLastError()) == ERROR_CALL_NOT_IMPLEMENTED)
-      return FALSE;
-    else
-      ExitProcess((UINT)errorCode);
-  else
-    return TRUE;
-}
+// 原 is_wow64() 用 GetSystemWow64DirectoryW 判定,但该 API 在任何 64 位系统上
+// 都返回非零(与调用进程位数无关),64 位进程被误判进 WOW6432Node 读注册表。
+// x64-only 后此判定无存在意义,已删除。
 
 template <typename CharT>
 struct EscapeChar {

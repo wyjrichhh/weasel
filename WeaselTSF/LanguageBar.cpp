@@ -35,13 +35,8 @@ static void HMENU2ITfMenu(HMENU hMenu, ITfMenu* pTfMenu) {
 }
 
 static LPCWSTR GetWeaselRegName() {
-  LPCWSTR WEASEL_REG_NAME_;
-  if (is_wow64())
-    WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Bangke";
-  else
-    WEASEL_REG_NAME_ = L"Software\\Bangke";
-
-  return WEASEL_REG_NAME_;
+  // x64-only:64 位视图即本进程默认视图,无需 WOW6432Node 分支
+  return L"Software\\Bangke";
 }
 
 static bool open(const std::wstring& path) {
@@ -294,41 +289,21 @@ std::wstring WeaselTSF::_GetRootDir() {
 
 // 统一进程拉起：CreateProcessW 而非 ShellExecuteW——后者在 TSF dll 的裸线程
 // （无 OLE 初始化）上会静默失败；工作目录必须显式给，继承的 cwd 不可靠
-// TEMP-DEBUG: 定位菜单拉起失效,每步落盘,定位后移除
 void WeaselTSF::_LaunchDetached(const std::wstring& exe,
                                 const std::wstring& args) {
   std::wstring dir = _GetRootDir();
-  auto dbg = [exe](const wchar_t* step, DWORD detail = 0) {
-    wchar_t path[MAX_PATH] = {0};
-    ExpandEnvironmentStringsW(L"%TEMP%\\bangke_menu.log", path, MAX_PATH);
-    HANDLE f = CreateFileW(path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (f == INVALID_HANDLE_VALUE)
-      return;
-    wchar_t line[512];
-    wsprintfW(line, L"[%lu] %s %s (%lu)\r\n", GetCurrentProcessId(), exe.c_str(), step, detail);
-    DWORD w = 0;
-    WriteFile(f, line, lstrlenW(line) * sizeof(wchar_t), &w, NULL);
-    CloseHandle(f);
-  };
-  if (dir.empty()) {
-    dbg(L"ABORT: root dir empty");
+  if (dir.empty())
     return;
-  }
-  std::thread th([dir, exe, args, dbg]() {
+  std::thread th([dir, exe, args]() {
     std::wstring cmd = L"\"" + dir + L"\\" + exe + L"\"";
     if (!args.empty())
       cmd += L" " + args;
     STARTUPINFOW si = {sizeof(si)};
     PROCESS_INFORMATION pi = {};
-    dbg(L"CreateProcessW:", 0);
     if (CreateProcessW(NULL, cmd.data(), NULL, NULL, FALSE, DETACHED_PROCESS,
                        NULL, dir.c_str(), &si, &pi)) {
       CloseHandle(pi.hProcess);
       CloseHandle(pi.hThread);
-      dbg(L"OK", 0);
-    } else {
-      dbg(L"FAILED err=", GetLastError());
     }
   });
   th.detach();
@@ -340,20 +315,6 @@ void WeaselTSF::_LaunchSettings(const std::wstring& args) {
 
 // 菜单唯一派发点：全部命令在 dll 内就地处理，server 不再承载任何菜单逻辑
 void WeaselTSF::_ExecuteMenuCommand(UINT wID) {
-  // TEMP-DEBUG: 记录每次派发,定位后移除
-  {
-    wchar_t path[MAX_PATH] = {0};
-    ExpandEnvironmentStringsW(L"%TEMP%\\bangke_menu.log", path, MAX_PATH);
-    HANDLE f = CreateFileW(path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (f != INVALID_HANDLE_VALUE) {
-      wchar_t line[128];
-      wsprintfW(line, L"[%lu] menu cmd id=%u\r\n", GetCurrentProcessId(), wID);
-      DWORD w = 0;
-      WriteFile(f, line, lstrlenW(line) * sizeof(wchar_t), &w, NULL);
-      CloseHandle(f);
-    }
-  }
   std::wstring dir{};
   switch (wID) {
     case ID_WEASELTRAY_SETTINGS:
