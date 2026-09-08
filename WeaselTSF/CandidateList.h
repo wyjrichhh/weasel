@@ -49,8 +49,6 @@ class CCandidateList : public ITfIntegratableCandidateListUIElement,
   /* Update */
   void UpdateUI(const weasel::Context& ctx, const weasel::Status& status);
   void UpdateStyle(const weasel::UIStyle& sty);
-  // 在输入位置弹一条短暂提示(仅 aux 文本,自动消失),用于菜单动作的可见反馈
-  void ShowTip(const std::wstring& text);
   void UpdateInputPosition(RECT const& rc);
   void Destroy();
   void DestroyAll();

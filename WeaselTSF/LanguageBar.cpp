@@ -39,6 +39,77 @@ static LPCWSTR GetWeaselRegName() {
   return L"Software\\Bangke";
 }
 
+namespace {
+// 菜单动作的可见反馈:主屏工作区底部居中的小 toast,不抢焦点,1.6s 自毁。
+// 独立于候选窗生命周期(菜单点击时候选窗可能尚未创建),纯 Win32 零依赖。
+void ShowToast(const std::wstring& text) {
+  struct Toast {
+    static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
+      switch (m) {
+        case WM_PAINT: {
+          PAINTSTRUCT ps;
+          HDC dc = BeginPaint(h, &ps);
+          RECT rc;
+          GetClientRect(h, &rc);
+          SetBkColor(dc, RGB(19, 27, 38));
+          SetTextColor(dc, RGB(232, 236, 241));
+          SelectObject(dc, GetStockObject(DEFAULT_GUI_FONT));
+          auto* t = (const std::wstring*)GetWindowLongPtrW(h, GWLP_USERDATA);
+          if (t)
+            DrawTextW(dc, t->c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+          EndPaint(h, &ps);
+          return 0;
+        }
+        case WM_TIMER:
+          DestroyWindow(h);
+          return 0;
+        case WM_DESTROY:
+          delete (std::wstring*)GetWindowLongPtrW(h, GWLP_USERDATA);
+          PostQuitMessage(0);
+          return 0;
+      }
+      return DefWindowProcW(h, m, w, l);
+    }
+  };
+  std::thread th([text]() {
+    static ATOM cls = 0;
+    if (!cls) {
+      WNDCLASSW wc = {0};
+      wc.lpfnWndProc = Toast::WndProc;
+      wc.hInstance = GetModuleHandleW(NULL);
+      wc.hbrBackground = CreateSolidBrush(RGB(19, 27, 38));
+      wc.lpszClassName = L"BangkeToast";
+      cls = RegisterClassW(&wc);
+    }
+    if (!cls)
+      return;
+    const int w = std::max(160, (int)(text.size() * 14 + 48));
+    const int h = 42;
+    RECT wa;
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
+    const int x = wa.left + ((wa.right - wa.left) - w) / 2;
+    const int y = wa.bottom - h - 48;
+    auto* t = new std::wstring(text);
+    HWND hwnd = CreateWindowExW(
+        WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW, L"BangkeToast",
+        L"", WS_POPUP, x, y, w, h, NULL, NULL, GetModuleHandleW(NULL), NULL);
+    if (!hwnd) {
+      delete t;
+      return;
+    }
+    SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)t);
+    SetTimer(hwnd, 1, 1600, NULL);
+    ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+    MSG msg;
+    while (GetMessageW(&msg, NULL, 0, 0) > 0) {
+      TranslateMessage(&msg);
+      DispatchMessageW(&msg);
+    }
+  });
+  th.detach();
+}
+}  // namespace
+
 static bool open(const std::wstring& path) {
   return (uintptr_t)ShellExecuteW(NULL, L"open", path.c_str(), NULL, NULL,
                                   SW_SHOWNORMAL) > 32;
@@ -364,14 +435,12 @@ void WeaselTSF::_ExecuteMenuCommand(UINT wID) {
         });
         th.detach();
       }
-      if (_cand)
-        _cand->ShowTip(L"输入法服务已重启");
+      ShowToast(L"输入法服务已重启");
       break;
     }
     case ID_WEASELTRAY_QUIT:
       m_client.ShutdownServer();
-      if (_cand)
-        _cand->ShowTip(L"输入法服务已退出，下次按键时自动恢复");
+      ShowToast(L"输入法服务已退出，下次按键时自动恢复");
       break;
   }
 }

@@ -219,16 +219,6 @@ void CCandidateList::UpdateUI(const Context& ctx, const Status& status) {
     Show(FALSE);
 }
 
-void CCandidateList::ShowTip(const std::wstring& text) {
-  if (!_ui)
-    return;
-  weasel::Context ctx;
-  weasel::Status status;
-  ctx.aux.str = text;
-  _ui->Update(ctx, status);
-  _ui->ShowWithTimeout(1500);
-}
-
 void CCandidateList::UpdateStyle(const UIStyle& sty) {
   _ui->style() = sty;
 }
