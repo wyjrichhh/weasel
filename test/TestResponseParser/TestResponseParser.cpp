@@ -1,96 +1,159 @@
-﻿// TestResponseParser.cpp : Defines the entry point for the console application.
-//
+// codec 往返与截断健壮性测试(p4 协议帧)
+// 项目名暂沿用 TestResponseParser,p6 清扫时改名为 TestSnapshotCodec
 
 #include "stdafx.h"
-#include <boost/detail/lightweight_test.hpp>
-#include <ResponseParser.h>
+#include <BangkeProtocol.h>
 #include <string>
+#include <vector>
 
-void test_1() {
-  WCHAR resp[] = L"action=noop\n";
-  DWORD len = wcslen(resp);
-  std::wstring commit;
+static int g_failed = 0;
+
+#define CHECK(cond)                                             \
+  do {                                                          \
+    if (!(cond)) {                                              \
+      printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #cond);     \
+      ++g_failed;                                               \
+    }                                                           \
+  } while (0)
+
+static weasel::Context MakeContext() {
   weasel::Context ctx;
-  weasel::Status status;
-  weasel::ResponseParser parser(&commit, &ctx, &status);
-  parser(resp, len);
-  BOOST_TEST(commit.empty());
-  BOOST_TEST(ctx.empty());
+  ctx.preedit.str = L"ni'hao'蚌壳";
+  ctx.preedit.attributes.push_back(
+      weasel::TextAttribute(0, 2, weasel::HIGHLIGHTED));
+  ctx.aux.str = L"提示文本";
+  weasel::Text candy;
+  candy.str = L"你好";
+  candy.attributes.push_back(weasel::TextAttribute(0, 2, weasel::LAST_TYPE));
+  ctx.cinfo.candies.push_back(candy);
+  ctx.cinfo.candies.push_back(L"逆 Hoy");
+  ctx.cinfo.comments.push_back(L"注释");
+  ctx.cinfo.labels.push_back(L"1.");
+  ctx.cinfo.currentPage = 2;
+  ctx.cinfo.totalPages = 7;
+  ctx.cinfo.highlighted = 1;
+  ctx.cinfo.is_last_page = true;
+  return ctx;
 }
 
-void test_2() {
-  WCHAR resp[] =
-      L"action=commit\n"
-      L"commit=教這句話上屏=3.14\n";
-  DWORD len = wcslen(resp);
-  std::wstring commit;
-  weasel::Context ctx;
+static void RoundTrip() {
+  const std::wstring commit = L"上屏文本";
+  weasel::Context ctx = MakeContext();
   weasel::Status status;
-  ctx.aux.str = L"從前的值";
-  weasel::ResponseParser parser(&commit, &ctx, &status);
-  parser(resp, len);
-  BOOST_TEST(commit == L"教這句話上屏=3.14");
-  BOOST_TEST(ctx.preedit.empty());
-  BOOST_TEST(ctx.aux.str == L"從前的值");
-  BOOST_TEST(ctx.cinfo.candies.empty());
+  status.schema_name = L"朙月拼音";
+  status.schema_id = L"luna_pinyin";
+  status.ascii_mode = true;
+  status.composing = true;
+  status.full_shape = false;
+  status.type = weasel::FULL_SHAPE;
+  weasel::Config config;
+  config.inline_preedit = true;
+  weasel::UIStyle style;
+  style.font_face = L"Microsoft YaHei";
+  style.font_point = 14;
+  style.hover_type = weasel::UIStyle::HILITE;
+  style.layout_type = weasel::UIStyle::LAYOUT_VERTICAL;
+  style.text_color = 0x12345678;
+  style.hilited_mark_color = -1;
+  style.client_caps = 7;
+
+  auto frame = bangke::BuildFrame(0xABCD, 42, &commit, &ctx, &status, &config,
+                                  &style);
+  CHECK(frame.size() > sizeof(bangke::FrameHeader));
+
+  bangke::FrameHeader hdr{};
+  std::wstring commit2;
+  weasel::Context ctx2;
+  weasel::Status status2;
+  weasel::Config config2;
+  weasel::UIStyle style2;
+  const bool ok =
+      bangke::ParseFrame(frame.data(), frame.size(), &hdr, &commit2, &ctx2,
+                         &status2, &config2, &style2);
+  CHECK(ok);
+  CHECK(hdr.magic == bangke::kFrameMagic);
+  CHECK(hdr.version == bangke::kProtoVersion);
+  CHECK(hdr.flags == (bangke::SNAP_HAS_COMMIT | bangke::SNAP_CTX |
+                      bangke::SNAP_STATUS | bangke::SNAP_CONFIG |
+                      bangke::SNAP_STYLE));
+  CHECK(hdr.ipc_sid == 0xABCD);
+  CHECK(hdr.key_serial == 42);
+  CHECK(commit2 == commit);
+  CHECK(ctx2.preedit.str == ctx.preedit.str);
+  CHECK(ctx2.preedit.attributes.size() == 1);
+  CHECK(ctx2.preedit.attributes[0].type == weasel::HIGHLIGHTED);
+  CHECK(ctx2.cinfo.candies.size() == 2);
+  CHECK(ctx2.cinfo.candies[1].str == L"逆 Hoy");
+  CHECK(ctx2.cinfo.currentPage == 2 && ctx2.cinfo.totalPages == 7);
+  CHECK(ctx2.cinfo.highlighted == 1 && ctx2.cinfo.is_last_page);
+  CHECK(status2.schema_name == L"朙月拼音");
+  CHECK(status2.ascii_mode && status2.composing);
+  CHECK(status2.type == weasel::FULL_SHAPE);
+  CHECK(config2.inline_preedit);
+  CHECK(style2.font_face == L"Microsoft YaHei");
+  CHECK(style2.font_point == 14);
+  CHECK(style2.layout_type == weasel::UIStyle::LAYOUT_VERTICAL);
+  CHECK(style2.text_color == 0x12345678);
+  CHECK(style2.hilited_mark_color == -1);
+  CHECK(style2.client_caps == 7);
 }
 
-void test_3() {
-  WCHAR resp[] =
-      L"action=ctx\n"
-      L"ctx.preedit=寫作串=3.14\n"
-      L"ctx.aux=sie'zuoh'chuan=3.14\n";
-  DWORD len = wcslen(resp);
-  std::wstring commit;
-  weasel::Context ctx;
-  weasel::Status status;
-  weasel::ResponseParser parser(&commit, &ctx, &status);
-  parser(resp, len);
-  BOOST_TEST(commit.empty());
-  BOOST_TEST(ctx.preedit.str == L"寫作串=3.14");
-  BOOST_TEST(ctx.preedit.attributes.empty());
-  BOOST_TEST(ctx.aux.str == L"sie'zuoh'chuan=3.14");
+static void EmptyFrame() {
+  auto frame = bangke::BuildFrame(1, 0, nullptr, nullptr, nullptr, nullptr,
+                                  nullptr);
+  bangke::FrameHeader hdr{};
+  CHECK(bangke::ParseFrame(frame.data(), frame.size(), &hdr, nullptr, nullptr,
+                           nullptr, nullptr, nullptr));
+  CHECK(hdr.flags == 0);
+  CHECK(hdr.payload_len == 0);
 }
 
-void test_4() {
-  WCHAR resp[] =
-      L"action=commit,ctx\n"
-      L"ctx.preedit=候選乙=3.14\n"
-      L"ctx.preedit.cursor=0,3\n"
-      L"ctx.cand.length=2\n"
-      L"ctx.cand.0=候選甲\n"
-      L"ctx.cand.1=候選乙\n"
-      L"ctx.cand.cursor=1\n"
-      L"ctx.cand.page=0/1\n";
-  DWORD len = wcslen(resp);
-  std::wstring commit;
-  weasel::Context ctx;
+static void TruncationFuzz() {
+  weasel::Context ctx = MakeContext();
   weasel::Status status;
-  weasel::ResponseParser parser(&commit, &ctx, &status);
-  parser(resp, len);
-  BOOST_TEST(commit.empty());
-  BOOST_TEST(ctx.preedit.str == L"候選乙=3.14");
-  BOOST_ASSERT(1 == ctx.preedit.attributes.size());
-  weasel::TextAttribute attr0 = ctx.preedit.attributes[0];
-  BOOST_TEST_EQ(weasel::HIGHLIGHTED, attr0.type);
-  BOOST_TEST_EQ(0, attr0.range.start);
-  BOOST_TEST_EQ(3, attr0.range.end);
-  BOOST_TEST(ctx.aux.empty());
-  weasel::CandidateInfo& c = ctx.cinfo;
-  BOOST_ASSERT(2 == c.candies.size());
-  BOOST_TEST(c.candies[0].str == L"候選甲");
-  BOOST_TEST(c.candies[1].str == L"候選乙");
-  BOOST_TEST_EQ(1, c.highlighted);
-  BOOST_TEST_EQ(0, c.currentPage);
-  BOOST_TEST_EQ(1, c.totalPages);
+  status.schema_name = L"x";
+  auto frame = bangke::BuildFrame(3, 9, nullptr, &ctx, &status, nullptr,
+                                  nullptr);
+  weasel::Context ctx2;
+  weasel::Status status2;
+  bangke::FrameHeader hdr{};
+  // 任何截断都必须解析失败(且不得崩溃)
+  for (size_t cut = 0; cut < frame.size(); ++cut) {
+    const bool ok = bangke::ParseFrame(frame.data(), cut, &hdr, nullptr, &ctx2,
+                                       &status2, nullptr, nullptr);
+    CHECK(!ok);
+  }
+  // 尾部粘垃圾:长度不匹配,拒绝
+  std::vector<uint8_t> tampered = frame;
+  tampered.push_back(0xEE);
+  CHECK(!bangke::ParseFrame(tampered.data(), tampered.size(), &hdr, nullptr,
+                            &ctx2, &status2, nullptr, nullptr));
+  // 完整帧仍可解析
+  CHECK(bangke::ParseFrame(frame.data(), frame.size(), &hdr, nullptr, &ctx2,
+                           &status2, nullptr, nullptr));
 }
 
-int _tmain(int argc, _TCHAR* argv[]) {
-  test_1();
-  test_2();
-  test_3();
-  test_4();
+static void OutParamSubset() {
+  // 只取部分输出参数也要正确消费流
+  weasel::Status status;
+  status.composing = true;
+  auto frame = bangke::BuildFrame(5, 6, nullptr, nullptr, &status, nullptr,
+                                  nullptr);
+  bangke::FrameHeader hdr{};
+  CHECK(bangke::ParseFrame(frame.data(), frame.size(), &hdr, nullptr, nullptr,
+                           nullptr, nullptr, nullptr));
+  CHECK(hdr.flags == bangke::SNAP_STATUS);
+}
 
-  system("pause");
-  return boost::report_errors();
+int main() {
+  RoundTrip();
+  EmptyFrame();
+  TruncationFuzz();
+  OutParamSubset();
+  if (g_failed == 0) {
+    printf("ALL PASS\n");
+    return 0;
+  }
+  printf("%d FAILURES\n", g_failed);
+  return 1;
 }
