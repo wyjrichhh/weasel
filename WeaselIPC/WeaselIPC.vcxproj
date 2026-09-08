@@ -84,6 +84,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BangkeProtocol.cpp" />
     <ClCompile Include="Configurator.cpp" />
     <ClCompile Include="Deserializer.cpp" />
     <ClCompile Include="PipeChannel.cpp" />
@@ -99,6 +100,7 @@
     <ClCompile Include="ContextUpdater.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\BangkeProtocol.h" />
     <ClInclude Include="..\include\PipeChannel.h" />
     <ClInclude Include="Configurator.h" />
     <ClInclude Include="Deserializer.h" />
