@@ -447,6 +447,8 @@ void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
 
   wchar_t map_name[64], evt_name[64];
   _SnapSlotNames(ipc_id, map_name, 64, evt_name, 64);
+  LOG(INFO) << "TRACE push ipc=" << ipc_id << " wire=" << wire.size()  // TEMP-DEBUG
+              << " map_pending";
   HANDLE map = OpenFileMappingW(FILE_MAP_WRITE, FALSE, map_name);
   if (!map)
     return;
@@ -512,6 +514,7 @@ void RimeWithWeaselHandler::SetEventWindow(HWND wnd) {
 
 void RimeWithWeaselHandler::OnDeferredEvent(int event,
                                             uintptr_t rime_session_id) {
+  LOG(INFO) << "TRACE defev event=" << event << " sid=" << rime_session_id;  // TEMP-DEBUG
   if (event == BK_EVENT_AI_REFRESH) {
     // 消息循环线程：与管道路径共用 API 串行锁，读会话表安全
     std::lock_guard<std::recursive_mutex> lock(RimeWithWeaselHandler::ApiMutex());
