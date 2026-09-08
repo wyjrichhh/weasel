@@ -12,6 +12,7 @@
 #include <vector>
 #include <regex>
 #include <rime_api.h>
+#include <Sddl.h>
 
 #define TRANSPARENT_COLOR 0x00000000
 #define ARGB2ABGR(value)                                 \
@@ -25,6 +26,33 @@ typedef enum { COLOR_ABGR = 0, COLOR_ARGB, COLOR_RGBA } ColorFormat;
 using namespace weasel;
 
 static RimeApi* rime_api;
+
+// AI 快照推送槽:每会话一块共享内存 + 一个 auto-reset 事件。
+// 槽内容即 BangkeProtocol 帧(自描述长度,覆写旧值无需清零)。
+// 命名事件让前端在自身监听线程内被唤醒、进程内 PostMessage 触达候选窗
+// ——旧方案 FindWindowEx 广播会被 UIPI 拦掉(提权应用收不到),全局单槽
+// 也无会话隔离。DACL 放开 Everyone 与 ALL APP PACKAGES(UWP 可开)。
+static const size_t kSnapSlotBytes = 128 * 1024;
+
+static void _SnapSlotNames(WeaselSessionId ipc_id, wchar_t* map_name,
+                           size_t map_n, wchar_t* evt_name, size_t evt_n) {
+  swprintf_s(map_name, map_n, L"Local\\BangkeSnap_%u", (DWORD)ipc_id);
+  swprintf_s(evt_name, evt_n, L"Local\\BangkeSnapEvt_%u", (DWORD)ipc_id);
+}
+
+static SECURITY_ATTRIBUTES* _SnapSlotSA() {
+  // 对 Section/Event 对象授 GENERIC_ALL:SY/Everyone/AllAppPackages
+  static SECURITY_ATTRIBUTES sa = [] {
+    SECURITY_ATTRIBUTES s{};
+    s.nLength = sizeof(s);
+    ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        L"D:P(A;;GA;;;SY)(A;;GA;;;WD)(A;;GA;;;AC)", SDDL_REVISION_1,
+        &s.lpSecurityDescriptor, NULL);
+    return s;
+  }();
+  return &sa;
+}
+
 WeaselSessionId _GenerateNewWeaselSessionId(SessionStatusMap sm, DWORD pid) {
   if (sm.empty())
     return (WeaselSessionId)(pid + 1);
@@ -394,17 +422,6 @@ std::string RimeWithWeaselHandler::m_message_label;
 std::string RimeWithWeaselHandler::m_option_name;
 std::mutex RimeWithWeaselHandler::m_notifier_mutex;
 
-
-// 共享内存布局：头(magic/seq/字节数) + 响应文本(wchar)
-struct AiPushHeader {
-  DWORD magic;
-  DWORD seq;
-  DWORD bytes;
-};
-static const DWORD kAiPushMagic = 0x314B4220;  // " BK1"
-static const size_t kAiPushTextBytes = 128 * 1024;
-static HANDLE s_ai_push_map = NULL;
-static DWORD s_ai_push_seq = 0;
 
 void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
   // rime session -> ipc session
