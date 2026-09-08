@@ -47,19 +47,24 @@ bool GetCandidateInfo(Reader& r, weasel::CandidateInfo& ci) {
   ci.is_last_page = r.Bool();
   ci.totalPages = r.I32();
   ci.highlighted = r.I32();
-  const uint32_t nCandy = r.U32();
-  const uint32_t nComment = r.U32();
-  const uint32_t nLabel = r.U32();
-  if (!r.Ok() || nCandy > 1024 || nComment > 1024 || nLabel > 1024)
+  // 与 PutCandidateInfo 严格同序:计数与数据交错(曾因三计数连读导致流错位)
+  uint32_t n = r.U32();
+  if (!r.Ok() || n > 1024)
     return false;
-  ci.candies.resize(nCandy);
-  for (uint32_t i = 0; i < nCandy; ++i)
+  ci.candies.resize(n);
+  for (uint32_t i = 0; i < n; ++i)
     if (!GetText(r, ci.candies[i])) return false;
-  ci.comments.resize(nComment);
-  for (uint32_t i = 0; i < nComment; ++i)
+  n = r.U32();
+  if (!r.Ok() || n > 1024)
+    return false;
+  ci.comments.resize(n);
+  for (uint32_t i = 0; i < n; ++i)
     if (!GetText(r, ci.comments[i])) return false;
-  ci.labels.resize(nLabel);
-  for (uint32_t i = 0; i < nLabel; ++i)
+  n = r.U32();
+  if (!r.Ok() || n > 1024)
+    return false;
+  ci.labels.resize(n);
+  for (uint32_t i = 0; i < n; ++i)
     if (!GetText(r, ci.labels[i])) return false;
   return r.Ok();
 }
