@@ -26,9 +26,9 @@ static weasel::Context MakeContext() {
   candy.str = L"你好";
   candy.attributes.push_back(weasel::TextAttribute(0, 2, weasel::LAST_TYPE));
   ctx.cinfo.candies.push_back(candy);
-  ctx.cinfo.candies.push_back(L"逆 Hoy");
-  ctx.cinfo.comments.push_back(L"注释");
-  ctx.cinfo.labels.push_back(L"1.");
+  ctx.cinfo.candies.push_back(weasel::Text(L"逆 Hoy"));
+  ctx.cinfo.comments.push_back(weasel::Text(L"注释"));
+  ctx.cinfo.labels.push_back(weasel::Text(L"1."));
   ctx.cinfo.currentPage = 2;
   ctx.cinfo.totalPages = 7;
   ctx.cinfo.highlighted = 1;
