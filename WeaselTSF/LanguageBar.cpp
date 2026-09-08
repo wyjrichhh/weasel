@@ -292,16 +292,30 @@ std::wstring WeaselTSF::_GetRootDir() {
   return dir;
 }
 
-void WeaselTSF::_LaunchSettings(const std::wstring& args) {
+// 统一进程拉起：CreateProcessW 而非 ShellExecuteW——后者在 TSF dll 的裸线程
+// （无 OLE 初始化）上会静默失败；工作目录必须显式给，继承的 cwd 不可靠
+void WeaselTSF::_LaunchDetached(const std::wstring& exe,
+                                const std::wstring& args) {
   std::wstring dir = _GetRootDir();
   if (dir.empty())
     return;
-  // 工作目录必须显式给：本 dll 宿主于任意应用进程，继承的 cwd 不可靠
-  std::thread th([dir, args]() {
-    ShellExecuteW(NULL, NULL, (dir + L"\\BangkeSettings.exe").c_str(),
-                  args.c_str(), dir.c_str(), SW_SHOWNORMAL);
+  std::thread th([dir, exe, args]() {
+    std::wstring cmd = L"\"" + dir + L"\\" + exe + L"\"";
+    if (!args.empty())
+      cmd += L" " + args;
+    STARTUPINFOW si = {sizeof(si)};
+    PROCESS_INFORMATION pi = {};
+    if (CreateProcessW(NULL, cmd.data(), NULL, NULL, FALSE, DETACHED_PROCESS,
+                       NULL, dir.c_str(), &si, &pi)) {
+      CloseHandle(pi.hProcess);
+      CloseHandle(pi.hThread);
+    }
   });
   th.detach();
+}
+
+void WeaselTSF::_LaunchSettings(const std::wstring& args) {
+  _LaunchDetached(L"BangkeSettings.exe", args);
 }
 
 // 菜单唯一派发点：全部命令在 dll 内就地处理，server 不再承载任何菜单逻辑
@@ -338,14 +352,7 @@ void WeaselTSF::_ExecuteMenuCommand(UINT wID) {
       open(WeaselLogPath().wstring());
       break;
     case ID_WEASELTRAY_RERUN_SERVICE:
-      dir = _GetRootDir();
-      if (!dir.empty()) {
-        std::thread th([dir]() {
-          ShellExecuteW(NULL, L"open", (dir + L"\\start_service.bat").c_str(),
-                        NULL, dir.c_str(), SW_HIDE);
-        });
-        th.detach();
-      }
+      _LaunchDetached(L"BangkeServer.exe", L"");
       break;
     case ID_WEASELTRAY_QUIT:
       m_client.ShutdownServer();
