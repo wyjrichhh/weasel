@@ -346,11 +346,32 @@ void WeaselTSF::_ExecuteMenuCommand(UINT wID) {
     case ID_WEASELTRAY_LOGDIR:
       open(WeaselLogPath().wstring());
       break;
-    case ID_WEASELTRAY_RERUN_SERVICE:
-      _LaunchDetached(L"BangkeServer.exe", L"");
+    case ID_WEASELTRAY_RERUN_SERVICE: {
+      // 先停后启:旧实例持单实例互斥量,直接拉新实例会立即退出等于没重启
+      m_client.ShutdownServer();
+      std::wstring dir = _GetRootDir();
+      if (!dir.empty()) {
+        std::thread th([dir]() {
+          Sleep(400);  // 等 WM_QUIT 落地、互斥量释放
+          std::wstring cmd = L"\"" + dir + L"\\BangkeServer.exe\"";
+          STARTUPINFOW si = {sizeof(si)};
+          PROCESS_INFORMATION pi = {};
+          if (CreateProcessW(NULL, cmd.data(), NULL, NULL, FALSE,
+                             DETACHED_PROCESS, NULL, dir.c_str(), &si, &pi)) {
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+          }
+        });
+        th.detach();
+      }
+      if (_cand)
+        _cand->ShowTip(L"输入法服务已重启");
       break;
+    }
     case ID_WEASELTRAY_QUIT:
       m_client.ShutdownServer();
+      if (_cand)
+        _cand->ShowTip(L"输入法服务已退出，下次按键时自动恢复");
       break;
   }
 }
