@@ -148,6 +148,8 @@ class Client {
   void FocusOut();
   // 切换中/英文模式（原托盘命令专道，现仅剩这一个用途，索性正名）
   void SetAsciiMode(bool ascii);
+  // 本连接的会话号（推送槽命名用）
+  DWORD SessionId() const;
   // 读取server返回的数据
   bool GetResponseData(ResponseHandler handler);
 

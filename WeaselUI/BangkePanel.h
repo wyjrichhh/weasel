@@ -28,6 +28,11 @@ class BangkePanel {
   // AI 候选快照就绪时（服务端推送信号）触发的刷新回调，参数为快照序号
   std::function<void(UINT_PTR)> on_async_refresh;
   void Destroy();
+  // 监听线程调用:向本窗口投递快照就绪(进程内,UIPI 无关)
+  void PostSnapshotReady() {
+    if (m_hWnd)
+      ::PostMessage(m_hWnd, WM_APP + 0x43, 0, 0);
+  }
   bool IsWindow() const { return m_hWnd != NULL && ::IsWindow(m_hWnd); }
 
   void MoveTo(RECT const& rc);

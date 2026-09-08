@@ -274,6 +274,10 @@ void Client::EndMaintenance() {
   m_pImpl->EndMaintenance();
 }
 
+DWORD Client::SessionId() const {
+  return m_pImpl->SessionId();
+}
+
 void Client::SetAsciiMode(bool ascii) {
   m_pImpl->SetAsciiMode(ascii);
 }

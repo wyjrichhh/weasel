@@ -144,6 +144,11 @@ bool UI::IsShown() const {
   return pimpl_ && pimpl_->IsShown();
 }
 
+void UI::PostSnapshotReady() {
+  if (pimpl_)
+    ((BangkePanel*)pimpl_)->PostSnapshotReady();
+}
+
 void UI::SetAsyncRefresh(std::function<void(UINT_PTR)> cb) {
   async_refresh_cb_ = std::move(cb);
   if (pimpl_)

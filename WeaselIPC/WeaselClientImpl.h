@@ -37,6 +37,7 @@ class ClientImpl {
 
   bool _Connected() const { return channel.Connected(); }
   bool _Active() const { return channel.Connected() && session_id != 0; }
+  DWORD SessionId() const { return session_id; }
 
  private:
   UINT session_id;

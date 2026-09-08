@@ -42,6 +42,7 @@ WeaselTSF::WeaselTSF() {
 }
 
 WeaselTSF::~WeaselTSF() {
+  _StopSnapshotListener();
   DllRelease();
 }
 
@@ -101,6 +102,7 @@ STDMETHODIMP WeaselTSF::Activate(ITfThreadMgr* pThreadMgr,
 }
 
 STDMETHODIMP WeaselTSF::Deactivate() {
+  _StopSnapshotListener();
   m_client.EndSession();
 
   _InitTextEditSink(com_ptr<ITfDocumentMgr>());
@@ -228,15 +230,6 @@ STDMETHODIMP WeaselTSF::OnActivated(REFCLSID clsid,
 }
 
 
-// AI 快照推送头（与服务端 AiPushHeader 对应）
-#pragma pack(push, 1)
-struct AiPushHeader {
-  DWORD magic;
-  DWORD seq;
-  DWORD bytes;
-};
-#pragma pack(pop)
-static const DWORD kAiPushMagic = 0x314B4220;
 
 void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   // 按键活跃期间不应用快照：推送会抢先触发 _UpdateUI 使后续
@@ -245,7 +238,9 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   if (now - _last_key_tick < 300) {
     return;
   }
-  HANDLE map = OpenFileMappingW(FILE_MAP_READ, FALSE, L"Local\\BangkeAIPush");
+  wchar_t map_name[64];
+  swprintf_s(map_name, L"Local\\BangkeSnap_%u", m_client.SessionId());
+  HANDLE map = OpenFileMappingW(FILE_MAP_READ, FALSE, map_name);
   if (!map)
     return;
   auto* view = (BYTE*)MapViewOfFile(map, FILE_MAP_READ, 0, 0, 0);
@@ -253,13 +248,22 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
     CloseHandle(map);
     return;
   }
-  auto* h = (AiPushHeader*)view;
-  bool ok = h->magic == kAiPushMagic && h->seq == (DWORD)seq &&
-            h->bytes > sizeof(wchar_t);
+  // 槽内容即协议帧:头 magic 自证,长度自描述
+  uint32_t magic = 0;
+  memcpy(&magic, view, sizeof(magic));
+  bool ok = magic == bangke::kFrameMagic;
   std::wstring text;
-  if (ok)
-    text.assign((wchar_t*)(view + sizeof(AiPushHeader)),
-                h->bytes / sizeof(wchar_t) - 1);
+  if (ok) {
+    // 帧自描述长度:按 FrameHeader.payload_len 取字节(偶数补零无害)
+    uint32_t payload_len = 0;
+    memcpy(&payload_len, view + 8, sizeof(payload_len));
+    const size_t frame_bytes =
+        sizeof(bangke::FrameHeader) + payload_len;
+    if (frame_bytes > 128 * 1024 || frame_bytes % 2)
+      ok = false;
+    else
+      text.assign((const wchar_t*)view, frame_bytes / 2);
+  }
   UnmapViewOfFile(view);
   CloseHandle(map);
   if (!ok) {
@@ -318,10 +322,57 @@ void WeaselTSF::_Reconnect() {
   m_client.Disconnect();
   m_client.Connect(NULL);
   m_client.StartSession();
+  _StartSnapshotListener();
   weasel::ResponseParser parser(NULL, NULL, &_status, NULL, &_cand->style());
   bool ok = m_client.GetResponseData(std::ref(parser));
   if (ok) {
     _UpdateLanguageBar(_status);
+  }
+}
+
+// 快照就绪监听:server 在会话建立时创建 Local\BangkeSnapEvt_<sid>(auto-reset)。
+// 本线程等事件,醒来后向候选窗投递进程内私有消息——不经 UIPI,提权应用可达。
+void WeaselTSF::_StartSnapshotListener() {
+  _StopSnapshotListener();
+  const DWORD sid = m_client.SessionId();
+  if (!sid)
+    return;
+  _snap_stop = false;
+  // 生命周期:Deactivate 与析构都会 join,线程窗口内 this 有效
+  _snap_thread = std::thread([sid, this]() {
+    wchar_t evt_name[64];
+    swprintf_s(evt_name, L"Local\\BangkeSnapEvt_%u", sid);
+    // server 竞态下可能尚未建事件:有限重试
+    HANDLE evt = NULL;
+    for (int i = 0; i < 10 && !evt && !_snap_stop; ++i) {
+      evt = OpenEventW(SYNCHRONIZE, FALSE, evt_name);
+      if (!evt)
+        Sleep(100);
+    }
+    while (!_snap_stop && evt) {
+      if (WaitForSingleObject(evt, 500) != WAIT_OBJECT_0)
+        continue;
+      if (_snap_stop)
+        break;
+      if (_cand)
+        _cand->PostSnapshotReady();
+    }
+    if (evt)
+      CloseHandle(evt);
+  });
+}
+
+void WeaselTSF::_StopSnapshotListener() {
+  if (_snap_thread.joinable()) {
+    _snap_stop = true;
+    // 事件可能已被关掉,唤醒不了就靠 500ms 超时兜底
+    wchar_t evt_name[64];
+    swprintf_s(evt_name, L"Local\\BangkeSnapEvt_%u", m_client.SessionId());
+    if (HANDLE evt = OpenEventW(EVENT_MODIFY_STATE, FALSE, evt_name)) {
+      SetEvent(evt);
+      CloseHandle(evt);
+    }
+    _snap_thread.join();
   }
 }
 

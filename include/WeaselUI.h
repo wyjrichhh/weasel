@@ -53,8 +53,10 @@ class UI {
   // 重绘界面
   void Refresh();
 
-  // AI 异步候选就绪后的重拉回调（经注册窗口消息触达候选窗）
+  // AI 异步候选就绪后的重拉回调（快照就绪私有消息触达候选窗）
   void SetAsyncRefresh(std::function<void(UINT_PTR)> cb);
+  // 监听线程调用:向候选窗投递快照就绪通知
+  void PostSnapshotReady();
 
   // 置输入焦点位置（光标跟随时移动候选窗）但不重绘
   void UpdateInputPosition(RECT const& rc);

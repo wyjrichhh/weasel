@@ -186,6 +186,15 @@ DWORD RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat) {
       _GenerateNewWeaselSessionId(m_session_status_map, m_pid);
   DLOG(INFO) << "Add session: created session_id = " << session_id
              << ", ipc_id = " << ipc_id;
+  {
+    // 会话建立即建槽与事件,前端可确定性打开(推送前已存在)
+    wchar_t map_name[64], evt_name[64];
+    _SnapSlotNames(ipc_id, map_name, 64, evt_name, 64);
+    CloseHandle(CreateFileMappingW(INVALID_HANDLE_VALUE, _SnapSlotSA(),
+                                   PAGE_READWRITE, 0, (DWORD)kSnapSlotBytes,
+                                   map_name));
+    CloseHandle(CreateEventW(_SnapSlotSA(), FALSE, FALSE, evt_name));
+  }
   SessionStatus& session_status = new_session_status(ipc_id);
   session_status.style = m_base_style;
   session_status.session_id = session_id;
@@ -409,46 +418,33 @@ void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
   if (!ipc_id)
     return;
 
-  std::wstring text;
-  text.reserve(4096);
-  _Respond(ipc_id, [&text](std::wstring& line) -> bool {
-    text += line;
-    return true;
-  }, /*include_commit=*/false);
-  if (text.empty())
-    return;
-  size_t bytes = (text.size() + 1) * sizeof(wchar_t);
-  if (bytes > kAiPushTextBytes)
+  // 复用会话协商后的帧渲染(include_commit=false:get_commit 读一次即清空,
+  // 推送帧绝不携带 commit,否则会偷走按键响应的上屏文本)
+  std::wstring wire;
+  if (!_RespondFrame(ipc_id, [&wire](std::wstring& s) -> bool {
+        wire = std::move(s);
+        return true;
+      }, /*include_commit=*/false) ||
+      wire.empty())
     return;
 
-  if (!s_ai_push_map) {
-    s_ai_push_map = CreateFileMappingW(
-        INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE,
-        0, (DWORD)(sizeof(AiPushHeader) + kAiPushTextBytes),
-        L"Local\\BangkeAIPush");
-    if (!s_ai_push_map)
-      return;
+  wchar_t map_name[64], evt_name[64];
+  _SnapSlotNames(ipc_id, map_name, 64, evt_name, 64);
+  HANDLE map = OpenFileMappingW(FILE_MAP_WRITE, FALSE, map_name);
+  if (!map)
+    return;
+  auto* view = (BYTE*)MapViewOfFile(map, FILE_MAP_WRITE, 0, 0, 0);
+  HANDLE evt = OpenEventW(EVENT_MODIFY_STATE, FALSE, evt_name);
+  if (view && wire.size() * sizeof(wchar_t) <= kSnapSlotBytes) {
+    memcpy(view, wire.c_str(), wire.size() * sizeof(wchar_t));
+    if (evt)
+      SetEvent(evt);
   }
-  auto* view = (BYTE*)MapViewOfFile(s_ai_push_map, FILE_MAP_WRITE, 0, 0, 0);
-  if (!view)
-    return;
-  auto* h = (AiPushHeader*)view;
-  h->magic = kAiPushMagic;
-  h->bytes = (DWORD)bytes;
-  memcpy(view + sizeof(AiPushHeader), text.c_str(), bytes);
-  DWORD seq = ++s_ai_push_seq;
-  MemoryBarrier();
-  h->seq = seq;
-  UnmapViewOfFile(view);
-
-  UINT mid = RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
-  int sent = 0;
-  HWND target = NULL;
-  while ((target = FindWindowExW(NULL, target, L"BangkePanelWnd", NULL)) != NULL) {
-    if (PostMessageW(target, mid, 0, (LPARAM)seq))
-      ++sent;
-  }
-
+  if (view)
+    UnmapViewOfFile(view);
+  CloseHandle(map);
+  if (evt)
+    CloseHandle(evt);
 }
 
 void RimeWithWeaselHandler::OnNotify(void* context_object,

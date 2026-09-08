@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <thread>
 
 #include "Globals.h"
 #include <WeaselIPC.h>
@@ -199,7 +200,11 @@ class WeaselTSF : public ITfTextInputProcessorEx,
 
   void _Reconnect();
   void _AsyncRefresh(UINT_PTR seq);
+  void _StartSnapshotListener();
+  void _StopSnapshotListener();
   std::wstring _last_snapshot_sig;
+  std::thread _snap_thread;
+  std::atomic<bool> _snap_stop{false};
   ULONGLONG _last_key_tick = 0;
   std::wstring _GetRootDir();
 

@@ -129,10 +129,9 @@ void BangkePanel::Destroy() {
   }
 }
 
-// 服务端推理完成后广播；所有进程同名字符串注册得到同一 ID
-
-static const UINT WM_BANGKE_ASYNC_REFRESH =
-    RegisterWindowMessageW(L"BANGKE_IME_ASYNC_UPDATE");
+// 快照就绪通知:由本进程内的监听线程 Post(④ 起);
+// WM_APP 私有消息只在本进程内流动,不经 UIPI,提权应用同样可达
+static const UINT WM_BANGKE_ASYNC_REFRESH = WM_APP + 0x43;
 
 LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
                                       UINT uMsg,
