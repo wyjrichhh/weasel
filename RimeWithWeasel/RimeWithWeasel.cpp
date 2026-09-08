@@ -531,6 +531,7 @@ void RimeWithWeaselHandler::_ReadClientInfo(WeaselSessionId ipc_id,
       proto_v2 = true;
   }
   SessionStatus& session_status = get_session_status(ipc_id);
+  session_status.proto_v2 = proto_v2;
   RimeSessionId session_id = session_status.session_id;
   // set app specific options
   if (!app_name.empty()) {
@@ -847,7 +848,6 @@ bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat,
                                      bool include_commit) {
   if (get_session_status(ipc_id).proto_v2)
     return _RespondFrame(ipc_id, eat, include_commit);
-  std::wstring body;
   std::wstring body;
   body.reserve(4096);
   std::vector<const char*> actions;
