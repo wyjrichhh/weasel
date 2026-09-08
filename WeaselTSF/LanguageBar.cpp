@@ -81,7 +81,9 @@ void ToastThreadMain(std::wstring text) {
   }
   if (!cls)
     return;
-  const int w = std::max(160, (int)(text.size() * 14 + 48));
+  // windows.h 的 max 宏会污染 std::max,这里用三元避免
+  const int need = (int)(text.size() * 14 + 48);
+  const int w = need > 160 ? need : 160;
   const int h = 42;
   RECT wa;
   SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
