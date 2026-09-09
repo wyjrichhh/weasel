@@ -33,6 +33,13 @@ class BangkePanel {
     if (m_hWnd)
       ::PostMessage(m_hWnd, WM_APP + 0x43, 0, 0);
   }
+  // 按键活跃期被丢弃的快照重试:350ms 后再投一次就绪消息
+  // (推送事件是一次性的,丢弃不重试会让最终推理结果永远不显示)
+  void ScheduleSnapshotRetry() {
+    if (m_hWnd)
+      ::SetTimer(m_hWnd, kSnapRetryTimerId, 350, NULL);
+  }
+  static const UINT_PTR kSnapRetryTimerId = 0x534E;
   bool IsWindow() const { return m_hWnd != NULL && ::IsWindow(m_hWnd); }
 
   void MoveTo(RECT const& rc);

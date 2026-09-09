@@ -236,9 +236,12 @@ STDMETHODIMP WeaselTSF::OnActivated(REFCLSID clsid,
 
 void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   // 按键活跃期间不应用快照：推送会抢先触发 _UpdateUI 使后续
-  // 按键响应的 edit session 被 ctx==ctx 早退跳过，commit 丢失
+  // 按键响应的 edit session 被 ctx==ctx 早退跳过，commit 丢失。
+  // 但推送事件一次性,直接丢弃会让最终推理结果永不显示——安排重试
   ULONGLONG now = GetTickCount64();
   if (now - _last_key_tick < 300) {
+    if (_cand)
+      _cand->ScheduleSnapshotRetry();
     return;
   }
   wchar_t map_name[64];
@@ -303,10 +306,6 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
     return;
   }
   _last_snapshot_sig = sig;
-  {
-    char t[96];
-    sprintf_s(t, "snapshot ok, %d candies", (int)context->cinfo.candies.size());
-  }
   _UpdateUI(*context, status);
 }
 

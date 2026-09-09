@@ -149,6 +149,11 @@ void UI::PostSnapshotReady() {
     ((BangkePanel*)pimpl_)->PostSnapshotReady();
 }
 
+void UI::ScheduleSnapshotRetry() {
+  if (pimpl_)
+    ((BangkePanel*)pimpl_)->ScheduleSnapshotRetry();
+}
+
 void UI::SetAsyncRefresh(std::function<void(UINT_PTR)> cb) {
   async_refresh_cb_ = std::move(cb);
   if (pimpl_)
