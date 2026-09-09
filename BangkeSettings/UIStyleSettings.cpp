@@ -2,6 +2,9 @@
 
 #include <windows.h>
 
+#include <fstream>
+#include <string>
+
 #include "Levers.h"
 #include <WeaselUtility.h>
 #include <rime_api.h>
@@ -29,8 +32,14 @@ bool UIStyleSettings::GetPresetColorSchemes(
   RimeApi* rime = rime_get_api();
   std::string shared = rime->get_shared_data_dir();
   std::string path = shared + "\\weasel.yaml";
+  std::ifstream ifs(path);
+  if (!ifs.good())
+    return false;
+  std::string yaml((std::istreambuf_iterator<char>(ifs)),
+                   std::istreambuf_iterator<char>());
+  ifs.close();
   RimeConfig config = {0};
-  if (!rime->config_load_file(&config, path.c_str()))
+  if (!rime->config_load_string(&config, yaml.c_str()))
     return false;
   RimeConfigIterator preset = {0};
   if (!rime->config_begin_map(&preset, &config, "preset_color_schemes"))
@@ -52,7 +61,7 @@ bool UIStyleSettings::GetPresetColorSchemes(
     result->push_back(info);
   }
   rime->config_end(&preset);
-  rime->free_config(&config);
+  rime->config_close(&config);
   return true;
 }
 
