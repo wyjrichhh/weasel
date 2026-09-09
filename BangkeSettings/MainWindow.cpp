@@ -98,21 +98,23 @@ void MainWindow::onPageChanged(int index) {
 }
 
 void MainWindow::saveAndDeploy() {
-  dictPage_->setSessionActive(false);
   bool modified = switcherPage_->save();
   modified = stylePage_->save() || modified;
   generalPage_->save();
   aiPage_->save();
-  if (modified) {
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    configurator_->UpdateWorkspace(true);
-    QApplication::restoreOverrideCursor();
-    statusBar()->showMessage(QStringLiteral(u"已保存，正在重新部署…"), 5000);
-    switcherPage_->forceLoad();
-    stylePage_->forceLoad();
-  } else {
-    statusBar()->showMessage(QStringLiteral(u"没有需要保存的修改"), 5000);
+
+  if (!modified)
+    return;
+
+  const int ret = configurator_->UpdateWorkspace(true);
+  if (ret != 0) {
+    QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"),
+                         QStringLiteral(u"重新部署失败(错误码 %1)。\n"
+                                        u"配置可能写入有误,请检查用户文件夹中的 yaml 文件。")
+                             .arg(ret));
+    return;
   }
+  statusBar()->showMessage(QStringLiteral(u"已保存并重新部署"), 3000);
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {

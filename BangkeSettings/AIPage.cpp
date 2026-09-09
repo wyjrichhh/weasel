@@ -126,6 +126,7 @@ void AIPage::save() {
     f.close();
   }
 
+  // 键值对;写入时必须在 ai_predict: 块内(4 空格缩进,patch:→ai_predict:→键)
   struct KV { const char* key; QString val; };
   const KV kvs[] = {
       {"enabled", enabled_->isChecked() ? QStringLiteral("true") : QStringLiteral("false")},
@@ -142,47 +143,48 @@ void AIPage::save() {
       {"model_path", modelPath_->text()},
   };
 
-  // 确保 ai_predict: 块存在
-  if (!yaml.contains(QStringLiteral("ai_predict:"))) {
-    yaml += QStringLiteral("\nai_predict:\n");
-  }
-  // 确保 patch 块存在(custom.yaml 必须有 patch: 根)
-  if (!yaml.contains(QStringLiteral("patch:"))) {
-    yaml.prepend(QStringLiteral("patch:\n"));
-  }
+  // 定位 ai_predict: 块:在 patch: 下的 "  ai_predict:" 行
+  // 块内键的缩进是 4 空格( "    key: value" )
+  const int apStart = yaml.indexOf(QStringLiteral("  ai_predict:"));
+  if (apStart < 0)
+    return;  // 无 ai_predict 块则不写(避免在错误位置追加)
 
+  // 找块尾:下一个缩进 ≤2 空格的非空行
+  int apEnd = yaml.length();
+  int pos = yaml.indexOf(QLatin1Char('\n'), apStart);
+  while (pos >= 0) {
+    const int nextNL = yaml.indexOf(QLatin1Char('\n'), pos + 1);
+    if (nextNL < 0)
+      break;
+    const QString line = yaml.mid(pos + 1, nextNL - pos - 1);
+    if (!line.isEmpty() && !line.startsWith(QStringLiteral("    "))) {
+      apEnd = pos + 1;
+      break;
+    }
+    pos = nextNL;
+  }
+  const QString block = yaml.mid(apStart, apEnd - apStart);
+
+  // 逐键替换或追加到块内
+  QString newBlock = block;
   for (const auto& kv : kvs) {
     const QString key = QString::fromLatin1(kv.key);
-    QString line;
-    // 查找 "  key: oldval" 形式(缩进 2 空格)
     const QRegularExpression rx(
-        QStringLiteral("(^|\\n)(\\s*)%1:\\s*[^\\n]*").arg(
+        QStringLiteral("(^|\n)    %1:\s*[^\n]*").arg(
             QRegularExpression::escape(key)));
-    auto m = rx.match(yaml);
-    if (m.hasMatch()) {
-      yaml.replace(m.capturedStart(), m.capturedLength(),
-                   m.captured(1) + m.captured(2) + key + QStringLiteral(": ") +
-                       kv.val);
+    auto m2 = rx.match(newBlock);
+    if (m2.hasMatch()) {
+      newBlock.replace(m2.capturedStart(), m2.capturedLength(),
+                       m2.captured(1) + QStringLiteral("    ") + key +
+                           QStringLiteral(": ") + kv.val);
     } else {
-      // 追加到 ai_predict: 块末(找下一个非缩进行前)
-      const int ap = yaml.indexOf(QStringLiteral("ai_predict:"));
-      int insert = yaml.indexOf(QLatin1Char('\n'), ap);
-      // 找块内最后一行的末尾
-      while (insert >= 0) {
-        const int next = yaml.indexOf(QLatin1Char('\n'), insert + 1);
-        if (next < 0)
-          break;
-        const QString nextLine = yaml.mid(insert + 1, next - insert - 1);
-        if (!nextLine.startsWith(QLatin1Char(' ')) && !nextLine.isEmpty())
-          break;
-        insert = next;
-      }
-      if (insert >= 0) {
-        yaml.insert(insert + 1,
-                    QStringLiteral("  %1: %2\n").arg(key, kv.val));
-      }
+      // 追加到块内最后一行后
+      if (!newBlock.endsWith(QLatin1Char('\n')))
+        newBlock += QLatin1Char('\n');
+      newBlock += QStringLiteral("    %1: %2\n").arg(key, kv.val);
     }
   }
+  yaml.replace(apStart, apEnd - apStart, newBlock);
 
   if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
     f.write(yaml.toUtf8());

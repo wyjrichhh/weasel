@@ -17,6 +17,7 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
 
   pageSize_ = new QSpinBox;
   pageSize_->setRange(1, 20);
+  pageSize_->setValue(5);
 
   shiftL_ = new QComboBox;
   shiftR_ = new QComboBox;
@@ -74,12 +75,12 @@ void GeneralPage::load() {
   const QString yaml = QString::fromUtf8(f.readAll());
   f.close();
 
-  const QString ps = findKeyLine(yaml, QStringLiteral("page_size"));
+  const QString ps = findKeyLine(yaml, QStringLiteral("menu/page_size"));
   if (!ps.isEmpty())
     pageSize_->setValue(ps.toInt());
 
-  const QString sl = findKeyLine(yaml, QStringLiteral("Shift_L"));
-  const QString sr = findKeyLine(yaml, QStringLiteral("Shift_R"));
+  const QString sl = findKeyLine(yaml, QStringLiteral("ascii_composer/switch_key/Shift_L"));
+  const QString sr = findKeyLine(yaml, QStringLiteral("ascii_composer/switch_key/Shift_R"));
   for (int i = 0; i < shiftL_->count(); ++i) {
     if (shiftL_->itemData(i).toString() == sl)
       shiftL_->setCurrentIndex(i);
@@ -96,23 +97,34 @@ void GeneralPage::save() {
     f.close();
   }
 
-  // 确保必需的父块存在(default.custom.yaml 的 patch: 下)
-  for (const char* block : {"menu/", "ascii_composer/", "switch_key/"}) {
-    // 简化处理:custom.yaml 的 patch: 块内追加即可,rime 部署器会合并
-  }
-  // 不改文件结构,只替换已有行;如果行不存在,追加到 patch: 块下
-  const QString psKey = QStringLiteral("page_size");
-  const QString slKey = QStringLiteral("Shift_L");
-  const QString srKey = QStringLiteral("Shift_R");
+  // default.custom.yaml 结构:
+  // patch:
+  //   menu/page_size: 5
+  //   ascii_composer/switch_key/Shift_L: commit_code
+  //   ascii_composer/switch_key/Shift_R: commit_code
+  // 写入用 rime patch 路径键(扁平键名),部署器会合并到对应节点。
+  struct KV { QString path; QString val; };
+  const KV kvs[] = {
+      {QStringLiteral("menu/page_size"), QString::number(pageSize_->value())},
+      {QStringLiteral("ascii_composer/switch_key/Shift_L"), shiftL_->currentData().toString()},
+      {QStringLiteral("ascii_composer/switch_key/Shift_R"), shiftR_->currentData().toString()},
+  };
 
-  if (!replaceKeyLine(yaml, psKey, QString::number(pageSize_->value()))) {
-    yaml += QStringLiteral("\n  %1: %2\n").arg(psKey, QString::number(pageSize_->value()));
-  }
-  if (!replaceKeyLine(yaml, slKey, shiftL_->currentData().toString())) {
-    yaml += QStringLiteral("  %1: %2\n").arg(slKey, shiftL_->currentData().toString());
-  }
-  if (!replaceKeyLine(yaml, srKey, shiftR_->currentData().toString())) {
-    yaml += QStringLiteral("  %1: %2\n").arg(srKey, shiftR_->currentData().toString());
+  for (const auto& kv : kvs) {
+    const QRegularExpression rx(
+        QStringLiteral("(^|\n)(\s*)%1:\s*[^\n]*").arg(
+            QRegularExpression::escape(kv.path)));
+    auto m2 = rx.match(yaml);
+    if (m2.hasMatch()) {
+      yaml.replace(m2.capturedStart(), m2.capturedLength(),
+                   m2.captured(1) + m2.captured(2) + kv.path +
+                       QStringLiteral(": ") + kv.val);
+    } else {
+      // 追加到 patch: 块末(2 空格缩进)
+      if (!yaml.endsWith(QLatin1Char('\n')))
+        yaml += QLatin1Char('\n');
+      yaml += QStringLiteral("  %1: %2\n").arg(kv.path, kv.val);
+    }
   }
 
   if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
