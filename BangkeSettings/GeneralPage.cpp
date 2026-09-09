@@ -1,5 +1,6 @@
 #include "GeneralPage.h"
 
+#include <QComboBox>
 #include <QFile>
 #include <QFormLayout>
 #include <QRegularExpression>

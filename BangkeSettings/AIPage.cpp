@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QTextStream>
+#include <QRegularExpression>
 #include <QVBoxLayout>
 
 #include <WeaselUtility.h>
