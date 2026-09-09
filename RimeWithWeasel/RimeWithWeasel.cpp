@@ -486,23 +486,6 @@ void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
     memcpy(view, wire.c_str(), wire.size() * sizeof(wchar_t));
     SetEvent(evt);
   }
-  {  // TEMP-TRACE: 推送产出(直写防 glog 缓冲)
-    wchar_t p[MAX_PATH] = {0};
-    ExpandEnvironmentStringsW(L"%TEMP%\\bk_push_trace.log", p, MAX_PATH);
-    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (f != INVALID_HANDLE_VALUE) {
-      char line[160];
-      snprintf(line, sizeof(line),
-               "[srv] push ipc=%u serial=%u bytes=%u evt=%d\r\n",
-               (unsigned)ipc_id, s_key_serial.load(),
-               (unsigned)(wire.size() * sizeof(wchar_t)),
-               view && wire.size() * sizeof(wchar_t) <= kSnapSlotBytes ? 1 : 0);
-      DWORD w;
-      WriteFile(f, line, (DWORD)strlen(line), &w, NULL);
-      CloseHandle(f);
-    }
-  }
   if (view)
     UnmapViewOfFile(view);
 }
