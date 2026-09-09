@@ -87,6 +87,9 @@ MainWindow::~MainWindow() {
 void MainWindow::onPageChanged(int index) {
   stack_->setCurrentIndex(index);
   dictPage_->setSessionActive(false);
+  // 离开词典页立即结束部署会话:BeginDictSession 拿住的 BangkeDeployerMutex
+  // 若握到关窗,之后点「保存并重新部署」必撞"另一项部署任务"
+  configurator_->EndDictSession();
   // 五页布局: 0=方案 1=通用 2=界面样式 3=AI 4=词典
   if (index == 4) {
     if (configurator_->BeginDictSession())
