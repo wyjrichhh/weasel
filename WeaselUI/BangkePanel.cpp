@@ -157,7 +157,7 @@ LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
     case WM_TIMER:
       if (wParam == kSnapRetryTimerId) {
         KillTimer(hwnd, wParam);
-        PostSnapshotReady();
+        self->PostSnapshotReady();
         return 0;
       }
       break;
