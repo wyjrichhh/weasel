@@ -87,12 +87,13 @@ MainWindow::~MainWindow() {
 void MainWindow::onPageChanged(int index) {
   stack_->setCurrentIndex(index);
   dictPage_->setSessionActive(false);
-  if (index == 2) {
+  // 五页布局: 0=方案 1=通用 2=界面样式 3=AI 4=词典
+  if (index == 4) {
     if (configurator_->BeginDictSession())
       dictPage_->setSessionActive(true);
   } else if (index == 0) {
     switcherPage_->load();
-  } else if (index == 1) {
+  } else if (index == 2) {
     stylePage_->load();
   }
 }
