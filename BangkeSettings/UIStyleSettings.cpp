@@ -24,9 +24,14 @@ bool UIStyleSettings::GetPresetColorSchemes(
   if (!result)
     return false;
   result->clear();
-  RimeConfig config = {0};
-  api_->settings_get_config(settings_, &config);
+  // levers 的 custom_settings 只覆盖用户层(weasel.custom.yaml),
+  // preset_color_schemes 在共享目录基底(weasel.yaml)——直接打开
   RimeApi* rime = rime_get_api();
+  std::string shared = rime->get_shared_data_dir();
+  std::string path = shared + "\\weasel.yaml";
+  RimeConfig config = {0};
+  if (!rime->config_load_file(&config, path.c_str()))
+    return false;
   RimeConfigIterator preset = {0};
   if (!rime->config_begin_map(&preset, &config, "preset_color_schemes"))
     return false;
@@ -47,6 +52,7 @@ bool UIStyleSettings::GetPresetColorSchemes(
     result->push_back(info);
   }
   rime->config_end(&preset);
+  rime->free_config(&config);
   return true;
 }
 
