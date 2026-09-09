@@ -11,6 +11,7 @@
 #include <array>
 #include <vector>
 #include <regex>
+#include <atomic>
 #include <rime_api.h>
 #include <Sddl.h>
 
@@ -44,6 +45,10 @@ static void _SnapSlotNames(WeaselSessionId ipc_id, wchar_t* map_name,
 // "创建后立刻 CloseHandle"曾令槽/事件名存实亡(推送与客户端都 Open 不到)
 static std::mutex s_snap_handles_mutex;
 static std::map<DWORD, std::pair<HANDLE, HANDLE>> s_snap_handles;
+
+// 帧全序:每次 ProcessKeyEvent 递增;响应帧与推送帧携带当前值,
+// 客户端仅应用 key_serial >= last_applied 的帧,推送乱序到达即丢弃
+static std::atomic<uint32_t> s_key_serial{0};
 
 static SECURITY_ATTRIBUTES* _SnapSlotSA() {
   // 对 Section/Event 对象授 GENERIC_ALL:SY/Everyone/AllAppPackages
@@ -324,6 +329,7 @@ BOOL RimeWithWeaselHandler::ProcessKeyEvent(KeyEvent keyEvent,
              << ", mask = " << keyEvent.mask << ", ipc_id = " << ipc_id;
   if (m_disabled)
     return FALSE;
+  ++s_key_serial;  // 本次按键的响应帧与之后的推送帧按此排序
   RimeSessionId session_id = to_session_id(ipc_id);
   Bool handled = rime_api->process_key(session_id, keyEvent.keycode,
                                        expand_ibus_modifier(keyEvent.mask));
@@ -1003,9 +1009,11 @@ bool RimeWithWeaselHandler::_RespondFrame(WeaselSessionId ipc_id,
 
   const bool send_style = !session_status.__synced;
 
-  auto frame = bangke::BuildFrame(ipc_id, 0, has_commit ? &commit : nullptr,
-                                  has_ctx ? &ctx : nullptr, &status, &config,
-                                  send_style ? &session_status.style : nullptr);
+  auto frame =
+      bangke::BuildFrame(ipc_id, s_key_serial.load(),
+                         has_commit ? &commit : nullptr, has_ctx ? &ctx : nullptr,
+                         &status, &config,
+                         send_style ? &session_status.style : nullptr);
   if (send_style)
     session_status.__synced = true;
   if (frame.size() % 2)

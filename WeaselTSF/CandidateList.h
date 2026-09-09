@@ -53,10 +53,6 @@ class CCandidateList : public ITfIntegratableCandidateListUIElement,
     if (_ui)
       _ui->PostSnapshotReady();
   }
-  void ScheduleSnapshotRetry() {
-    if (_ui)
-      _ui->ScheduleSnapshotRetry();
-  }
   void UpdateInputPosition(RECT const& rc);
   void Destroy();
   void DestroyAll();

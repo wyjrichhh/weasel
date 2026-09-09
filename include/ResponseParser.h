@@ -13,12 +13,14 @@ struct ResponseParser {
   Status* p_status;
   Config* p_config;
   UIStyle* p_style;
+  uint32_t* p_serial;  // 帧序号:调用方用于维护已应用序号(推送按序取舍)
 
   ResponseParser(std::wstring* commit,
                  Context* context = 0,
                  Status* status = 0,
                  Config* config = 0,
-                 UIStyle* style = 0);
+                 UIStyle* style = 0,
+                 uint32_t* serial = 0);
   bool operator()(LPWSTR buffer, UINT length);
 };
 

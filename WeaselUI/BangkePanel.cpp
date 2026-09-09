@@ -154,13 +154,6 @@ LRESULT CALLBACK BangkePanel::WndProc(HWND hwnd,
   }
 
   switch (uMsg) {
-    case WM_TIMER:
-      if (wParam == kSnapRetryTimerId) {
-        KillTimer(hwnd, wParam);
-        self->PostSnapshotReady();
-        return 0;
-      }
-      break;
     case WM_NCCREATE:
       break;
     case WM_CREATE:

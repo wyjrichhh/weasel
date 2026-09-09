@@ -184,7 +184,8 @@ STDMETHODIMP WeaselTSF::OnSetThreadFocus() {
   _isToOpenClose = (_ToggleImeOnOpenClose == L"yes");
   if (m_client.Echo()) {
     m_client.ProcessKeyEvent(0);
-    weasel::ResponseParser parser(NULL, NULL, &_status, NULL, &_cand->style());
+    weasel::ResponseParser parser(NULL, NULL, &_status, NULL, &_cand->style(),
+                                  &_last_applied_serial);
     bool ok = m_client.GetResponseData(std::ref(parser));
     if (ok)
       _UpdateLanguageBar(_status);
@@ -235,15 +236,6 @@ STDMETHODIMP WeaselTSF::OnActivated(REFCLSID clsid,
 
 
 void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
-  // 按键活跃期间不应用快照：推送会抢先触发 _UpdateUI 使后续
-  // 按键响应的 edit session 被 ctx==ctx 早退跳过，commit 丢失。
-  // 但推送事件一次性,直接丢弃会让最终推理结果永不显示——安排重试
-  ULONGLONG now = GetTickCount64();
-  if (now - _last_key_tick < 300) {
-    if (_cand)
-      _cand->ScheduleSnapshotRetry();
-    return;
-  }
   wchar_t map_name[64];
   swprintf_s(map_name, L"Local\\BangkeSnap_%u", m_client.SessionId());
   HANDLE map = OpenFileMappingW(FILE_MAP_READ, FALSE, map_name);
@@ -264,8 +256,7 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
     uint32_t payload_len = 0;
     memcpy(&payload_len, view + offsetof(bangke::FrameHeader, payload_len),
            sizeof(payload_len));
-    const size_t frame_bytes =
-        sizeof(bangke::FrameHeader) + payload_len;
+    const size_t frame_bytes = sizeof(bangke::FrameHeader) + payload_len;
     if (frame_bytes > 128 * 1024 || frame_bytes % 2)
       ok = false;
     else
@@ -273,39 +264,24 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
   }
   UnmapViewOfFile(view);
   CloseHandle(map);
-  if (!ok) {
+  if (!ok)
     return;
-  }
 
-  // 本地解析快照，不回服务端拉取（无时机竞态）。
-  // 服务端按会话协商结果产出:v2 会话给二进制帧,旧会话给行文本
+  // 序数判定:推送帧只做纯视觉更新(_UpdateUI 不触 TSF edit session,
+  // commit 只经管道响应由 DoEditSession 投递,推送动不了它),
+  // 唯一要挡的是乱序回放——比已应用序号旧的帧直接丢弃
   std::wstring commit;
   weasel::Config config;
   auto context = std::make_shared<weasel::Context>();
   weasel::Status status;
-  // ok 为真即槽头 magic 已验,内容必为帧(槽只由 v2 服务端写入)
-  if (ok) {
-    if (!bangke::ParseFramePrefix(
-            reinterpret_cast<const uint8_t*>(text.c_str()),
-            text.size() * sizeof(wchar_t), nullptr, &commit, context.get(),
-            &status, &config, &_cand->style()))
-      return;
-  } else {
-    return;  // 槽内非帧内容,拒绝
-  }
-
-  // 快照尚无候选（组合重建中间态）则不动当前显示
-  if (context->cinfo.candies.empty() && context->aux.empty()) {
+  bangke::FrameHeader hdr;
+  if (!bangke::ParseFramePrefix(reinterpret_cast<const uint8_t*>(text.c_str()),
+                                text.size() * sizeof(wchar_t), &hdr, &commit,
+                                context.get(), &status, &config,
+                                &_cand->style()))
     return;
-  }
-  // 候选内容未变（如方向键仅改高亮）时跳过，避免快照覆盖按键路径的交互态
-  std::wstring sig;
-  for (auto& c : context->cinfo.candies)
-    sig += c.str + L"\n";
-  if (sig == _last_snapshot_sig) {
+  if (hdr.key_serial < _last_applied_serial)
     return;
-  }
-  _last_snapshot_sig = sig;
   _UpdateUI(*context, status);
 }
 
@@ -314,7 +290,8 @@ void WeaselTSF::_Reconnect() {
   m_client.Connect(NULL);
   m_client.StartSession();
   _StartSnapshotListener();
-  weasel::ResponseParser parser(NULL, NULL, &_status, NULL, &_cand->style());
+  weasel::ResponseParser parser(NULL, NULL, &_status, NULL, &_cand->style(),
+                                &_last_applied_serial);
   bool ok = m_client.GetResponseData(std::ref(parser));
   if (ok) {
     _UpdateLanguageBar(_status);

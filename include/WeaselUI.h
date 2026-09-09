@@ -57,8 +57,6 @@ class UI {
   void SetAsyncRefresh(std::function<void(UINT_PTR)> cb);
   // 监听线程调用:向候选窗投递快照就绪通知
   void PostSnapshotReady();
-  // 按键活跃期丢弃的快照,稍后重试一次投递
-  void ScheduleSnapshotRetry();
 
   // 置输入焦点位置（光标跟随时移动候选窗）但不重绘
   void UpdateInputPosition(RECT const& rc);

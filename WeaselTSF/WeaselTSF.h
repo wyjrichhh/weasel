@@ -202,10 +202,10 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   void _AsyncRefresh(UINT_PTR seq);
   void _StartSnapshotListener();
   void _StopSnapshotListener();
-  std::wstring _last_snapshot_sig;
   std::thread _snap_thread;
   std::atomic<bool> _snap_stop{false};
-  ULONGLONG _last_key_tick = 0;
+  // 已应用帧的 key_serial(server 单调递增);推送帧仅当不小于它时应用
+  uint32_t _last_applied_serial = 0;
   std::wstring _GetRootDir();
 
   bool isImmersive() const {

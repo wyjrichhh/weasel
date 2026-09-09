@@ -34,8 +34,6 @@ void WeaselTSF::_ProcessKeyEvent(WPARAM wParam, LPARAM lParam, BOOL* pfEaten) {
       else if (ke.keycode == ibus::Down)
         ke.keycode = ibus::Up;
     }
-    if (!keyCountToSimulate)
-      _last_key_tick = GetTickCount64();
     *pfEaten = (BOOL)m_client.ProcessKeyEvent(ke);
 
     if (ke.keycode == ibus::Caps_Lock) {
