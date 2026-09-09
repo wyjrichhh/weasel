@@ -21,8 +21,9 @@ if (-not (Test-Path "$root\msvcp140.dll")) {
 }
 
 $exclude = @('bangkex64.dll', 'weasel.log', 'BangkeDeployer.exe')
-# .dmp 曾把一个 534MB 崩溃转储打进 MSI
-$excludeExt = @('.log', '.pdb', '.old', '.msi', '.dmp', '.bak', '.tmp')
+# .dmp 曾把一个 534MB 崩溃转储打进 MSI;.wixpdb/.exp/.lib 是构建副产物
+$excludeExt = @('.log', '.pdb', '.old', '.msi', '.dmp', '.bak', '.tmp',
+                '.wixpdb', '.exp', '.lib')
 
 $files = Get-ChildItem $root -Recurse -File | Where-Object {
   ($exclude -notcontains $_.Name) -and ($excludeExt -notcontains $_.Extension.ToLower())
@@ -56,14 +57,24 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('  <Fragment>')
 [void]$sb.AppendLine('    <DirectoryRef Id="INSTALLDIR">')
 
-# 深度优先：先父后子输出
+# 深度优先,父元素嵌套包含子元素:WiX 按嵌套关系定目录父子,
+# 平铺输出会把二级以上目录全部落到安装根(opencc 曾因此装到根而非 data\opencc)
 $emitted = @{}
-function EmitDir([string]$did) {
-  if (-not $did -or $did -eq 'INSTALLDIR' -or $emitted.ContainsKey($did)) { return }
-  $d = $dirs[$did]
-  EmitDir $d.Parent
-  [void]$script:sb.AppendLine("      <Directory Id=""$did"" Name=""$(Esc $d.Name)"" />")
-  $script:emitted[$did] = $true
+function EmitDirTree([string]$did, [int]$depth) {
+  $kids = @($dirs.Keys | Where-Object { $dirs[$_].Parent -eq $did })
+  foreach ($k in $kids) {
+    $d = $dirs[$k]
+    $indent = '      ' + ('  ' * $depth)
+    $script:emitted[$k] = $true
+    $grandkids = @($dirs.Keys | Where-Object { $dirs[$_].Parent -eq $k })
+    if ($grandkids.Count -gt 0) {
+      [void]$script:sb.AppendLine("$indent<Directory Id=""$k"" Name=""$(Esc $d.Name)"">")
+      EmitDirTree $k ($depth + 1)
+      [void]$script:sb.AppendLine("$indent</Directory>")
+    } else {
+      [void]$script:sb.AppendLine("$indent<Directory Id=""$k"" Name=""$(Esc $d.Name)"" />")
+    }
+  }
 }
 
 $comps = New-Object System.Text.StringBuilder
@@ -80,7 +91,7 @@ foreach ($f in $files) {
   [void]$comps.AppendLine("        <File Id=""file$i"" Source=""$(Esc $src)"" Name=""$(Esc $f.Name)"" KeyPath=""yes"" />")
   [void]$comps.AppendLine("      </Component>")
 }
-foreach ($did in @($dirs.Keys)) { EmitDir $did }
+EmitDirTree 'INSTALLDIR' 0
 [void]$sb.AppendLine('    </DirectoryRef>')
 [void]$sb.AppendLine("    <ComponentGroup Id=""BangkeFiles"">")
 [void]$sb.Append($comps.ToString())
