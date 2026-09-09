@@ -27,11 +27,37 @@ bool UIStyleSettings::GetPresetColorSchemes(
   if (!result)
     return false;
   result->clear();
+  {  // TEMP-DEBUG: 每步落盘
+    auto dbg = [](const char* s, int v = 0) {
+      wchar_t p[MAX_PATH] = {0};
+      ExpandEnvironmentStringsW(L"%TEMP%\\bk_style_trace.log", p, MAX_PATH);
+      HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                             NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+      if (f != INVALID_HANDLE_VALUE) {
+        char line[256];
+        snprintf(line, sizeof(line), "%s (%d)\r\n", s, v);
+        DWORD w;
+        WriteFile(f, line, (DWORD)strlen(line), &w, NULL);
+        CloseHandle(f);
+      }
+    };
+    dbg("GetPresetColorSchemes enter");
+  }
   // 直接读共享 weasel.yaml,行扫描 preset_color_schemes: 块下的 name:
   // (不走 rime API——config_load_string 对大 yaml 不稳定,行扫描更简单可靠)
   std::string shared = rime_get_api()->get_shared_data_dir();
   std::string path = shared + "\\weasel.yaml";
   std::ifstream ifs(wtou8(WeaselSharedDataPath().wstring()) + "\\weasel.yaml");
+  {  // TEMP-DEBUG
+    char line[256];
+    snprintf(line, sizeof(line), "ifs good=%d\r\n", (int)ifs.good());
+    DWORD w;
+    wchar_t p[MAX_PATH] = {0};
+    ExpandEnvironmentStringsW(L"%TEMP%\\bk_style_trace.log", p, MAX_PATH);
+    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f != INVALID_HANDLE_VALUE) { WriteFile(f, line, (DWORD)strlen(line), &w, NULL); CloseHandle(f); }
+  }
   if (!ifs.good())
     return false;
   std::string line;
@@ -63,6 +89,16 @@ bool UIStyleSettings::GetPresetColorSchemes(
     }
   }
   ifs.close();
+  {  // TEMP-DEBUG
+    char line[256];
+    snprintf(line, sizeof(line), "scanned result=%d\r\n", (int)result->size());
+    DWORD w;
+    wchar_t p[MAX_PATH] = {0};
+    ExpandEnvironmentStringsW(L"%TEMP%\\bk_style_trace.log", p, MAX_PATH);
+    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f != INVALID_HANDLE_VALUE) { WriteFile(f, line, (DWORD)strlen(line), &w, NULL); CloseHandle(f); }
+  }
   return !result->empty();
 }
 
