@@ -38,36 +38,6 @@ bool PipeChannelBase::_Ensure() {
   return true;
 }
 
-// 管道读写超时:server 挂死时 UI 线程最多卡 kPipeTimeoutMs 而非永久冻死。
-// 同步句柄上用 CancelIo + 自身线程等待:发起 overlapped 读写,限时等待,
-// 超时则 CancelIo 取消并抛异常让上层断开重连。
-static bool s_TimedPipeIO(HANDLE pipe, BOOL is_read, LPVOID buf, DWORD len,
-                          DWORD* transferred) {
-  OVERLAPPED ov = {};
-  ov.hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
-  if (!ov.hEvent)
-    return false;
-  BOOL ok = is_read ? ::ReadFile(pipe, buf, len, transferred, &ov)
-                    : ::WriteFile(pipe, buf, len, transferred, &ov);
-  if (!ok && GetLastError() != ERROR_IO_PENDING) {
-    CloseHandle(ov.hEvent);
-    return false;
-  }
-  if (WaitForSingleObject(ov.hEvent, 2000) != WAIT_OBJECT_0) {
-    ::CancelIo(pipe);
-    // 等取消落地(管道可能已经完成,取最终状态)
-    DWORD dummy = 0;
-    GetOverlappedResult(pipe, &ov, &dummy, TRUE);
-    CloseHandle(ov.hEvent);
-    SetLastError(ERROR_TIMEOUT);
-    return false;
-  }
-  ok = GetOverlappedResult(pipe, &ov, transferred, FALSE);
-  CloseHandle(ov.hEvent);
-  return ok;
-}
-
-
 HANDLE PipeChannelBase::_Connect(const wchar_t* name) {
   HANDLE pipe = INVALID_HANDLE_VALUE;
   while (_Invalid(pipe = _TryConnect()))
@@ -112,6 +82,35 @@ void PipeChannelBase::_FinalizePipe(HANDLE& p) {
     CloseHandle(p);
   }
   p = INVALID_HANDLE_VALUE;
+}
+
+// 管道读写超时:server 挂死时 UI 线程最多卡 kPipeTimeoutMs 而非永久冻死。
+// 同步句柄上用 CancelIo + 自身线程等待:发起 overlapped 读写,限时等待,
+// 超时则 CancelIo 取消并抛异常让上层断开重连。
+static bool s_TimedPipeIO(HANDLE pipe, BOOL is_read, LPVOID buf, DWORD len,
+                          DWORD* transferred) {
+  OVERLAPPED ov = {};
+  ov.hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+  if (!ov.hEvent)
+    return false;
+  BOOL ok = is_read ? ::ReadFile(pipe, buf, len, transferred, &ov)
+                    : ::WriteFile(pipe, buf, len, transferred, &ov);
+  if (!ok && GetLastError() != ERROR_IO_PENDING) {
+    CloseHandle(ov.hEvent);
+    return false;
+  }
+  if (WaitForSingleObject(ov.hEvent, 2000) != WAIT_OBJECT_0) {
+    ::CancelIo(pipe);
+    // 等取消落地(管道可能已经完成,取最终状态)
+    DWORD dummy = 0;
+    GetOverlappedResult(pipe, &ov, &dummy, TRUE);
+    CloseHandle(ov.hEvent);
+    SetLastError(ERROR_TIMEOUT);
+    return false;
+  }
+  ok = GetOverlappedResult(pipe, &ov, transferred, FALSE);
+  CloseHandle(ov.hEvent);
+  return ok;
 }
 
 void PipeChannelBase::_Receive(HANDLE pipe, LPVOID msg, size_t rec_len) {
