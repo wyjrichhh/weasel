@@ -77,13 +77,15 @@ static inline bool IfFileExist(std::string filename) {
 
 std::string UIStyleSettings::GetColorSchemePreview(
     const std::string& color_scheme_id) {
-  std::string shared_dir = rime_get_api()->get_shared_data_dir();
   std::string user_dir = rime_get_api()->get_user_data_dir();
   std::string filename =
       user_dir + "\\preview\\color_scheme_" + color_scheme_id + ".png";
   if (IfFileExist(filename))
     return filename;
-  return (shared_dir + "\\preview\\color_scheme_" + color_scheme_id + ".png");
+  // 预览图随安装器铺在安装根目录 preview\(与 data\ 平级),不在数据目录里
+  std::string root =
+      wtou8(WeaselSharedDataPath().parent_path().wstring());
+  return root + "\\preview\\color_scheme_" + color_scheme_id + ".png";
 }
 
 std::string UIStyleSettings::GetActiveColorScheme() {
@@ -107,11 +109,11 @@ int UIStyleSettings::GetFontSize(int fallback) {
   if (!api_->settings_get_config(settings_, &config))
     return fallback;
   int value = fallback;
-  if (!rime_get_api()->config_get_int(&config, "style/font_size", &value))
+  if (!rime_get_api()->config_get_int(&config, "style/font_point", &value))
     return fallback;
   return value;
 }
 
 void UIStyleSettings::SetFontSize(int value) {
-  api_->customize_int(settings_, "style/font_size", value);
+  api_->customize_int(settings_, "style/font_point", value);
 }
