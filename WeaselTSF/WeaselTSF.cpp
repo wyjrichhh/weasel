@@ -288,16 +288,7 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
             &status, &config, &_cand->style()))
       return;
   } else {
-    weasel::ResponseParser parser(&commit, context.get(), &status, &config,
-                                  &_cand->style());
-    std::wistringstream iss(text);
-    std::wstring line;
-    while (std::getline(iss, line)) {
-      if (!line.empty() && line.back() == L'\r')
-        line.pop_back();
-      if (!line.empty() && line != L".")
-        parser.Feed(line);
-    }
+    return;  // 槽内非帧内容,拒绝
   }
 
   // 快照尚无候选（组合重建中间态）则不动当前显示

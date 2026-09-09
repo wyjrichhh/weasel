@@ -85,34 +85,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BangkeProtocol.cpp" />
-    <ClCompile Include="Configurator.cpp" />
-    <ClCompile Include="Deserializer.cpp" />
     <ClCompile Include="PipeChannel.cpp" />
     <ClCompile Include="ResponseParser.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Styler.cpp" />
     <ClCompile Include="WeaselClientImpl.cpp" />
-    <ClCompile Include="ActionLoader.cpp" />
-    <ClCompile Include="Committer.cpp" />
-    <ClCompile Include="ContextUpdater.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\BangkeProtocol.h" />
     <ClInclude Include="..\include\PipeChannel.h" />
-    <ClInclude Include="Configurator.h" />
-    <ClInclude Include="Deserializer.h" />
     <ClInclude Include="..\include\ResponseParser.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="Styler.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="WeaselClientImpl.h" />
     <ClInclude Include="..\include\WeaselIPC.h" />
-    <ClInclude Include="ActionLoader.h" />
-    <ClInclude Include="Committer.h" />
-    <ClInclude Include="ContextUpdater.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />

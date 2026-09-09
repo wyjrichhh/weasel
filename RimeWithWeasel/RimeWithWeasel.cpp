@@ -542,7 +542,6 @@ void RimeWithWeaselHandler::OnDeferredEvent(int event,
 void RimeWithWeaselHandler::_ReadClientInfo(WeaselSessionId ipc_id,
                                             LPWSTR buffer) {
   std::string app_name;
-  bool proto_v2 = false;
   // parse request text
   wbufferstream bs(buffer, WEASEL_IPC_BUFFER_LENGTH);
   std::wstring line;
@@ -559,12 +558,8 @@ void RimeWithWeaselHandler::_ReadClientInfo(WeaselSessionId ipc_id,
       to_lower(lwr);
       app_name = wtou8(lwr.substr(kClientAppKey.length()));
     }
-    // proto 协商:客户端声明 proto=2 后本会话响应改走二进制帧
-    if (line == L"session.proto=2")
-      proto_v2 = true;
   }
   SessionStatus& session_status = get_session_status(ipc_id);
-  session_status.proto_v2 = proto_v2;
   RimeSessionId session_id = session_status.session_id;
   // set app specific options
   if (!app_name.empty()) {
@@ -879,209 +874,7 @@ inline std::string _GetLabelText(const std::vector<Text>& labels,
 
 bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat,
                                      bool include_commit) {
-  if (get_session_status(ipc_id).proto_v2)
-    return _RespondFrame(ipc_id, eat, include_commit);
-  std::wstring body;
-  body.reserve(4096);
-  std::vector<const char*> actions;
-  actions.reserve(8);
-
-  SessionStatus& session_status = get_session_status(ipc_id);
-  RimeSessionId session_id = session_status.session_id;
-  RIME_STRUCT(RimeCommit, commit);
-  // include_commit=false 时跳过：get_commit 读一次即清空，
-  // 快照推送若先于按键响应消费 commit，管道响应将丢失上屏文本
-  if (include_commit && rime_api->get_commit(session_id, &commit)) {
-    actions.push_back("commit");
-    std::wstring commit_text_w = escape_string(u8tow(commit.text));
-    body.append(L"commit=").append(commit_text_w).append(L"\n");
-    {
-
-    }
-    rime_api->free_commit(&commit);
-  }
-
-  bool is_composing = false;
-  RIME_STRUCT(RimeStatus, status);
-  static const std::wstring Bool_wstring[] = {L"0", L"1"};
-  if (rime_api->get_status(session_id, &status)) {
-    is_composing = !!status.is_composing;
-    actions.push_back("status");
-    body.append(L"status.ascii_mode=")
-        .append(Bool_wstring[!!status.is_ascii_mode])
-        .append(L"\n")
-        .append(L"status.composing=")
-        .append(Bool_wstring[!!status.is_composing])
-        .append(L"\n")
-        .append(L"status.disabled=")
-        .append(Bool_wstring[!!status.is_disabled])
-        .append(L"\n")
-        .append(L"status.full_shape=")
-        .append(Bool_wstring[!!status.is_full_shape])
-        .append(L"\n")
-        .append(L"status.schema_id=")
-        .append(status.schema_id ? u8tow(status.schema_id) : std::wstring())
-        .append(L"\n");
-    if (m_global_ascii_mode &&
-        (session_status.status.is_ascii_mode != status.is_ascii_mode)) {
-      for (auto& pair : m_session_status_map) {
-        if (pair.first != ipc_id)
-          rime_api->set_option(to_session_id(pair.first), "ascii_mode",
-                               !!status.is_ascii_mode);
-      }
-    }
-    session_status.status = status;
-    rime_api->free_status(&status);
-  }
-
-  RIME_STRUCT(RimeContext, ctx);
-  if (rime_api->get_context(session_id, &ctx)) {
-    bool has_candidates = ctx.menu.num_candidates > 0;
-    CandidateInfo cinfo;
-    if (has_candidates) {
-      _GetCandidateInfo(cinfo, ctx);
-    }
-    if (is_composing) {
-      const auto& preedit = ctx.composition.preedit;
-      const auto& start = ctx.composition.sel_start;
-      const auto& end = ctx.composition.sel_end;
-      const auto& cursor = ctx.composition.cursor_pos;
-      static const auto u8towstring = [](const char* u8str, int len = 0) {
-        return std::to_wstring(utf8towcslen(u8str, len));
-      };
-      actions.push_back("ctx");
-      switch (session_status.style.preedit_type) {
-        case UIStyle::PREVIEW: {
-          if (ctx.commit_text_preview) {
-            const char* first_utf8 = ctx.commit_text_preview;
-            const size_t first_len = std::strlen(first_utf8);
-            const std::wstring first_w = escape_string(u8tow(first_utf8));
-            const std::wstring tmp = u8towstring(first_utf8, (int)first_len);
-            body.append(L"ctx.preedit=")
-                .append(first_w)
-                .append(L"\n")
-                .append(L"ctx.preedit.cursor=")
-                .append(u8towstring(first_utf8, 0))
-                .append(L",")
-                .append(tmp)
-                .append(L",")
-                .append(tmp)
-                .append(L"\n");
-            break;
-          }
-          // no preview, fall back to composition
-        }
-        case UIStyle::COMPOSITION: {
-          body.append(L"ctx.preedit=")
-              .append(escape_string(u8tow(preedit)))
-              .append(L"\n");
-          if (start <= end) {
-            body.append(L"ctx.preedit.cursor=")
-                .append(u8towstring(preedit, start))
-                .append(L",")
-                .append(u8towstring(preedit, end))
-                .append(L",")
-                .append(u8towstring(preedit, cursor))
-                .append(L"\n");
-          }
-          break;
-        }
-        case UIStyle::PREVIEW_ALL: {
-          body.append(L"ctx.preedit=")
-              .append(escape_string(u8tow(preedit)))
-              .append(L"  [");
-          auto label_valid = session_status.style.label_font_point > 0;
-          auto comment_valid = session_status.style.comment_font_point > 0;
-          const std::wstring mark_text_w =
-              session_status.style.mark_text.empty()
-                  ? std::wstring(L"*")
-                  : session_status.style.mark_text;
-          for (auto i = 0; i < ctx.menu.num_candidates; i++) {
-            std::wstring label_w;
-            if (label_valid) {
-              wchar_t buf_lbl[128];
-              swprintf_s<128>(buf_lbl,
-                              session_status.style.label_text_format.c_str(),
-                              cinfo.labels.at(i).str.c_str());
-              label_w = std::wstring(buf_lbl);
-            }
-            std::wstring comment_w =
-                comment_valid ? cinfo.comments.at(i).str : std::wstring();
-            std::wstring prefix_w = (i != ctx.menu.highlighted_candidate_index)
-                                        ? std::wstring()
-                                        : mark_text_w;
-            body.append(L" ")
-                .append(prefix_w)
-                .append(escape_string(label_w))
-                .append(escape_string(u8tow(ctx.menu.candidates[i].text)))
-                .append(L" ")
-                .append(escape_string(comment_w));
-          }
-          body.append(L" ]\n");
-          if (start <= end) {
-            body.append(L"ctx.preedit.cursor=")
-                .append(u8towstring(preedit, start))
-                .append(L",")
-                .append(u8towstring(preedit, end))
-                .append(L",")
-                .append(u8towstring(preedit, cursor))
-                .append(L"\n");
-          }
-          break;
-        }
-      }
-    }
-    if (has_candidates) {
-      std::wstringstream ss;
-      boost::archive::text_woarchive oa(ss);
-
-      oa << cinfo;
-
-      auto s = ss.str();
-      body.append(L"ctx.cand=").append(std::move(s)).append(L"\n");
-    }
-    rime_api->free_context(&ctx);
-  }
-
-  // configuration information
-  actions.push_back("config");
-  body.append(L"config.inline_preedit=")
-      .append(std::to_wstring((int)session_status.style.inline_preedit))
-      .append(L"\n");
-
-  // style
-  if (!session_status.__synced) {
-    std::wstringstream ss;
-    boost::archive::text_woarchive oa(ss);
-    oa << session_status.style;
-
-    actions.push_back("style");
-    body.append(L"style=").append(ss.str()).append(L"\n");
-    session_status.__synced = true;
-  }
-
-  // summarize: send header first to avoid vector head-insert cost
-  std::wstring header;
-  if (actions.empty()) {
-    header = L"action=noop\n";
-  } else {
-    std::string actionList;
-    actionList.reserve(64);
-    for (size_t i = 0; i < actions.size(); ++i) {
-      if (i > 0)
-        actionList += ',';
-      actionList += actions[i];
-    }
-    header = std::wstring(L"action=") + u8tow(actionList) + L"\n";
-  }
-  if (!eat(header))
-    return false;
-
-  body.append(L".\n");
-  if (!eat(body))
-    return false;
-
-  return true;
+  return _RespondFrame(ipc_id, eat, include_commit);
 }
 
 // proto=2 渲染:与 _Respond 相同的数据收集与副作用,输出二进制帧。

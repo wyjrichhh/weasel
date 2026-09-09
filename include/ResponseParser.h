@@ -1,17 +1,13 @@
 ﻿#pragma once
 #include <WeaselIPCData.h>
 #include <windows.h>
-#include <map>
-#include <memory>
 #include <string>
 
 namespace weasel {
-class Deserializer;
 
-// 解析server回應文本
+// v2 帧响应解析:管道体以 bangke::kFrameMagic 起始即解码;
+// 否则返回失败(不再有文本协议回退)
 struct ResponseParser {
-  std::map<std::wstring, std::shared_ptr<Deserializer> > deserializers;
-
   std::wstring* p_commit;
   Context* p_context;
   Status* p_status;
@@ -23,12 +19,7 @@ struct ResponseParser {
                  Status* status = 0,
                  Config* config = 0,
                  UIStyle* style = 0);
-
-  // 重載函數調用運算符, 以扮做ResponseHandler
   bool operator()(LPWSTR buffer, UINT length);
-
-  // 處理一行回應文本
-  void Feed(const std::wstring& line);
 };
 
 }  // namespace weasel

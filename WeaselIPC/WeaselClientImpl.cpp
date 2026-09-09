@@ -184,8 +184,6 @@ bool ClientImpl::GetResponseData(ResponseHandler const& handler) {
 
 bool ClientImpl::_WriteClientInfo() {
   channel << L"action=session\n";
-  // proto 协商:server 识别后本会话响应改走二进制帧
-  channel << L"session.proto=2\n";
   channel << L"session.client_app=" << app_name.c_str() << L"\n";
   channel << L"session.client_type=" << (is_ime ? L"ime" : L"tsf") << L"\n";
   channel << L".\n";
