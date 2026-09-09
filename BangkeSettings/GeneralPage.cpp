@@ -1,16 +1,20 @@
 #include "GeneralPage.h"
 
 #include <QComboBox>
-#include <QFile>
 #include <QFormLayout>
-#include <QRegularExpression>
 #include <QSpinBox>
-#include <QTextStream>
 #include <QVBoxLayout>
 
-#include <WeaselUtility.h>
+#pragma warning(disable : 4005)
+#include <rime_api.h>
+#pragma warning(default : 4005)
+
+#include "Levers.h"
 
 GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
+  api_ = leversApi();
+  settings_ = api_->custom_settings_init("default", "Bangke::GeneralPage");
+
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(24, 16, 24, 16);
   layout->setSpacing(8);
@@ -40,47 +44,26 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
   load();
 }
 
-QString GeneralPage::defaultCustomYaml() const {
-  return QString::fromStdWString(WeaselUserDataPath().wstring()) +
-         QStringLiteral("/default.custom.yaml");
-}
-
-// 读嵌套键:在 yaml 中找 "  <key>: <value>" 行(任意缩进层级)。
-// 精确匹配键名(避免 Shift_L 匹配到 Shift_L_extra)
-static QString findKeyLine(const QString& yaml, const QString& key) {
-  const QRegularExpression rx(
-      QStringLiteral("(^|\\n)\\s*%1:\\s*([^\\n]*)")
-          .arg(QRegularExpression::escape(key)));
-  auto m = rx.match(yaml);
-  return m.hasMatch() ? m.captured(2).trimmed() : QString();
-}
-
-static bool replaceKeyLine(QString& yaml, const QString& key,
-                           const QString& val) {
-  const QRegularExpression rx(
-      QStringLiteral("(^|\\n)(\\s*)%1:\\s*[^\\n]*")
-          .arg(QRegularExpression::escape(key)));
-  auto m = rx.match(yaml);
-  if (!m.hasMatch())
-    return false;
-  yaml.replace(m.capturedStart(), m.capturedLength(),
-               m.captured(1) + m.captured(2) + key + QStringLiteral(": ") + val);
-  return true;
-}
-
 void GeneralPage::load() {
-  QFile f(defaultCustomYaml());
-  if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+  api_->load_settings(settings_);
+  RimeConfig config = {0};
+  if (!api_->settings_get_config(settings_, &config))
     return;
-  const QString yaml = QString::fromUtf8(f.readAll());
-  f.close();
+  RimeApi* rime = rime_get_api();
 
-  initPs_ = findKeyLine(yaml, QStringLiteral("menu/page_size"));
-  if (!initPs_.isEmpty())
-    pageSize_->setValue(initPs_.toInt());
+  int ps = 5;
+  if (rime->config_get_int(&config, "menu/page_size", &ps))
+    pageSize_->setValue(ps);
+  initPs_ = ps;
 
-  initShiftL_ = findKeyLine(yaml, QStringLiteral("ascii_composer/switch_key/Shift_L"));
-  initShiftR_ = findKeyLine(yaml, QStringLiteral("ascii_composer/switch_key/Shift_R"));
+  // settings_get_config 只含 custom 补丁,不含合并后的共享默认;
+  // 空 = 未打补丁,显示控件默认值
+  const char* sl =
+      rime->config_get_cstring(&config, "ascii_composer/switch_key/Shift_L");
+  const char* sr =
+      rime->config_get_cstring(&config, "ascii_composer/switch_key/Shift_R");
+  initShiftL_ = sl ? QString::fromUtf8(sl) : QString();
+  initShiftR_ = sr ? QString::fromUtf8(sr) : QString();
   for (int i = 0; i < shiftL_->count(); ++i) {
     if (shiftL_->itemData(i).toString() == initShiftL_)
       shiftL_->setCurrentIndex(i);
@@ -89,57 +72,26 @@ void GeneralPage::load() {
   }
 }
 
-// 写 patch: 块里的一个路径键:已有则替换,没有则追加(文件缺 patch: 头时先补)
-static bool writePatchKey(const QString& file, const QString& path,
-                          const QString& val) {
-  QFile f(file);
-  QString yaml;
-  if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    yaml = QString::fromUtf8(f.readAll());
-    f.close();
-  }
-  const QRegularExpression rx(
-      QStringLiteral("(^|\n)(\s*)%1:\s*[^\n]*").arg(
-          QRegularExpression::escape(path)));
-  auto m = rx.match(yaml);
-  if (m.hasMatch()) {
-    yaml.replace(m.capturedStart(), m.capturedLength(),
-                 m.captured(1) + m.captured(2) + path +
-                     QStringLiteral(": ") + val);
-  } else {
-    if (!yaml.contains(
-            QRegularExpression(QStringLiteral("(^|\n)patch:\s*(\n|$)")))) {
-      if (!yaml.isEmpty() && !yaml.endsWith(QLatin1Char('\n')))
-        yaml += QLatin1Char('\n');
-      yaml += QStringLiteral("patch:\n");
-    }
-    yaml += QStringLiteral("  %1: %2\n").arg(path, val);
-  }
-  if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
-    return false;
-  f.write(yaml.toUtf8());
-  f.close();
-  return true;
-}
-
 bool GeneralPage::save() {
-  // 只写有变化的键:未动过的键不进 patch,保留 rime 默认行为
-  struct KV { QString path; QString val; QString* init; };
-  KV kvs[] = {
-      {QStringLiteral("menu/page_size"), QString::number(pageSize_->value()), &initPs_},
-      {QStringLiteral("ascii_composer/switch_key/Shift_L"),
-       shiftL_->currentData().toString(), &initShiftL_},
-      {QStringLiteral("ascii_composer/switch_key/Shift_R"),
-       shiftR_->currentData().toString(), &initShiftR_},
-  };
-  bool any = false;
-  for (auto& kv : kvs) {
-    if (kv.val == *kv.init)
-      continue;
-    if (!writePatchKey(defaultCustomYaml(), kv.path, kv.val))
-      return false;
-    *kv.init = kv.val;
-    any = true;
-  }
-  return any;
+  const int ps = pageSize_->value();
+  const QString sl = shiftL_->currentData().toString();
+  const QString sr = shiftR_->currentData().toString();
+  if (ps == initPs_ && sl == initShiftL_ && sr == initShiftR_)
+    return false;
+  // 重读再写:与 SwitcherPage 共写 default.custom.yaml,不能拿旧树覆写对方
+  api_->load_settings(settings_);
+  if (ps != initPs_)
+    api_->customize_int(settings_, "menu/page_size", ps);
+  if (sl != initShiftL_)
+    api_->customize_string(settings_, "ascii_composer/switch_key/Shift_L",
+                           sl.toUtf8().constData());
+  if (sr != initShiftR_)
+    api_->customize_string(settings_, "ascii_composer/switch_key/Shift_R",
+                           sr.toUtf8().constData());
+  if (!api_->save_settings(settings_))
+    return false;
+  initPs_ = ps;
+  initShiftL_ = sl;
+  initShiftR_ = sr;
+  return true;
 }

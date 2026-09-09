@@ -192,6 +192,8 @@ bool SwitcherPage::save() {
     QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"), QStringLiteral(u"至少要选用一项方案。"));
     return false;
   }
+  // 重读再写:与 GeneralPage 共写 default.custom.yaml,避免旧树覆写对方
+  api_->load_settings((RimeCustomSettings*)settings_);
   api_->select_schemas(settings_, selection.data(), (int)selection.size());
   return api_->save_settings((RimeCustomSettings*)settings_);
 }

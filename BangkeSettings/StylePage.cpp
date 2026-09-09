@@ -57,7 +57,7 @@ void StylePage::forceLoad() {
   schemeCombo_->setCurrentIndex(index >= 0 ? index : 0);
 
   activeScheme_ = settings_.GetActiveColorScheme();
-  activeFontSize_ = settings_.GetFontSize(15);
+  activeFontSize_ = settings_.GetFontSize(14);
   fontSize_->setValue(activeFontSize_);
   activeHorizontal_ = settings_.GetHorizontal(false);
   layoutCombo_->setCurrentIndex(activeHorizontal_ ? 1 : 0);
