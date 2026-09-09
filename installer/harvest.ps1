@@ -21,7 +21,8 @@ if (-not (Test-Path "$root\msvcp140.dll")) {
 }
 
 $exclude = @('bangkex64.dll', 'weasel.log', 'BangkeDeployer.exe')
-$excludeExt = @('.log', '.pdb', '.old', '.msi')
+# .dmp 曾把一个 534MB 崩溃转储打进 MSI
+$excludeExt = @('.log', '.pdb', '.old', '.msi', '.dmp', '.bak', '.tmp')
 
 $files = Get-ChildItem $root -Recurse -File | Where-Object {
   ($exclude -notcontains $_.Name) -and ($excludeExt -notcontains $_.Extension.ToLower())

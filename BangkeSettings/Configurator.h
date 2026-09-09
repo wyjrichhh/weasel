@@ -8,6 +8,9 @@ class Configurator {
   void Initialize();
   int UpdateWorkspace(bool report_errors = false);
   int SyncUserData();
+  // 全新安装的用户目录 AI 初始化(/install):写接线 custom yaml、铺模型。
+  // 幂等:只补缺,不覆盖用户已有文件
+  int EnsureAiDefaults();
   // 卸载残留清理：以 MSI SYSTEM 令牌运行，不触碰用户数据目录，故为静态
   static int CleanupResidue();
   // 安装前清掉指向本产品文件的挂起重启删除：否则卸载后未重启就重装，

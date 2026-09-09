@@ -76,7 +76,11 @@ int main(int argc, char* argv[]) {
         showUsage(nullptr);
         break;
       case Mode::Deploy:
+        ret = configurator.UpdateWorkspace();
+        break;
       case Mode::Install:
+        // 首部署:先补 AI 接线与模型,再部署使其生效
+        configurator.EnsureAiDefaults();
         ret = configurator.UpdateWorkspace();
         break;
       case Mode::Sync:

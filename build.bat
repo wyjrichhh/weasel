@@ -128,6 +128,11 @@ cd /d %WEASEL_ROOT%
 if exist output\BangkeServer.exe (
   output\BangkeServer.exe /q
 )
+  rem AI 预测模型:models\predict_models 不入库,存在才随产物打包
+  if exist models\predict_models (
+    if not exist output\predict_models mkdir output\predict_models
+    xcopy /E /I /Y models\predict_models output\predict_models >nul
+  )
 
 rem build booost
 if %build_boost% == 1 (
