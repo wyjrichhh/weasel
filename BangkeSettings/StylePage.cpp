@@ -14,9 +14,14 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
   fontSize_ = new QSpinBox(this);
   fontSize_->setRange(9, 36);
 
+  layoutCombo_ = new QComboBox(this);
+  layoutCombo_->addItem(QStringLiteral(u"竖排"), QStringLiteral("vertical"));
+  layoutCombo_->addItem(QStringLiteral(u"横排"), QStringLiteral("horizontal"));
+
   auto* form = new QFormLayout();
   form->addRow(QStringLiteral(u"配色方案："), schemeCombo_);
   form->addRow(QStringLiteral(u"字体大小："), fontSize_);
+  form->addRow(QStringLiteral(u"候选窗排列："), layoutCombo_);
 
   auto* layout = new QVBoxLayout(this);
   layout->addLayout(form);
@@ -54,6 +59,8 @@ void StylePage::forceLoad() {
   activeScheme_ = settings_.GetActiveColorScheme();
   activeFontSize_ = settings_.GetFontSize(15);
   fontSize_->setValue(activeFontSize_);
+  activeHorizontal_ = settings_.GetHorizontal(false);
+  layoutCombo_->setCurrentIndex(activeHorizontal_ ? 1 : 0);
   updatePreview();
   loaded_ = true;
 }
@@ -82,6 +89,12 @@ bool StylePage::save() {
   }
   if (fontSize_->value() != activeFontSize_) {
     settings_.SetFontSize(fontSize_->value());
+    changed = true;
+  }
+  const bool horizontal =
+      layoutCombo_->currentData().toString() == QStringLiteral("horizontal");
+  if (horizontal != activeHorizontal_) {
+    settings_.SetHorizontal(horizontal);
     changed = true;
   }
   if (!changed)

@@ -25,6 +25,9 @@ class UIStyleSettings {
   int GetFontSize(int fallback);
   void SetFontSize(int value);
 
+  bool GetHorizontal(bool fallback);
+  void SetHorizontal(bool value);
+
   RimeCustomSettings* settings() { return settings_; }
 
  private:

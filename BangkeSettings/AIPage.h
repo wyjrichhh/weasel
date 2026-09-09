@@ -15,9 +15,11 @@ class AIPage : public QWidget {
   explicit AIPage(QWidget* parent = nullptr);
 
   void load();
-  void save();
+  bool save();
 
  private:
+  QString stateSignature() const;
+
   QCheckBox* enabled_ = nullptr;
   QComboBox* device_ = nullptr;
   QSpinBox* maxTokens_ = nullptr;
@@ -32,4 +34,6 @@ class AIPage : public QWidget {
   class QLineEdit* modelPath_ = nullptr;
 
   QString schemaCustomYaml() const;
+  // 载入时的控件状态签名;保存仅在有差异时写文件
+  QString initState_;
 };

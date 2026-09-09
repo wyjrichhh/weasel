@@ -10,11 +10,15 @@ class GeneralPage : public QWidget {
  public:
   explicit GeneralPage(QWidget* parent = nullptr);
   void load();
-  void save();
+  bool save();
 
  private:
   QSpinBox* pageSize_ = nullptr;
   QComboBox* shiftL_ = nullptr;
   QComboBox* shiftR_ = nullptr;
   QString defaultCustomYaml() const;
+  // 载入时的原值(空串 = custom yaml 无此键);保存只写有变化的键
+  QString initPs_;
+  QString initShiftL_;
+  QString initShiftR_;
 };

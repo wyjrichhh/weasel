@@ -8,6 +8,7 @@
 #include <QGroupBox>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QStringList>
 #include <QTextStream>
 #include <QRegularExpression>
 #include <QVBoxLayout>
@@ -114,11 +115,35 @@ void AIPage::load() {
   contextWindow_->setValue(findValue(yaml, QStringLiteral("context_window_size")).toInt());
   minContextPrompt_->setValue(findValue(yaml, QStringLiteral("min_context_prompt_length")).toInt());
   modelPath_->setText(findValue(yaml, QStringLiteral("model_path")));
+
+  initState_ = stateSignature();
+}
+
+QString AIPage::stateSignature() const {
+  return QStringList{
+             enabled_->isChecked() ? QStringLiteral("1") : QStringLiteral("0"),
+             device_->currentData().toString(),
+             QString::number(maxTokens_->value()),
+             QString::number(debounce_->value()),
+             QString::number(minInput_->value()),
+             QString::number(minHanzi_->value()),
+             QString::number(quality_->value()),
+             QString::number(targetIndex_->value()),
+             QString::number(searchRange_->value()),
+             QString::number(contextWindow_->value()),
+             QString::number(minContextPrompt_->value()),
+             modelPath_->text(),
+         }
+      .join(QLatin1Char('|'));
 }
 
 // 保存:读全文,逐行替换已知键的值;文件或 ai_predict: 块不存在则追加。
 // 未管理的行(含注释、engine 配置等)原样保留——与 fcitx5-rime config-ui 同款纪律。
-void AIPage::save() {
+bool AIPage::save() {
+  const QString sig = stateSignature();
+  if (sig == initState_)
+    return false;
+
   QFile f(schemaCustomYaml());
   QString yaml;
   if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -147,7 +172,7 @@ void AIPage::save() {
   // 块内键的缩进是 4 空格( "    key: value" )
   const int apStart = yaml.indexOf(QStringLiteral("  ai_predict:"));
   if (apStart < 0)
-    return;  // 无 ai_predict 块则不写(避免在错误位置追加)
+    return false;  // 无 ai_predict 块则不写(避免在错误位置追加)
 
   // 找块尾:下一个缩进 ≤2 空格的非空行
   int apEnd = yaml.length();
@@ -186,8 +211,10 @@ void AIPage::save() {
   }
   yaml.replace(apStart, apEnd - apStart, newBlock);
 
-  if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-    f.write(yaml.toUtf8());
-    f.close();
-  }
+  if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+    return false;
+  f.write(yaml.toUtf8());
+  f.close();
+  initState_ = sig;
+  return true;
 }

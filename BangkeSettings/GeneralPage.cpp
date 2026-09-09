@@ -75,60 +75,71 @@ void GeneralPage::load() {
   const QString yaml = QString::fromUtf8(f.readAll());
   f.close();
 
-  const QString ps = findKeyLine(yaml, QStringLiteral("menu/page_size"));
-  if (!ps.isEmpty())
-    pageSize_->setValue(ps.toInt());
+  initPs_ = findKeyLine(yaml, QStringLiteral("menu/page_size"));
+  if (!initPs_.isEmpty())
+    pageSize_->setValue(initPs_.toInt());
 
-  const QString sl = findKeyLine(yaml, QStringLiteral("ascii_composer/switch_key/Shift_L"));
-  const QString sr = findKeyLine(yaml, QStringLiteral("ascii_composer/switch_key/Shift_R"));
+  initShiftL_ = findKeyLine(yaml, QStringLiteral("ascii_composer/switch_key/Shift_L"));
+  initShiftR_ = findKeyLine(yaml, QStringLiteral("ascii_composer/switch_key/Shift_R"));
   for (int i = 0; i < shiftL_->count(); ++i) {
-    if (shiftL_->itemData(i).toString() == sl)
+    if (shiftL_->itemData(i).toString() == initShiftL_)
       shiftL_->setCurrentIndex(i);
-    if (shiftR_->itemData(i).toString() == sr)
+    if (shiftR_->itemData(i).toString() == initShiftR_)
       shiftR_->setCurrentIndex(i);
   }
 }
 
-void GeneralPage::save() {
-  QFile f(defaultCustomYaml());
+// 写 patch: 块里的一个路径键:已有则替换,没有则追加(文件缺 patch: 头时先补)
+static bool writePatchKey(const QString& file, const QString& path,
+                          const QString& val) {
+  QFile f(file);
   QString yaml;
   if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
     yaml = QString::fromUtf8(f.readAll());
     f.close();
   }
-
-  // default.custom.yaml 结构:
-  // patch:
-  //   menu/page_size: 5
-  //   ascii_composer/switch_key/Shift_L: commit_code
-  //   ascii_composer/switch_key/Shift_R: commit_code
-  // 写入用 rime patch 路径键(扁平键名),部署器会合并到对应节点。
-  struct KV { QString path; QString val; };
-  const KV kvs[] = {
-      {QStringLiteral("menu/page_size"), QString::number(pageSize_->value())},
-      {QStringLiteral("ascii_composer/switch_key/Shift_L"), shiftL_->currentData().toString()},
-      {QStringLiteral("ascii_composer/switch_key/Shift_R"), shiftR_->currentData().toString()},
-  };
-
-  for (const auto& kv : kvs) {
-    const QRegularExpression rx(
-        QStringLiteral("(^|\n)(\s*)%1:\s*[^\n]*").arg(
-            QRegularExpression::escape(kv.path)));
-    auto m2 = rx.match(yaml);
-    if (m2.hasMatch()) {
-      yaml.replace(m2.capturedStart(), m2.capturedLength(),
-                   m2.captured(1) + m2.captured(2) + kv.path +
-                       QStringLiteral(": ") + kv.val);
-    } else {
-      // 追加到 patch: 块末(2 空格缩进)
-      if (!yaml.endsWith(QLatin1Char('\n')))
+  const QRegularExpression rx(
+      QStringLiteral("(^|\n)(\s*)%1:\s*[^\n]*").arg(
+          QRegularExpression::escape(path)));
+  auto m = rx.match(yaml);
+  if (m.hasMatch()) {
+    yaml.replace(m.capturedStart(), m.capturedLength(),
+                 m.captured(1) + m.captured(2) + path +
+                     QStringLiteral(": ") + val);
+  } else {
+    if (!yaml.contains(
+            QRegularExpression(QStringLiteral("(^|\n)patch:\s*(\n|$)")))) {
+      if (!yaml.isEmpty() && !yaml.endsWith(QLatin1Char('\n')))
         yaml += QLatin1Char('\n');
-      yaml += QStringLiteral("  %1: %2\n").arg(kv.path, kv.val);
+      yaml += QStringLiteral("patch:\n");
     }
+    yaml += QStringLiteral("  %1: %2\n").arg(path, val);
   }
+  if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+    return false;
+  f.write(yaml.toUtf8());
+  f.close();
+  return true;
+}
 
-  if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-    f.write(yaml.toUtf8());
-    f.close();
+bool GeneralPage::save() {
+  // 只写有变化的键:未动过的键不进 patch,保留 rime 默认行为
+  struct KV { QString path; QString val; QString* init; };
+  KV kvs[] = {
+      {QStringLiteral("menu/page_size"), QString::number(pageSize_->value()), &initPs_},
+      {QStringLiteral("ascii_composer/switch_key/Shift_L"),
+       shiftL_->currentData().toString(), &initShiftL_},
+      {QStringLiteral("ascii_composer/switch_key/Shift_R"),
+       shiftR_->currentData().toString(), &initShiftR_},
+  };
+  bool any = false;
+  for (auto& kv : kvs) {
+    if (kv.val == *kv.init)
+      continue;
+    if (!writePatchKey(defaultCustomYaml(), kv.path, kv.val))
+      return false;
+    *kv.init = kv.val;
+    any = true;
   }
+  return any;
 }

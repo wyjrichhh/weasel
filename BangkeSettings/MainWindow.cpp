@@ -104,8 +104,8 @@ void MainWindow::onPageChanged(int index) {
 void MainWindow::saveAndDeploy() {
   bool modified = switcherPage_->save();
   modified = stylePage_->save() || modified;
-  generalPage_->save();
-  aiPage_->save();
+  modified = generalPage_->save() || modified;
+  modified = aiPage_->save() || modified;
 
   if (!modified)
     return;

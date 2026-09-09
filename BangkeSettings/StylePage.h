@@ -26,7 +26,9 @@ class StylePage : public QWidget {
   QComboBox* schemeCombo_ = nullptr;
   QLabel* preview_ = nullptr;
   QSpinBox* fontSize_ = nullptr;
+  QComboBox* layoutCombo_ = nullptr;
   std::string activeScheme_;
   int activeFontSize_ = 0;
+  bool activeHorizontal_ = false;
   bool loaded_ = false;
 };

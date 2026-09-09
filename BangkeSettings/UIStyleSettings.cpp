@@ -117,3 +117,17 @@ int UIStyleSettings::GetFontSize(int fallback) {
 void UIStyleSettings::SetFontSize(int value) {
   api_->customize_int(settings_, "style/font_point", value);
 }
+
+bool UIStyleSettings::GetHorizontal(bool fallback) {
+  RimeConfig config = {0};
+  if (!api_->settings_get_config(settings_, &config))
+    return fallback;
+  Bool value = fallback;
+  if (!rime_get_api()->config_get_bool(&config, "style/horizontal", &value))
+    return fallback;
+  return value != False;
+}
+
+void UIStyleSettings::SetHorizontal(bool value) {
+  api_->customize_bool(settings_, "style/horizontal", value);
+}
