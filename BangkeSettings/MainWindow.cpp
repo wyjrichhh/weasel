@@ -107,15 +107,18 @@ void MainWindow::saveAndDeploy() {
   if (!modified)
     return;
 
+  // UpdateWorkspace(true) 内部对'已有部署在跑'等场景已弹提示,
+  // 这里只对 >1 的意外失败码追加告警(1=mutex 冲突,信息已展示)
   const int ret = configurator_->UpdateWorkspace(true);
-  if (ret != 0) {
+  if (ret > 1) {
     QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"),
                          QStringLiteral(u"重新部署失败(错误码 %1)。\n"
                                         u"配置可能写入有误,请检查用户文件夹中的 yaml 文件。")
                              .arg(ret));
     return;
   }
-  statusBar()->showMessage(QStringLiteral(u"已保存并重新部署"), 3000);
+  if (ret == 0)
+    statusBar()->showMessage(QStringLiteral(u"已保存并重新部署"), 3000);
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
