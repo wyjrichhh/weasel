@@ -30,7 +30,9 @@ $files = Get-ChildItem $root -Recurse -File | Where-Object {
 
 function DirId([string]$rel) {
   if ($rel -eq '.') { return 'INSTALLDIR' }
-  return 'dir_' + ($rel -replace '[\\./ ]', '_')
+  # 连字符在 WiX 标识符里非法(如 zh-base-ct2-int8 目录),一并换下划线;
+  # 只影响 Id,目录真实 Name 不动
+  return 'dir_' + ($rel -replace '[\\./ -]', '_')
 }
 
 # 目录树登记：rel 为 output 下的相对路径（'.' 为根）
