@@ -233,26 +233,8 @@ STDMETHODIMP WeaselTSF::OnActivated(REFCLSID clsid,
 
 
 
-static void BkTraceLog(const wchar_t* fmt, ...) {
-  wchar_t p[MAX_PATH] = {0};
-  ExpandEnvironmentStringsW(L"%TEMP%\\bk_push_trace.log", p, MAX_PATH);
-  HANDLE f = CreateFileW(p, FILE_APPEND_DATA,
-                         FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS,
-                         FILE_ATTRIBUTE_NORMAL, NULL);
-  if (f == INVALID_HANDLE_VALUE)
-    return;
-  wchar_t line[256];
-  va_list ap;
-  va_start(ap, fmt);
-  _vsnwprintf_s(line, 256, _TRUNCATE, fmt, ap);
-  va_end(ap);
-  DWORD w = 0;
-  WriteFile(f, line, lstrlenW(line) * 2, &w, NULL);
-  CloseHandle(f);
-}
 
 void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
-  BkTraceLog(L"async-refresh enter\r\n");
   // 按键活跃期间不应用快照：推送会抢先触发 _UpdateUI 使后续
   // 按键响应的 edit session 被 ctx==ctx 早退跳过，commit 丢失
   ULONGLONG now = GetTickCount64();
@@ -318,8 +300,6 @@ void WeaselTSF::_AsyncRefresh(UINT_PTR seq) {
     }
   }
 
-  BkTraceLog(L"parsed candies=%d composing=%d\r\n",
-             (int)context->cinfo.candies.size(), (int)status.composing);
   // 快照尚无候选（组合重建中间态）则不动当前显示
   if (context->cinfo.candies.empty() && context->aux.empty()) {
     return;
@@ -363,12 +343,10 @@ void WeaselTSF::_StartSnapshotListener() {
   _snap_thread = std::thread([sid, this]() {
     wchar_t evt_name[64];
     swprintf_s(evt_name, L"Local\\BangkeSnapEvt_%u", sid);
-    BkTraceLog(L"listener start sid=%u\r\n", sid);
     // server 竞态下可能尚未建事件:有限重试
     HANDLE evt = NULL;
     for (int i = 0; i < 10 && !evt && !_snap_stop; ++i) {
       evt = OpenEventW(SYNCHRONIZE, FALSE, evt_name);
-      BkTraceLog(L"open evt try=%d got=%d\r\n", i, evt ? 1 : 0);
       if (!evt)
         Sleep(100);
     }
@@ -377,7 +355,6 @@ void WeaselTSF::_StartSnapshotListener() {
         continue;
       if (_snap_stop)
         break;
-      BkTraceLog(L"listener wake sid=%u\r\n", sid);
       if (_cand)
         _cand->PostSnapshotReady();
     }

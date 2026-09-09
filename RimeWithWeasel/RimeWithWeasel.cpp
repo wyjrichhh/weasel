@@ -40,6 +40,11 @@ static void _SnapSlotNames(WeaselSessionId ipc_id, wchar_t* map_name,
   swprintf_s(evt_name, evt_n, L"Local\\BangkeSnapEvt_%u", (DWORD)ipc_id);
 }
 
+// 句柄必须持有:命名内核对象在最后一个句柄关闭时即销毁,
+// "创建后立刻 CloseHandle"曾令槽/事件名存实亡(推送与客户端都 Open 不到)
+static std::mutex s_snap_handles_mutex;
+static std::map<DWORD, std::pair<HANDLE, HANDLE>> s_snap_handles;
+
 static SECURITY_ATTRIBUTES* _SnapSlotSA() {
   // 对 Section/Event 对象授 GENERIC_ALL:SY/Everyone/AllAppPackages
   static SECURITY_ATTRIBUTES sa = [] {
@@ -218,10 +223,12 @@ DWORD RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat) {
     // 会话建立即建槽与事件,前端可确定性打开(推送前已存在)
     wchar_t map_name[64], evt_name[64];
     _SnapSlotNames(ipc_id, map_name, 64, evt_name, 64);
-    CloseHandle(CreateFileMappingW(INVALID_HANDLE_VALUE, _SnapSlotSA(),
-                                   PAGE_READWRITE, 0, (DWORD)kSnapSlotBytes,
-                                   map_name));
-    CloseHandle(CreateEventW(_SnapSlotSA(), FALSE, FALSE, evt_name));
+    HANDLE map = CreateFileMappingW(INVALID_HANDLE_VALUE, _SnapSlotSA(),
+                                    PAGE_READWRITE, 0, (DWORD)kSnapSlotBytes,
+                                    map_name);
+    HANDLE evt = CreateEventW(_SnapSlotSA(), FALSE, FALSE, evt_name);
+    std::lock_guard<std::mutex> lock(s_snap_handles_mutex);
+    s_snap_handles[(DWORD)ipc_id] = {map, evt};
   }
   SessionStatus& session_status = new_session_status(ipc_id);
   session_status.style = m_base_style;
@@ -253,6 +260,17 @@ DWORD RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat) {
 }
 
 DWORD RimeWithWeaselHandler::RemoveSession(WeaselSessionId ipc_id) {
+  {
+    std::lock_guard<std::mutex> lock(s_snap_handles_mutex);
+    auto it = s_snap_handles.find((DWORD)ipc_id);
+    if (it != s_snap_handles.end()) {
+      if (it->second.first)
+        CloseHandle(it->second.first);
+      if (it->second.second)
+        CloseHandle(it->second.second);
+      s_snap_handles.erase(it);
+    }
+  }
   if (m_ui)
     m_ui->Hide();
   if (m_disabled)
@@ -445,49 +463,25 @@ void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
       wire.empty())
     return;
 
-  wchar_t map_name[64], evt_name[64];
-  _SnapSlotNames(ipc_id, map_name, 64, evt_name, 64);
-  {  // TEMP-DEBUG
-    wchar_t p[MAX_PATH] = {0};
-    ExpandEnvironmentStringsW(L"%TEMP%\\bk_push_trace_srv.log", p, MAX_PATH);
-    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (f != INVALID_HANDLE_VALUE) {
-      wchar_t line[128];
-      swprintf_s(line, L"push ipc=%llu wire=%u\r\n", (unsigned long long)ipc_id, (unsigned)wire.size());
-      DWORD w;
-      WriteFile(f, line, lstrlenW(line) * 2, &w, NULL);
-      CloseHandle(f);
+
+  HANDLE map = NULL, evt = NULL;
+  {
+    std::lock_guard<std::mutex> lock(s_snap_handles_mutex);
+    auto it = s_snap_handles.find((DWORD)ipc_id);
+    if (it != s_snap_handles.end()) {
+      map = it->second.first;
+      evt = it->second.second;
     }
   }
-  HANDLE map = OpenFileMappingW(FILE_MAP_WRITE, FALSE, map_name);
-  if (!map)
+  if (!map || !evt)
     return;
   auto* view = (BYTE*)MapViewOfFile(map, FILE_MAP_WRITE, 0, 0, 0);
-  HANDLE evt = OpenEventW(EVENT_MODIFY_STATE, FALSE, evt_name);
-  {  // TEMP-DEBUG
-    wchar_t p[MAX_PATH] = {0};
-    ExpandEnvironmentStringsW(L"%TEMP%\\bk_push_trace_srv.log", p, MAX_PATH);
-    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (f != INVALID_HANDLE_VALUE) {
-      wchar_t line[128];
-      swprintf_s(line, L"push2 map=%d evt=%d\r\n", map ? 1 : 0, evt ? 1 : 0);
-      DWORD w;
-      WriteFile(f, line, lstrlenW(line) * 2, &w, NULL);
-      CloseHandle(f);
-    }
-  }
   if (view && wire.size() * sizeof(wchar_t) <= kSnapSlotBytes) {
     memcpy(view, wire.c_str(), wire.size() * sizeof(wchar_t));
-    if (evt)
-      SetEvent(evt);
+    SetEvent(evt);
   }
   if (view)
     UnmapViewOfFile(view);
-  CloseHandle(map);
-  if (evt)
-    CloseHandle(evt);
 }
 
 void RimeWithWeaselHandler::OnNotify(void* context_object,
@@ -538,19 +532,6 @@ void RimeWithWeaselHandler::SetEventWindow(HWND wnd) {
 
 void RimeWithWeaselHandler::OnDeferredEvent(int event,
                                             uintptr_t rime_session_id) {
-  {  // TEMP-DEBUG 直写,绕过 glog 缓冲
-    wchar_t p[MAX_PATH] = {0};
-    ExpandEnvironmentStringsW(L"%TEMP%\\bk_push_trace_srv.log", p, MAX_PATH);
-    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (f != INVALID_HANDLE_VALUE) {
-      wchar_t line[128];
-      swprintf_s(line, L"defev event=%d sid=%llu\r\n", event, (unsigned long long)rime_session_id);
-      DWORD w;
-      WriteFile(f, line, lstrlenW(line) * 2, &w, NULL);
-      CloseHandle(f);
-    }
-  }
   if (event == BK_EVENT_AI_REFRESH) {
     // 消息循环线程：与管道路径共用 API 串行锁，读会话表安全
     std::lock_guard<std::recursive_mutex> lock(RimeWithWeaselHandler::ApiMutex());
