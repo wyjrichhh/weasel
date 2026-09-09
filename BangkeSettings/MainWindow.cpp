@@ -11,8 +11,10 @@
 #include <QStatusBar>
 #include <QUrl>
 
+#include "AIPage.h"
 #include "Configurator.h"
 #include "DictPage.h"
+#include "GeneralPage.h"
 #include "StylePage.h"
 #include "SwitcherPage.h"
 #include <WeaselUtility.h>
@@ -24,19 +26,23 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   resize(860, 560);
 
   switcherPage_ = new SwitcherPage(this);
+  generalPage_ = new GeneralPage(this);
   stylePage_ = new StylePage(this);
+  aiPage_ = new AIPage(this);
   dictPage_ = new DictPage(this);
 
   stack_ = new QStackedWidget(this);
   stack_->addWidget(switcherPage_);
+  stack_->addWidget(generalPage_);
   stack_->addWidget(stylePage_);
+  stack_->addWidget(aiPage_);
   stack_->addWidget(dictPage_);
 
   nav_ = new QListWidget(this);
   nav_->setFixedWidth(120);
   nav_->setFrameShape(QFrame::NoFrame);
-  nav_->addItems({QStringLiteral(u"方案选单"), QStringLiteral(u"界面样式"), QStringLiteral(u"词典管理")});
-  nav_->setCurrentRow(openDictPage ? 2 : 0);
+  nav_->addItems({QStringLiteral(u"方案选单"), QStringLiteral(u"通用设置"), QStringLiteral(u"界面样式"), QStringLiteral(u"AI 预测"), QStringLiteral(u"词典管理")});
+  nav_->setCurrentRow(openDictPage ? 4 : 0);
 
   auto* saveBtn = new QPushButton(QStringLiteral(u"保存并重新部署"), this);
   saveBtn->setDefault(true);
@@ -95,6 +101,8 @@ void MainWindow::saveAndDeploy() {
   dictPage_->setSessionActive(false);
   bool modified = switcherPage_->save();
   modified = stylePage_->save() || modified;
+  generalPage_->save();
+  aiPage_->save();
   if (modified) {
     QApplication::setOverrideCursor(Qt::WaitCursor);
     configurator_->UpdateWorkspace(true);

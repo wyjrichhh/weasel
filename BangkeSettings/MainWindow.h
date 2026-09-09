@@ -5,6 +5,8 @@
 class Configurator;
 class QListWidget;
 class QStackedWidget;
+class AIPage;
+class GeneralPage;
 class SwitcherPage;
 class StylePage;
 class DictPage;
@@ -28,6 +30,8 @@ class MainWindow : public QMainWindow {
   Configurator* configurator_ = nullptr;
   QListWidget* nav_ = nullptr;
   QStackedWidget* stack_ = nullptr;
+  AIPage* aiPage_ = nullptr;
+  GeneralPage* generalPage_ = nullptr;
   SwitcherPage* switcherPage_ = nullptr;
   StylePage* stylePage_ = nullptr;
   DictPage* dictPage_ = nullptr;
