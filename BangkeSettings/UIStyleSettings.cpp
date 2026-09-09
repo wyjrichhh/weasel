@@ -27,42 +27,43 @@ bool UIStyleSettings::GetPresetColorSchemes(
   if (!result)
     return false;
   result->clear();
-  // levers 的 custom_settings 只覆盖用户层(weasel.custom.yaml),
-  // preset_color_schemes 在共享目录基底(weasel.yaml)——直接打开
-  RimeApi* rime = rime_get_api();
-  std::string shared = rime->get_shared_data_dir();
+  // 直接读共享 weasel.yaml,行扫描 preset_color_schemes: 块下的 name:
+  // (不走 rime API——config_load_string 对大 yaml 不稳定,行扫描更简单可靠)
+  std::string shared = rime_get_api()->get_shared_data_dir();
   std::string path = shared + "\\weasel.yaml";
-  std::ifstream ifs(path);
+  std::ifstream ifs(wtou8(WeaselSharedDataPath().wstring()) + "\\weasel.yaml");
   if (!ifs.good())
     return false;
-  std::string yaml((std::istreambuf_iterator<char>(ifs)),
-                   std::istreambuf_iterator<char>());
-  ifs.close();
-  RimeConfig config = {0};
-  if (!rime->config_load_string(&config, yaml.c_str()))
-    return false;
-  RimeConfigIterator preset = {0};
-  if (!rime->config_begin_map(&preset, &config, "preset_color_schemes"))
-    return false;
-  while (rime->config_next(&preset)) {
-    std::string name_key(preset.path);
-    name_key += "/name";
-    const char* name = rime->config_get_cstring(&config, name_key.c_str());
-    std::string author_key(preset.path);
-    author_key += "/author";
-    const char* author = rime->config_get_cstring(&config, author_key.c_str());
-    if (!name)
+  std::string line;
+  bool inBlock = false;
+  while (std::getline(ifs, line)) {
+    if (line.find("preset_color_schemes:") != std::string::npos) {
+      inBlock = true;
       continue;
-    ColorSchemeInfo info;
-    info.color_scheme_id = preset.key;
-    info.name = name;
-    if (author)
-      info.author = author;
-    result->push_back(info);
+    }
+    if (inBlock) {
+      // 块内条目形如 "  <id>:" 后跟 "    name: <名称>"
+      if (!line.empty() && line[0] != ' ' && line[0] != '#')
+        break;  // 退出块
+      // 找 "    name: xxx" 行
+      auto namePos = line.find("name:");
+      if (namePos != std::string::npos && namePos < 8) {
+        std::string name = line.substr(namePos + 5);
+        // trim
+        name.erase(0, name.find_first_not_of(" \t"));
+        name.erase(name.find_last_not_of(" \t\r\n") + 1);
+        if (!name.empty()) {
+          // 找上一个非 name 行作为 id(形如 "  <id>:")
+          result->push_back(ColorSchemeInfo());
+          result->back().name = name;
+          // id 取 name 的下划线形式(展示用;实际选择用 name 也可)
+          result->back().color_scheme_id = name;
+        }
+      }
+    }
   }
-  rime->config_end(&preset);
-  rime->config_close(&config);
-  return true;
+  ifs.close();
+  return !result->empty();
 }
 
 static inline bool IfFileExist(std::string filename) {
