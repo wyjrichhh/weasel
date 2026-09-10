@@ -115,6 +115,10 @@ QListWidget::item:selected { background: #DFF0EE; color: #0B6E64; }
 
 QCheckBox { color: #1F2329; spacing: 8px; }
 QStatusBar { background: transparent; border-top: 1px solid #E7E9EC; color: #6B7280; }
+QLabel#toast {
+  background: rgba(31, 35, 41, 232); color: #FFFFFF; border-radius: 8px;
+  padding: 10px 22px; font-weight: 600;
+}
 QToolTip { background: #FFFFFF; color: #1F2329; border: 1px solid #D9DCE1; padding: 4px 8px; }
 QMessageBox { background: #FFFFFF; }
 )";
@@ -194,6 +198,10 @@ QListWidget::item:selected { background: #123F3A; color: #5EEAD4; }
 
 QCheckBox { color: #E6E7EA; spacing: 8px; }
 QStatusBar { background: transparent; border-top: 1px solid #2A2A30; color: #9AA0A6; }
+QLabel#toast {
+  background: rgba(20, 184, 166, 235); color: #08201C; border-radius: 8px;
+  padding: 10px 22px; font-weight: 600;
+}
 QToolTip { background: #2B2B30; color: #E6E7EA; border: 1px solid #3A3A42; padding: 4px 8px; }
 QMessageBox { background: #242428; }
 )";

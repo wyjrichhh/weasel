@@ -18,6 +18,7 @@
 #include "StylePage.h"
 #include "SwitcherPage.h"
 #include "Theme.h"
+#include "Ui.h"
 #include <WeaselUtility.h>
 #include <windows.h>
 
@@ -48,7 +49,7 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   nav_->addItems({QStringLiteral(u"方案选单"), QStringLiteral(u"通用设置"), QStringLiteral(u"界面样式"), QStringLiteral(u"AI 预测"), QStringLiteral(u"词典管理")});
   nav_->setCurrentRow(openDictPage ? 4 : 0);
 
-  auto* saveBtn = new QPushButton(QStringLiteral(u"保存并重新部署"), this);
+  auto* saveBtn = new QPushButton(QStringLiteral(u"保存"), this);
   saveBtn->setObjectName(QStringLiteral("primary"));
   saveBtn->setDefault(true);
   auto* userDirBtn = new QPushButton(QStringLiteral(u"打开用户文件夹"), this);
@@ -133,21 +134,37 @@ void MainWindow::saveAndDeploy() {
   modified = generalPage_->save() || modified;
   modified = aiPage_->save() || modified;
 
-  if (!modified)
+  if (!modified) {
+    makeToast(QStringLiteral(u"没有需要保存的修改"), this);
     return;
+  }
+
+  // 部署期间禁用保存,防连点撞部署互斥
+  QPushButton* primaryBtn = nullptr;
+  for (auto* b : findChildren<QPushButton*>()) {
+    if (b->objectName() == QStringLiteral("primary")) {
+      primaryBtn = b;
+      b->setEnabled(false);
+    }
+  }
+  QApplication::processEvents();
 
   // UpdateWorkspace(true) 内部对'已有部署在跑'等场景已弹提示,
   // 这里只对 >1 的意外失败码追加告警(1=mutex 冲突,信息已展示)
   const int ret = configurator_->UpdateWorkspace(true);
+  if (primaryBtn)
+    primaryBtn->setEnabled(true);
   if (ret > 1) {
     QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"),
-                         QStringLiteral(u"重新部署失败(错误码 %1)。\n"
+                         QStringLiteral(u"保存失败(错误码 %1)。\n"
                                         u"配置可能写入有误,请检查用户文件夹中的 yaml 文件。")
                              .arg(ret));
     return;
   }
-  if (ret == 0)
-    statusBar()->showMessage(QStringLiteral(u"已保存并重新部署"), 3000);
+  if (ret == 0) {
+    makeToast(QStringLiteral(u"已保存,输入法即刻生效"), this);
+    statusBar()->showMessage(QStringLiteral(u"已保存"), 3000);
+  }
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {

@@ -280,10 +280,17 @@ void StylePage::btnRefresh(const char* key) {
 
 void StylePage::onCustomEdited() {
   customDirty_ = true;
-  // 编辑即选中「自定义」,预览与保存走同一路径
-  const int idx = schemeCombo_->findData(QStringLiteral("bangke_custom"));
-  if (idx >= 0)
-    schemeCombo_->setCurrentIndex(idx);
+  // 编辑即选中「自定义」;首次编辑时下拉尚无该条目,须先补上,
+  // 否则预览一直画旧方案(滑动不透明度预览不跟随即此因)
+  int idx = schemeCombo_->findData(QStringLiteral("bangke_custom"));
+  if (idx < 0) {
+    schemeCombo_->blockSignals(true);
+    schemeCombo_->addItem(QStringLiteral(u"自定义"),
+                           QStringLiteral("bangke_custom"));
+    schemeCombo_->blockSignals(false);
+    idx = schemeCombo_->count() - 1;
+  }
+  schemeCombo_->setCurrentIndex(idx);
   updatePreview();
 }
 
