@@ -61,17 +61,17 @@ class SchemePreviewWidget : public QWidget {
       auto it = colors_.find(key);
       return it == colors_.end() ? def : (QRgb)it->second;
     };
-    const QColor back(color("back_color", 0xFFF2FFFFFF));
+    const QColor back(color("back_color", 0xFAFFFFFF));
     const QColor border(color("border_color", 0xFFE3E3E8));
     const QColor shadow(color("shadow_color", 0x28000000));
     const QColor text(color("text_color", 0xFF1F2937));
     const QColor candText(color("candidate_text_color", 0xFF2F3437));
-    const QColor label(color("label_color", 0xFF8C8C8C));
+    const QColor label(color("label_color", 0xFF9CA3AF));
     const QColor hiliteText(
-        color("hilited_candidate_text_color", 0xFFFFFFFF));
+        color("hilited_candidate_text_color", 0xFF16202B));
     const QColor hiliteBack(
-        color("hilited_candidate_back_color", 0xFF0D9488));
-    const QColor hiliteLabel(color("hilited_label_color", 0xD9FFFFFF));
+        color("hilited_candidate_back_color", 0xFFA8C7F0));
+    const QColor hiliteLabel(color("hilited_label_color", 0xFF51709A));
 
     // 阴影余量 + 面板矩形(圆角随布局设置联动)
     const QRectF panel = rect().adjusted(16, 10, -16, -16);
@@ -187,12 +187,12 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
     int lo, hi, fb;
   };
   const SpinDef defs[] = {
-      {"corner_radius", "面板圆角", 0, 24, 10},
-      {"round_corner", "高亮圆角", 0, 24, 6},
-      {"border_width", "边框宽度", 0, 8, 1},
-      {"margin_x", "内边距", 0, 24, 10},
-      {"candidate_spacing", "候选间距", 0, 24, 7},
-      {"hilite_padding", "高亮内边距", 0, 24, 6},
+      {"corner_radius", "面板圆角", 0, 24, 12},
+      {"round_corner", "高亮圆角", 0, 24, 17},
+      {"border_width", "边框宽度", 0, 8, 0},
+      {"margin_x", "内边距", 0, 24, 12},
+      {"candidate_spacing", "候选间距", 0, 24, 12},
+      {"hilite_padding", "高亮内边距", 0, 24, 8},
       {"shadow_radius", "阴影范围", 0, 32, 10},
       {"shadow_offset_y", "阴影纵向偏移", -16, 16, 3},
   };

@@ -24,13 +24,13 @@ style:
   label_font_face: Microsoft YaHei
   comment_font_face: Microsoft YaHei
   font_point: 14
-  label_font_point: 14
+  label_font_point: 11
   comment_font_point: 14
   candidate_abbreviate_length: 0
   click_to_capture: false
   horizontal: false
   fullscreen: false
-  inline_preedit: false
+  inline_preedit: true
   preedit_type: composition
   display_tray_icon: false
   label_format: "%s."
@@ -47,15 +47,15 @@ style:
     min_width: 160
     min_height: 0
     max_height: 0  #set 0 to disable max height
-    border_width: 1
-    margin_x: 10
-    margin_y: 10
+    border_width: 0
+    margin_x: 12
+    margin_y: 7
     spacing: 10
-    candidate_spacing: 7
+    candidate_spacing: 12
     hilite_spacing: 4
-    hilite_padding: 6
-    round_corner: 6   #别名 hilited_corner_radius
-    corner_radius: 10
+    hilite_padding: 8
+    round_corner: 17  #别名 hilited_corner_radius;≈半高即胶囊
+    corner_radius: 12
     shadow_radius: 10
     shadow_offset_x: 0
     shadow_offset_y: 3
@@ -67,45 +67,45 @@ preset_color_schemes:
     name: 蚌白／Bangke Light
     author: Bangke
     color_format: argb
-    back_color: 0xF2FFFFFF                          # ≈95% 不透明白,轻微半透明
+    back_color: 0xFAFFFFFF                          # 近似不透明白
     text_color: 0xFF1F2937
-    label_color: 0xFF8C8C8C
+    label_color: 0xFF9CA3AF                         # 小号浅灰序号
     comment_text_color: 0xFFA6A6A6
-    border_color: 0xFFE3E3E8                        # 发丝边
-    shadow_color: 0x29000000                        # 柔和下投影
-    candidate_text_color: 0xFF2F3437
-    candidate_back_color: 0x00000000                # 非高亮候选无底,极简
+    border_color: 0x00FFFFFF                        # 无描边
+    shadow_color: 0x1F000000                        # 轻微下投影
+    candidate_text_color: 0xFF1F2937
+    candidate_back_color: 0x00000000                # 非高亮候选无底
     candidate_shadow_color: 0x00000000
     hilited_text_color: 0xFF1F2937
-    hilited_back_color: 0x00000000                  # preedit 不加底色
+    hilited_back_color: 0x00000000
     hilited_shadow_color: 0x00000000
-    hilited_candidate_text_color: 0xFFFFFFFF
-    hilited_candidate_back_color: 0xFF0D9488        # 品牌青
+    hilited_candidate_text_color: 0xFF16202B        # 胶囊上黑字
+    hilited_candidate_back_color: 0xFFA8C7F0        # 胶囊:浅蓝紫
     hilited_candidate_shadow_color: 0x00000000
-    hilited_label_color: 0xD9FFFFFF
-    hilited_comment_text_color: 0xD9FFFFFF
+    hilited_label_color: 0xFF51709A                 # 胶囊上深灰蓝序号
+    hilited_comment_text_color: 0xFF51709A
 
   bangke_dark:
     name: 蚌夜／Bangke Dark
     author: Bangke
     color_format: argb
-    back_color: 0xF026262A                          # 深灰微透
+    back_color: 0xF22A2A30
     text_color: 0xFFE5E7EB
     label_color: 0xFF7C8590
     comment_text_color: 0xFF9AA3AD
-    border_color: 0x33FFFFFF
-    shadow_color: 0x50000000
+    border_color: 0x00FFFFFF
+    shadow_color: 0x42000000
     candidate_text_color: 0xFFE5E7EB
     candidate_back_color: 0x00000000
     candidate_shadow_color: 0x00000000
     hilited_text_color: 0xFFE5E7EB
     hilited_back_color: 0x00000000
     hilited_shadow_color: 0x00000000
-    hilited_candidate_text_color: 0xFF08201C
-    hilited_candidate_back_color: 0xFF14B8A6        # 亮青
+    hilited_candidate_text_color: 0xFFFFFFFF
+    hilited_candidate_back_color: 0xFF5470C8        # 胶囊:中蓝
     hilited_candidate_shadow_color: 0x00000000
-    hilited_label_color: 0xD908201C
-    hilited_comment_text_color: 0xD908201C
+    hilited_label_color: 0xCCE8EEFF
+    hilited_comment_text_color: 0xCCE8EEFF
 
   aqua:
     name: 碧水／Aqua
