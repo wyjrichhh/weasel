@@ -332,7 +332,7 @@ void StylePage::forceLoad() {
     for (const char* k : kCustomColorKeys)
       custom_[k] = settings_.GetCustomColor(k, base.count(k) ? base[k] : 0);
   } else {
-    const auto from = settings_.GetSchemeColors(activeScheme_);
+    auto from = settings_.GetSchemeColors(activeScheme_);
     for (const char* k : kCustomColorKeys)
       custom_[k] = from.count(k) ? from[k] : base[k];
   }
