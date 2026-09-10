@@ -112,13 +112,18 @@ void MainWindow::onPageChanged(int index) {
   // 若握到关窗,之后点「保存并重新部署」必撞"另一项部署任务"
   configurator_->EndDictSession();
   // 五页布局: 0=方案 1=通用 2=界面样式 3=AI 4=词典
+  // 进入即重读配置(含外部/部署后的变更),未保存的改动随之丢弃
   if (index == 4) {
     if (configurator_->BeginDictSession())
       dictPage_->setSessionActive(true);
   } else if (index == 0) {
     switcherPage_->load();
+  } else if (index == 1) {
+    generalPage_->load();
   } else if (index == 2) {
-    stylePage_->load();
+    stylePage_->forceLoad();
+  } else if (index == 3) {
+    aiPage_->load();
   }
 }
 

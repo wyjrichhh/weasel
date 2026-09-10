@@ -32,6 +32,17 @@ class UIStyleSettings {
   bool GetHorizontal(bool fallback);
   void SetHorizontal(bool value);
 
+  // ---- 布局微调(style/layout/*):读 = 补丁 ⊕ 共享默认,写 = 补丁 ----
+  // key 为 layout 下的键名,如 "corner_radius"
+  int GetLayoutInt(const std::string& key, int fallback);
+  void SetLayoutInt(const std::string& key, int value);
+
+  // ---- 自定义配色(用户补丁里的 preset_color_schemes/bangke_custom)----
+  // 颜色一律 0xAARRGGBB;方案节点声明 color_format: argb,直读直写
+  bool HasCustomScheme();
+  unsigned int GetCustomColor(const std::string& key, unsigned int fallback);
+  void SetCustomColor(const std::string& key, unsigned int argb);
+
   RimeCustomSettings* settings() { return settings_; }
 
  private:

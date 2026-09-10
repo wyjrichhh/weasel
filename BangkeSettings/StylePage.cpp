@@ -1,26 +1,55 @@
 #include "StylePage.h"
 
+#include <QColorDialog>
 #include <QComboBox>
 #include <QFormLayout>
+#include <QHBoxLayout>
+#include <QIcon>
 #include <QLabel>
 #include <QPainter>
+#include <QPixmap>
+#include <QPushButton>
+#include <QSlider>
 #include <QSpinBox>
 #include <QVBoxLayout>
 
 #include "Ui.h"
 
-// 迷你候选窗预览:按 scheme 原始颜色直接绘制,与真面板同数据源
-// (共享 weasel.yaml),不再依赖 preview\*.png
+namespace {
+// 自定义配色卡管理的颜色键(bangke_custom 补丁)
+const char* kCustomColorKeys[] = {
+    "back_color",
+    "text_color",
+    "candidate_text_color",
+    "label_color",
+    "comment_text_color",
+    "border_color",
+    "hilited_candidate_text_color",
+    "hilited_candidate_back_color",
+    "hilited_label_color",
+};
+
+QIcon colorSwatch(unsigned argb) {
+  QPixmap pm(16, 16);
+  pm.fill(QColor((QRgb)argb));
+  return QIcon(pm);
+}
+}  // namespace
+
+// 迷你候选窗预览:按方案原始颜色直接绘制,与真面板同数据源
+// (共享 weasel.yaml + 用户补丁),不再依赖 preview\*.png
 class SchemePreviewWidget : public QWidget {
  public:
   SchemePreviewWidget(QWidget* parent = nullptr) : QWidget(parent) {
-    setMinimumSize(380, 180);
+    setMinimumSize(380, 190);
   }
 
   void setScheme(const std::map<std::string, unsigned int>& colors,
-                 bool horizontal) {
+                 bool horizontal, int panelRadius, int hiliteRadius) {
     colors_ = colors;
     horizontal_ = horizontal;
+    panelRadius_ = panelRadius;
+    hiliteRadius_ = hiliteRadius;
     update();
   }
 
@@ -44,19 +73,20 @@ class SchemePreviewWidget : public QWidget {
         color("hilited_candidate_back_color", 0xFF0D9488));
     const QColor hiliteLabel(color("hilited_label_color", 0xD9FFFFFF));
 
-    // 阴影余量 + 面板矩形(圆角 10,与真面板默认一致)
+    // 阴影余量 + 面板矩形(圆角随布局设置联动)
     const QRectF panel = rect().adjusted(16, 10, -16, -16);
+    const double pr = panelRadius_;
     p.setPen(Qt::NoPen);
     for (int i = 3; i >= 1; --i) {
       QColor s = shadow;
       s.setAlpha(s.alpha() / (4 - i));
       p.setBrush(s);
       p.drawRoundedRect(panel.translated(0, i * 2).adjusted(-1, -1, 1, 1),
-                        11.0 + i, 11.0 + i);
+                        pr + 1 + i, pr + 1 + i);
     }
     p.setBrush(back);
     p.setPen(QPen(border, 1));
-    p.drawRoundedRect(panel, 10, 10);
+    p.drawRoundedRect(panel, pr, pr);
     p.setPen(Qt::NoPen);
 
     QFont f = font();
@@ -107,7 +137,7 @@ class SchemePreviewWidget : public QWidget {
     if (hilited) {
       p.setPen(Qt::NoPen);
       p.setBrush(hiliteBack);
-      p.drawRoundedRect(box, 6, 6);
+      p.drawRoundedRect(box, hiliteRadius_, hiliteRadius_);
     }
     p.setPen(hilited ? hiliteLabel : label);
     p.drawText(QRectF(box.left() + 8, box.top(), 22, box.height()),
@@ -124,6 +154,8 @@ class SchemePreviewWidget : public QWidget {
 
   std::map<std::string, unsigned int> colors_;
   bool horizontal_ = false;
+  int panelRadius_ = 10;
+  int hiliteRadius_ = 6;
 };
 
 StylePage::StylePage(QWidget* parent) : QWidget(parent) {
@@ -147,6 +179,70 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
   layout->setContentsMargins(20, 16, 20, 16);
   layout->setSpacing(12);
   layout->addWidget(makeCard(QStringLiteral(u"外观"), form));
+
+  // ---- 布局微调(读 = 补丁 ⊕ 共享默认) ----
+  struct SpinDef {
+    const char* key;
+    const char* label;
+    int lo, hi, fb;
+  };
+  const SpinDef defs[] = {
+      {"corner_radius", "面板圆角", 0, 24, 10},
+      {"round_corner", "高亮圆角", 0, 24, 6},
+      {"border_width", "边框宽度", 0, 8, 1},
+      {"margin_x", "内边距", 0, 24, 10},
+      {"candidate_spacing", "候选间距", 0, 24, 7},
+      {"hilite_padding", "高亮内边距", 0, 24, 6},
+      {"shadow_radius", "阴影范围", 0, 32, 10},
+      {"shadow_offset_y", "阴影纵向偏移", -16, 16, 3},
+  };
+  auto* grid = new QFormLayout();
+  grid->setSpacing(8);
+  for (const auto& d : defs) {
+    auto* spin = new QSpinBox(this);
+    spin->setRange(d.lo, d.hi);
+    layoutSpins_.push_back({spin, d.key});
+    grid->addRow(QString::fromUtf8(d.label), spin);
+  }
+  layout->addWidget(makeCard(QStringLiteral(u"布局微调"), grid));
+
+  // ---- 自定义配色 ----
+  auto* colorRow = new QHBoxLayout();
+  colorRow->setSpacing(12);
+  backColorBtn_ = colorButton("back_color", QStringLiteral(u"背景颜色"));
+  hiliteColorBtn_ =
+      colorButton("hilited_candidate_back_color", QStringLiteral(u"高亮颜色"));
+  textColorBtn_ = colorButton("text_color", QStringLiteral(u"文字颜色"));
+  colorRow->addWidget(backColorBtn_);
+  colorRow->addWidget(hiliteColorBtn_);
+  colorRow->addWidget(textColorBtn_);
+  colorRow->addStretch();
+
+  opacitySlider_ = new QSlider(Qt::Horizontal, this);
+  opacitySlider_->setRange(55, 100);
+  opacitySlider_->setValue(95);
+  connect(opacitySlider_, &QSlider::valueChanged, this, [this](int pct) {
+    // 只改 alpha,RGB 保留
+    const unsigned cur = custom_["back_color"];
+    custom_["back_color"] =
+        ((unsigned)pct * 255u / 100u << 24) | (cur & 0x00FFFFFFu);
+    backColorBtn_->setIcon(colorSwatch(custom_["back_color"]));
+    onCustomEdited();
+  });
+
+  auto* customCard = new QVBoxLayout();
+  customCard->setSpacing(8);
+  customCard->addLayout(colorRow);
+  auto* opacityRow = new QHBoxLayout();
+  opacityRow->addWidget(new QLabel(QStringLiteral(u"背景不透明度"), this));
+  opacityRow->addWidget(opacitySlider_, 1);
+  customCard->addLayout(opacityRow);
+  auto* hint = new QLabel(
+      QStringLiteral(u"调整任一颜色或透明度后,将以「自定义」配色生效。"), this);
+  hint->setObjectName(QStringLiteral("hint"));
+  customCard->addWidget(hint);
+  layout->addWidget(makeCard(QStringLiteral(u"自定义配色"), customCard));
+
   auto* prevForm = new QVBoxLayout();
   prevForm->addWidget(preview_);
   layout->addWidget(makeCard(QStringLiteral(u"预览"), prevForm));
@@ -156,6 +252,39 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
           &StylePage::updatePreview);
   connect(layoutCombo_, &QComboBox::currentIndexChanged, this,
           &StylePage::updatePreview);
+}
+
+QPushButton* StylePage::colorButton(const char* key, const QString& label) {
+  auto* btn = new QPushButton(label, this);
+  connect(btn, &QPushButton::clicked, this, [this, key, label] {
+    const QColor current((QRgb)custom_[key]);
+    const QColor picked = QColorDialog::getColor(
+        current, this, label, QColorDialog::ShowAlphaChannel);
+    if (!picked.isValid() || picked.rgba() == (QRgb)custom_[key])
+      return;
+    custom_[key] = picked.rgba();
+    btnRefresh(key);
+    onCustomEdited();
+  });
+  return btn;
+}
+
+void StylePage::btnRefresh(const char* key) {
+  QPushButton* btn = key == std::string("back_color")             ? backColorBtn_
+                     : key == std::string("hilited_candidate_back_color")
+                         ? hiliteColorBtn_
+                         : textColorBtn_;
+  if (btn)
+    btn->setIcon(colorSwatch(custom_[key]));
+}
+
+void StylePage::onCustomEdited() {
+  customDirty_ = true;
+  // 编辑即选中「自定义」,预览与保存走同一路径
+  const int idx = schemeCombo_->findData(QStringLiteral("bangke_custom"));
+  if (idx >= 0)
+    schemeCombo_->setCurrentIndex(idx);
+  updatePreview();
 }
 
 void StylePage::load() {
@@ -169,35 +298,73 @@ void StylePage::forceLoad() {
 
   std::vector<ColorSchemeInfo> schemes;
   settings_.GetPresetColorSchemes(&schemes);
-  std::string active = settings_.GetActiveColorScheme();
+  activeScheme_ = settings_.GetActiveColorScheme();
 
   schemeCombo_->blockSignals(true);
   schemeCombo_->clear();
   for (auto& s : schemes)
     schemeCombo_->addItem(QString::fromStdString(s.name),
                           QString::fromStdString(s.color_scheme_id));
+  const bool hasCustom = settings_.HasCustomScheme();
+  if (hasCustom)
+    schemeCombo_->addItem(QStringLiteral(u"自定义"),
+                           QStringLiteral("bangke_custom"));
   schemeCombo_->blockSignals(false);
 
-  int index = schemeCombo_->findData(QString::fromStdString(active));
+  int index = schemeCombo_->findData(QString::fromStdString(activeScheme_));
   schemeCombo_->setCurrentIndex(index >= 0 ? index : 0);
 
-  activeScheme_ = settings_.GetActiveColorScheme();
   activeFontSize_ = settings_.GetFontSize(14);
   fontSize_->setValue(activeFontSize_);
   activeHorizontal_ = settings_.GetHorizontal(false);
   layoutCombo_->setCurrentIndex(activeHorizontal_ ? 1 : 0);
+
+  for (auto& ls : layoutSpins_) {
+    const int v = settings_.GetLayoutInt(ls.key, 0);
+    ls.spin->setValue(v);
+    initLayout_[ls.key] = v;
+  }
+
+  // 自定义配色初值:已有 bangke_custom 用之,否则从当前方案颜色起步
+  auto base = settings_.GetSchemeColors(
+      (hasCustom ? "bangke_light" : activeScheme_));
+  if (hasCustom) {
+    for (const char* k : kCustomColorKeys)
+      custom_[k] = settings_.GetCustomColor(k, base.count(k) ? base[k] : 0);
+  } else {
+    const auto from = settings_.GetSchemeColors(activeScheme_);
+    for (const char* k : kCustomColorKeys)
+      custom_[k] = from.count(k) ? from[k] : base[k];
+  }
+  initCustom_ = custom_;
+  customDirty_ = false;
+  for (const char* k : {"back_color", "hilited_candidate_back_color",
+                        "text_color"})
+    btnRefresh(k);
+  opacitySlider_->blockSignals(true);
+  opacitySlider_->setValue((int)(custom_["back_color"] >> 24) * 100 / 255);
+  opacitySlider_->blockSignals(false);
+
   updatePreview();
   loaded_ = true;
 }
 
 void StylePage::updatePreview() {
   const QString id = schemeCombo_->currentData().toString();
-  if (id.isEmpty())
-    return;
+  std::map<std::string, unsigned int> colors;
+  if (id == QStringLiteral("bangke_custom")) {
+    // 基线共享浅色,叠加用户补丁(编辑中的 custom_ 即最新意图)
+    colors = settings_.GetSchemeColors("bangke_light");
+    for (const char* k : kCustomColorKeys)
+      colors[k] = custom_[k];
+  } else if (!id.isEmpty()) {
+    colors = settings_.GetSchemeColors(id.toStdString());
+  }
   const bool horizontal =
       layoutCombo_->currentData().toString() == QStringLiteral("horizontal");
-  preview_->setScheme(settings_.GetSchemeColors(id.toStdString()),
-                      horizontal);
+  const int pr = layoutSpins_.empty() ? 10 : layoutSpins_[0].spin->value();
+  const int hr = layoutSpins_.size() > 1 ? layoutSpins_[1].spin->value() : 6;
+  preview_->setScheme(colors, horizontal, pr, hr);
 }
 
 bool StylePage::save() {
@@ -215,6 +382,19 @@ bool StylePage::save() {
       layoutCombo_->currentData().toString() == QStringLiteral("horizontal");
   if (horizontal != activeHorizontal_) {
     settings_.SetHorizontal(horizontal);
+    changed = true;
+  }
+  for (auto& ls : layoutSpins_) {
+    if (ls.spin->value() != initLayout_[ls.key]) {
+      settings_.SetLayoutInt(ls.key, ls.spin->value());
+      changed = true;
+    }
+  }
+  // 自定义配色:内容有变化才写;写入即切换方案生效
+  if (customDirty_ && custom_ != initCustom_) {
+    for (const char* k : kCustomColorKeys)
+      settings_.SetCustomColor(k, custom_[k]);
+    settings_.SelectColorScheme("bangke_custom");
     changed = true;
   }
   if (!changed)

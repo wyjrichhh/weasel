@@ -194,3 +194,100 @@ bool UIStyleSettings::GetHorizontal(bool fallback) {
 void UIStyleSettings::SetHorizontal(bool value) {
   api_->customize_bool(settings_, "style/horizontal", value);
 }
+
+// 共享 weasel.yaml 的 style:→layout: 块整表(显示"当前生效值"的默认基线)
+static std::map<std::string, int> ScanSharedLayout() {
+  std::map<std::string, int> result;
+  std::ifstream ifs(wtou8(WeaselSharedDataPath().wstring()) + "\\weasel.yaml");
+  if (!ifs.good())
+    return result;
+  std::string line;
+  bool inStyle = false, inLayout = false;
+  while (std::getline(ifs, line)) {
+    if (line.rfind("style:", 0) == 0) {
+      inStyle = true;
+      continue;
+    }
+    if (inStyle && !line.empty() && line[0] != ' ' && line[0] != '#')
+      inStyle = false;
+    if (!inStyle)
+      continue;
+    if (line.rfind("  layout:", 0) == 0) {
+      inLayout = true;
+      continue;
+    }
+    if (inLayout && line.size() > 4 && line[0] == ' ' && line[1] == ' ' &&
+        line[2] == ' ' && line[3] == ' ') {
+      const auto colon = line.find(':');
+      if (colon != std::string::npos) {
+        std::string key = line.substr(4, colon - 4);
+        std::string val = line.substr(colon + 1);
+        const auto hash = val.find('#');
+        if (hash != std::string::npos)
+          val = val.substr(0, hash);
+        val.erase(val.find_last_not_of(" \t\r\n") + 1);
+        try {
+          result[key] = val.empty() ? 0 : std::stoi(val);
+        } catch (...) {
+        }
+      }
+      continue;
+    }
+    if (inLayout)
+      break;  // layout 块结束(回到 2 空格键)
+  }
+  return result;
+}
+
+int UIStyleSettings::GetLayoutInt(const std::string& key, int fallback) {
+  // 补丁优先;未打补丁则用共享默认;再兜底代码默认
+  RimeConfig config = {0};
+  if (api_->settings_get_config(settings_, &config)) {
+    int v = 0;
+    if (rime_get_api()->config_get_int(
+            &config, ("style/layout/" + key).c_str(), &v))
+      return v;
+  }
+  const auto shared = ScanSharedLayout();
+  auto it = shared.find(key);
+  return it != shared.end() ? it->second : fallback;
+}
+
+void UIStyleSettings::SetLayoutInt(const std::string& key, int value) {
+  api_->customize_int(settings_, ("style/layout/" + key).c_str(), value);
+}
+
+bool UIStyleSettings::HasCustomScheme() {
+  RimeConfig config = {0};
+  if (!api_->settings_get_config(settings_, &config))
+    return false;
+  return rime_get_api()->config_get_cstring(
+             &config, "preset_color_schemes/bangke_custom/back_color") !=
+         nullptr;
+}
+
+unsigned int UIStyleSettings::GetCustomColor(const std::string& key,
+                                             unsigned int fallback) {
+  RimeConfig config = {0};
+  if (!api_->settings_get_config(settings_, &config))
+    return fallback;
+  int v = 0;
+  if (!rime_get_api()->config_get_int(
+          &config, ("preset_color_schemes/bangke_custom/" + key).c_str(), &v))
+    return fallback;
+  return (unsigned int)v;
+}
+
+void UIStyleSettings::SetCustomColor(const std::string& key,
+                                     unsigned int argb) {
+  api_->customize_int(settings_,
+                      ("preset_color_schemes/bangke_custom/" + key).c_str(),
+                      (int)argb);
+  // 解析端按方案节点声明的 color_format 换序;一次性声明为 argb,
+  // 这里写入的 0xAARRGGBB 即最终语义
+  api_->customize_string(settings_, "preset_color_schemes/bangke_custom/name",
+                         "自定义");
+  api_->customize_string(settings_,
+                         "preset_color_schemes/bangke_custom/color_format",
+                         "argb");
+}
