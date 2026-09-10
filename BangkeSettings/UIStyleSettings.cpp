@@ -271,20 +271,27 @@ unsigned int UIStyleSettings::GetCustomColor(const std::string& key,
   RimeConfig config = {0};
   if (!api_->settings_get_config(settings_, &config))
     return fallback;
-  int v = 0;
-  if (!rime_get_api()->config_get_int(
-          &config, ("preset_color_schemes/bangke_custom/" + key).c_str(), &v))
+  char buf[32] = {0};
+  if (!rime_get_api()->config_get_string(
+          &config, ("preset_color_schemes/bangke_custom/" + key).c_str(), buf,
+          sizeof(buf)))
     return fallback;
-  return (unsigned int)v;
+  // 只认 0x 十六进制写入;历史十进制条目解析端本就拒收,按未设置处理
+  if (buf[0] == '0' && (buf[1] == 'x' || buf[1] == 'X'))
+    return (unsigned int)strtoul(buf + 2, nullptr, 16);
+  return fallback;
 }
 
 void UIStyleSettings::SetCustomColor(const std::string& key,
                                      unsigned int argb) {
-  api_->customize_int(settings_,
-                      ("preset_color_schemes/bangke_custom/" + key).c_str(),
-                      (int)argb);
-  // 解析端按方案节点声明的 color_format 换序;一次性声明为 argb,
-  // 这里写入的 0xAARRGGBB 即最终语义
+  // 必须写 "0xAARRGGBB" 字符串:customize_int 会把负数序列化成带引号的
+  // 十进制串,server 端 _RimeGetColor 既不认其格式、也无法从字符串节点
+  // 取 int,整个方案会回落默认色(透明度失灵即此因)
+  char buf[16];
+  snprintf(buf, sizeof(buf), "0x%08X", argb);
+  api_->customize_string(settings_,
+                         ("preset_color_schemes/bangke_custom/" + key).c_str(),
+                         buf);
   api_->customize_string(settings_, "preset_color_schemes/bangke_custom/name",
                          "自定义");
   api_->customize_string(settings_,
