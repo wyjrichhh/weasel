@@ -5,6 +5,7 @@
 #include <QGuiApplication>
 #include <QPalette>
 #include <QWidget>
+#include <QWindow>
 #include <windows.h>
 
 #include <dwmapi.h>
