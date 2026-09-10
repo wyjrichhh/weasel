@@ -18,6 +18,8 @@
 #include <rime_levers_api.h>
 #include <WeaselUtility.h>
 
+#include "Ui.h"
+
 // rime-install.bat 由 build.bat data 复制到安装目录
 static std::wstring GetBangkeRoot() {
   std::wstring dir;
@@ -56,12 +58,12 @@ SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   rightLayout->addWidget(hotkeys_);
 
   auto* layout = new QHBoxLayout(this);
-  auto* left = new QWidget(this);
-  left->setLayout(leftLayout);
-  auto* right = new QWidget(this);
-  right->setLayout(rightLayout);
-  layout->addWidget(left, 3);
-  layout->addWidget(right, 2);
+  layout->setContentsMargins(20, 16, 20, 16);
+  layout->setSpacing(12);
+  auto* leftCard = makeCard(QString(), leftLayout, this);
+  auto* rightCard = makeCard(QString(), rightLayout, this);
+  layout->addWidget(leftCard, 3);
+  layout->addWidget(rightCard, 2);
 
   connect(refreshBtn, &QPushButton::clicked, this, &SwitcherPage::forceLoad);
   connect(moreBtn, &QPushButton::clicked, this, &SwitcherPage::getMoreSchemas);

@@ -133,6 +133,8 @@ if exist output\BangkeServer.exe (
     if not exist output\predict_models mkdir output\predict_models
     xcopy /E /I /Y models\predict_models output\predict_models >nul
   )
+  rem weasel.yaml 源头在 data\(入库),覆盖 plum 产物,保证默认样式随仓库走
+  if exist output\data copy /Y data\weasel.yaml output\data\ >nul
 
 rem build booost
 if %build_boost% == 1 (

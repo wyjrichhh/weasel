@@ -5,6 +5,8 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 
+#include "Ui.h"
+
 #pragma warning(disable : 4005)
 #include <rime_api.h>
 #pragma warning(default : 4005)
@@ -16,8 +18,8 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
   settings_ = api_->custom_settings_init("default", "Bangke::GeneralPage");
 
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(24, 16, 24, 16);
-  layout->setSpacing(8);
+  layout->setContentsMargins(20, 16, 20, 16);
+  layout->setSpacing(12);
 
   pageSize_ = new QSpinBox;
   pageSize_->setRange(1, 20);
@@ -35,10 +37,11 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
   }
 
   auto* form = new QFormLayout;
+  form->setSpacing(8);
   form->addRow(QStringLiteral(u"每页候选数"), pageSize_);
   form->addRow(QStringLiteral(u"左 Shift 切换行为"), shiftL_);
   form->addRow(QStringLiteral(u"右 Shift 切换行为"), shiftR_);
-  layout->addLayout(form);
+  layout->addWidget(makeCard(QStringLiteral(u"输入习惯"), form));
   layout->addStretch(1);
 
   load();

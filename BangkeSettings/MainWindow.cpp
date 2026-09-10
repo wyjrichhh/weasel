@@ -17,13 +17,15 @@
 #include "GeneralPage.h"
 #include "StylePage.h"
 #include "SwitcherPage.h"
+#include "Theme.h"
 #include <WeaselUtility.h>
+#include <windows.h>
 
 MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
                        QWidget* parent)
     : QMainWindow(parent), configurator_(configurator) {
   setWindowTitle(QStringLiteral(u"蚌壳拼音 · 设置"));
-  resize(860, 560);
+  resize(920, 600);
 
   switcherPage_ = new SwitcherPage(this);
   generalPage_ = new GeneralPage(this);
@@ -39,12 +41,15 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   stack_->addWidget(dictPage_);
 
   nav_ = new QListWidget(this);
-  nav_->setFixedWidth(120);
+  nav_->setObjectName(QStringLiteral("nav"));
+  nav_->setFixedWidth(136);
   nav_->setFrameShape(QFrame::NoFrame);
+  nav_->setSpacing(2);
   nav_->addItems({QStringLiteral(u"方案选单"), QStringLiteral(u"通用设置"), QStringLiteral(u"界面样式"), QStringLiteral(u"AI 预测"), QStringLiteral(u"词典管理")});
   nav_->setCurrentRow(openDictPage ? 4 : 0);
 
   auto* saveBtn = new QPushButton(QStringLiteral(u"保存并重新部署"), this);
+  saveBtn->setObjectName(QStringLiteral("primary"));
   saveBtn->setDefault(true);
   auto* userDirBtn = new QPushButton(QStringLiteral(u"打开用户文件夹"), this);
   auto* logDirBtn = new QPushButton(QStringLiteral(u"打开日志文件夹"), this);
@@ -56,8 +61,12 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   bottomRow->addWidget(saveBtn);
 
   auto* body = new QWidget(this);
+  body->setObjectName(QStringLiteral("pageRoot"));
   auto* bodyLayout = new QVBoxLayout(body);
+  bodyLayout->setContentsMargins(16, 12, 16, 12);
+  bodyLayout->setSpacing(10);
   auto* topRow = new QHBoxLayout();
+  topRow->setSpacing(12);
   topRow->addWidget(nav_);
   topRow->addWidget(stack_, 1);
   bodyLayout->addLayout(topRow, 1);
@@ -82,6 +91,18 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
 
 MainWindow::~MainWindow() {
   dictPage_->setSessionActive(false);
+}
+
+bool MainWindow::nativeEvent(const QByteArray& eventType, void* message,
+                             qintptr* result) {
+  MSG* msg = (MSG*)message;
+  // 系统深浅切换:即时重应用主题(样式表+调色板+标题栏)
+  if (msg->message == WM_SETTINGCHANGE &&
+      msg->lParam &&
+      wcscmp((const wchar_t*)msg->lParam, L"ImmersiveColorSet") == 0) {
+    Theme::RefreshIfChanged();
+  }
+  return QMainWindow::nativeEvent(eventType, message, result);
 }
 
 void MainWindow::onPageChanged(int index) {

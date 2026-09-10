@@ -1,5 +1,7 @@
 #include "DictPage.h"
 
+#include "Ui.h"
+
 #include <QBoxLayout>
 #include <QDir>
 #include <QFileDialog>
@@ -28,15 +30,18 @@ DictPage::DictPage(QWidget* parent) : QWidget(parent) {
   importBtn_ = new QPushButton(QStringLiteral(u"从文本导入…"), this);
 
   auto* layout = new QVBoxLayout(this);
-  layout->addWidget(new QLabel(QStringLiteral(u"用户词典："), this));
-  layout->addWidget(dictList_, 1);
+  layout->setContentsMargins(20, 16, 20, 16);
+  layout->setSpacing(12);
+  auto* cardBody = new QVBoxLayout();
+  cardBody->addWidget(dictList_, 1);
   auto* btnRow = new QHBoxLayout();
   btnRow->addWidget(backupBtn_);
   btnRow->addWidget(restoreBtn_);
   btnRow->addStretch();
   btnRow->addWidget(exportBtn_);
   btnRow->addWidget(importBtn_);
-  layout->addLayout(btnRow);
+  cardBody->addLayout(btnRow);
+  layout->addWidget(makeCard(QStringLiteral(u"用户词典"), cardBody, this));
 
   connect(backupBtn_, &QPushButton::clicked, this, &DictPage::backup);
   connect(restoreBtn_, &QPushButton::clicked, this, &DictPage::restore);

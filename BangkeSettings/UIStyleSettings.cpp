@@ -75,17 +75,80 @@ static inline bool IfFileExist(std::string filename) {
           0 == (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-std::string UIStyleSettings::GetColorSchemePreview(
+// 归一为 0xAARRGGBB。6 位值补 0xff alpha,8 位按声明的 color_format 换序
+// (与 server 端 _RimeGetColor 的语义一致)
+static unsigned int NormalizeColor(unsigned int v,
+                                   const std::string& format,
+                                   bool has_alpha) {
+  if (!has_alpha)
+    v |= 0xFF000000;
+  if (format == "argb")
+    return v;
+  if (format == "rgba")
+    return ((v & 0x000000FF) << 24) | (v & 0xFFFFFF00);
+  return (v & 0xFF000000) | ((v & 0x000000FF) << 16) | (v & 0x0000FF00) |
+         ((v & 0x00FF0000) >> 16);
+}
+
+std::map<std::string, unsigned int> UIStyleSettings::GetSchemeColors(
     const std::string& color_scheme_id) {
-  std::string user_dir = rime_get_api()->get_user_data_dir();
-  std::string filename =
-      user_dir + "\\preview\\color_scheme_" + color_scheme_id + ".png";
-  if (IfFileExist(filename))
-    return filename;
-  // 预览图随安装器铺在安装根目录 preview\(与 data\ 平级),不在数据目录里
-  std::string root =
-      wtou8(WeaselSharedDataPath().parent_path().wstring());
-  return root + "\\preview\\color_scheme_" + color_scheme_id + ".png";
+  std::map<std::string, unsigned int> result;
+  std::ifstream ifs(wtou8(WeaselSharedDataPath().wstring()) + "\\weasel.yaml");
+  if (!ifs.good())
+    return result;
+  std::string line;
+  bool inSchemes = false, inScheme = false;
+  std::string format = "abgr";
+  const std::string want = "  " + color_scheme_id + ":";
+  while (std::getline(ifs, line)) {
+    if (line.find("preset_color_schemes:") != std::string::npos) {
+      inSchemes = true;
+      continue;
+    }
+    if (!inSchemes)
+      continue;
+    if (!line.empty() && line[0] != ' ' && line[0] != '#')
+      break;  // 退出块
+    if (line.rfind(want, 0) == 0) {
+      inScheme = true;
+      continue;
+    }
+    if (inScheme && line.size() > 2 && line[0] == ' ' && line[1] == ' ' &&
+        line[2] != ' ') {
+      break;  // 下一个方案开始
+    }
+    if (!inScheme)
+      continue;
+    const auto colon = line.find(':');
+    if (colon == std::string::npos)
+      continue;
+    std::string key = line.substr(4, colon - 4);
+    std::string val = line.substr(colon + 1);
+    val.erase(0, val.find_first_not_of(" \t"));
+    if (key == "color_format") {
+      val.erase(val.find_last_not_of(" \t\r\n#") + 1);
+      format = val;
+      continue;
+    }
+    if (key == "name" || key == "author")
+      continue;
+    // 只收颜色键:剥注释后 0x.. / 十进制
+    const auto hash = val.find('#');
+    if (hash != std::string::npos)
+      val = val.substr(0, hash);
+    val.erase(val.find_last_not_of(" \t\r\n") + 1);
+    if (val.empty())
+      continue;
+    try {
+      // 0x 前缀按 16 进制;带 0x 共 10 字符(=8 位数字)视为带 alpha
+      const bool hex = val.rfind("0x", 0) == 0 || val.rfind("0X", 0) == 0;
+      unsigned int v = hex ? std::stoul(val, nullptr, 16) : std::stoul(val);
+      result[key] = NormalizeColor(
+          v, format, hex ? val.length() > 8 : val.length() >= 10);
+    } catch (...) {
+    }
+  }
+  return result;
 }
 
 std::string UIStyleSettings::GetActiveColorScheme() {

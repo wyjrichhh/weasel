@@ -13,6 +13,7 @@
 #include <QRegularExpression>
 #include <QVBoxLayout>
 
+#include "Ui.h"
 #include <WeaselUtility.h>
 
 // schema 名写死 luna_pinyin:目前唯一带 ai_predict 的方案。
@@ -21,12 +22,12 @@ static const char* kSchemaId = "luna_pinyin";
 
 AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(24, 16, 24, 16);
-  layout->setSpacing(8);
+  layout->setContentsMargins(20, 16, 20, 16);
+  layout->setSpacing(12);
 
   enabled_ = new QCheckBox(QStringLiteral(u"启用 AI 预测"));
-  layout->addWidget(enabled_);
-  layout->addSpacing(8);
+  auto* basic = new QVBoxLayout();
+  basic->addWidget(enabled_);
 
   device_ = new QComboBox;
   device_->addItem(QStringLiteral(u"CPU"), QStringLiteral("cpu"));
@@ -42,12 +43,14 @@ AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   minHanzi_->setRange(1, 10);
 
   auto* form = new QFormLayout;
+  form->setSpacing(8);
   form->addRow(QStringLiteral(u"设备"), device_);
   form->addRow(QStringLiteral(u"最大 token 数"), maxTokens_);
   form->addRow(QStringLiteral(u"防抖"), debounce_);
   form->addRow(QStringLiteral(u"最小输入长度"), minInput_);
   form->addRow(QStringLiteral(u"最少汉字数"), minHanzi_);
-  layout->addLayout(form);
+  basic->addLayout(form);
+  layout->addWidget(makeCard(QStringLiteral(u"基本"), basic));
 
   quality_ = new QDoubleSpinBox;
   quality_->setRange(-1.0, 100.0);

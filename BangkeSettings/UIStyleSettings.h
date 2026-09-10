@@ -1,6 +1,8 @@
 #pragma once
 
 #include <rime_levers_api.h>
+#include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -18,7 +20,9 @@ class UIStyleSettings {
   bool Save();
 
   bool GetPresetColorSchemes(std::vector<ColorSchemeInfo>* result);
-  std::string GetColorSchemePreview(const std::string& color_scheme_id);
+  // 指定方案的原始配色键值,统一归一为 0xAARRGGBB
+  std::map<std::string, unsigned int> GetSchemeColors(
+      const std::string& color_scheme_id);
   std::string GetActiveColorScheme();
   bool SelectColorScheme(const std::string& color_scheme_id);
 

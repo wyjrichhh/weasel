@@ -27,6 +27,7 @@ endif()
 
 qt_add_executable(BangkeSettings WIN32
   main.cpp
+  Theme.cpp Theme.h
   AIPage.cpp
   Configurator.cpp
   GeneralPage.cpp Configurator.h

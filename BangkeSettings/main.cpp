@@ -4,6 +4,7 @@
 
 #include "MainWindow.h"
 #include "Configurator.h"
+#include "Theme.h"
 #include <WeaselUtility.h>
 
 namespace {
@@ -58,6 +59,7 @@ int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral(u"蚌壳拼音·设置"));
     QApplication::setOrganizationName(QStringLiteral(u"Bangke"));
+    Theme::Apply(app);
 
     Mode mode = argc > 1 ? parseMode(QString::fromLocal8Bit(argv[1])) : Mode::Gui;
 

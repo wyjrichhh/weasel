@@ -5,8 +5,8 @@
 #include "UIStyleSettings.h"
 
 class QComboBox;
-class QLabel;
 class QSpinBox;
+class SchemePreviewWidget;
 
 class StylePage : public QWidget {
   Q_OBJECT
@@ -24,7 +24,7 @@ class StylePage : public QWidget {
 
   UIStyleSettings settings_;
   QComboBox* schemeCombo_ = nullptr;
-  QLabel* preview_ = nullptr;
+  SchemePreviewWidget* preview_ = nullptr;
   QSpinBox* fontSize_ = nullptr;
   QComboBox* layoutCombo_ = nullptr;
   std::string activeScheme_;
