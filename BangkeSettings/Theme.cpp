@@ -33,10 +33,9 @@ bool SystemIsLight() {
 // DWMWA_USE_IMMERSIVE_DARK_MODE:Win10 1809+ 为 19/20 均可
 void ApplyTitleBars(bool light) {
   const BOOL dark = light ? FALSE : TRUE;
-  for (auto* w : QGuiApplication::topLevelWindows()) {
-    if (auto* widget = qobject_cast<QWidget*>(w)) {
-      DwmSetWindowAttribute((HWND)widget->winId(), 20, &dark, sizeof(dark));
-    }
+  for (auto* widget : QApplication::topLevelWidgets()) {
+    if (auto* handle = widget->windowHandle())
+      DwmSetWindowAttribute((HWND)handle->winId(), 20, &dark, sizeof(dark));
   }
 }
 
@@ -230,10 +229,8 @@ void Apply(QApplication& app) {
   app.setPalette(pal);
 
   ApplyTitleBars(light);
-  for (auto* w : QGuiApplication::topLevelWindows()) {
-    if (auto* widget = qobject_cast<QWidget*>(w))
-      widget->update();
-  }
+  for (auto* widget : QApplication::topLevelWidgets())
+    widget->update();
 }
 
 void RefreshIfChanged() {
