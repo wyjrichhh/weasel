@@ -129,7 +129,9 @@ void weasel::VerticalLayout::DoLayout(CDCHandle dc, PDWR pDWR) {
       max_height_curren_candidate = max(max_height_curren_candidate, size.cy);
       comment_width += size.cx;
       max_comment_width = max(max_comment_width, comment_width);
-    }
+    } else
+      // 禁排时归零:rect 数组是裸内存,残留上一帧的值会被绘制成残影
+      _candidateCommentRects[i].SetRect(0, 0, 0, 0);
     int ol = 0, ot = 0, oc = 0;
     if (_style.align_type == UIStyle::ALIGN_CENTER) {
       ol = (max_height_curren_candidate - _candidateLabelRects[i].Height()) / 2;

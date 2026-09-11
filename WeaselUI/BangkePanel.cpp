@@ -1290,6 +1290,9 @@ void BangkePanel::_TextOut(const CRect& rc,
                            IDWriteTextFormat1* const pTextFormat) {
   if (pTextFormat == NULL)
     return;
+  // 空矩形 = 布局禁排(注释/标签被门控);D2D 绘制不裁剪,照画会溢出成残影
+  if (rc.IsRectEmpty())
+    return;
   float r = (float)(GetRValue(inColor)) / 255.0f;
   float g = (float)(GetGValue(inColor)) / 255.0f;
   float b = (float)(GetBValue(inColor)) / 255.0f;

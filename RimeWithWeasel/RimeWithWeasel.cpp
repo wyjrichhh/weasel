@@ -375,9 +375,6 @@ void RimeWithWeaselHandler::ClearComposition(WeaselSessionId ipc_id) {
 void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(
     size_t index,
     WeaselSessionId ipc_id) {
-  {
-
-  }
   DLOG(INFO) << "select candidate on current page, ipc_id = " << ipc_id
              << ", index = " << index;
   if (m_disabled)
@@ -454,21 +451,6 @@ void RimeWithWeaselHandler::_PushAiSnapshot(uintptr_t rime_sid) {
     if (pair.second.session_id == rime_sid) {
       ipc_id = pair.first;
       break;
-    }
-  }
-  {  // TEMP-TRACE: 部署后推送哑火定位(直写防 glog 缓冲)
-    wchar_t p[MAX_PATH] = {0};
-    ExpandEnvironmentStringsW(L"%TEMP%\\bk_push_trace.log", p, MAX_PATH);
-    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (f != INVALID_HANDLE_VALUE) {
-      char line[160];
-      snprintf(line, sizeof(line), "[srv] sid=%llu ipc=%u map=%d\r\n",
-               (unsigned long long)rime_sid, (unsigned)ipc_id,
-               ipc_id ? 1 : 0);
-      DWORD w;
-      WriteFile(f, line, (DWORD)strlen(line), &w, NULL);
-      CloseHandle(f);
     }
   }
   if (!ipc_id)
