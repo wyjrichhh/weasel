@@ -140,6 +140,45 @@ int Configurator::EnsureAiDefaults() {
     o << wtou8(kAiWiringYaml);
   }
 
+  // 雾凇:translator 链整列重写(明月同款纪律),仅缺文件时写入
+  static const wchar_t kIceWiringYaml[] =
+      L"patch:\n"
+      L"  # ai-predict: translator 必须列首位(MergedTranslation::Elect 顺序)\n"
+      L"  engine/translators:\n"
+      L"    - ai_predict_translator\n"
+      L"    - punct_translator\n"
+      L"    - script_translator\n"
+      L"    - lua_translator@*date_translator\n"
+      L"    - lua_translator@*lunar\n"
+      L"    - lua_translator@*uuid\n"
+      L"    - table_translator@custom_phrase\n"
+      L"    - table_translator@melt_eng\n"
+      L"    - table_translator@cn_en\n"
+      L"    - table_translator@radical_lookup\n"
+      L"    - lua_translator@*unicode\n"
+      L"    - lua_translator@*number_translator\n"
+      L"    - lua_translator@*calc_translator\n"
+      L"    - lua_translator@*force_gc\n"
+      L"  'engine/filters/@next': ai_predict_filter\n"
+      L"  ai_predict:\n"
+      L"    model_path: predict_models/zh-base-ct2-int8\n"
+      L"    enabled: true\n"
+      L"    device: cpu\n"
+      L"    min_input_length: 12\n"
+      L"    min_context_prompt_length: 2\n"
+      L"    context_window_size: 10\n"
+      L"    debounce_ms: 200\n"
+      L"    max_tokens: 64\n"
+      L"    quality: 0.00\n"
+      L"    target_index: 1\n"
+      L"    search_range: 10\n"
+      L"    min_hanzi: 2\n";
+  const std::filesystem::path iceCustom = user_dir / L"rime_ice.custom.yaml";
+  if (!std::filesystem::exists(iceCustom, ec)) {
+    std::ofstream o(iceCustom, std::ios::binary);
+    o << wtou8(kIceWiringYaml);
+  }
+
   // 模型随安装器铺在安装根目录 predict_models(与 data\ 平级);
   // 首部署拷入用户目录,按哨兵文件判缺,不重复拷
   const std::filesystem::path install_root = WeaselSharedDataPath().parent_path();

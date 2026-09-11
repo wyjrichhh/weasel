@@ -9,7 +9,7 @@ app_options:
   conhost.exe:
     ascii_mode: true
 
-show_notifications: true
+show_notifications: false  # 部署/切方案 tips 关闭,反馈走设置内 toast
 # how long a period notifications shows
 show_notifications_time: 1200
 # use global ascii status
