@@ -112,7 +112,7 @@ void HorizontalLayout::DoLayout(CDCHandle dc, PDWR pDWR) {
           (i == id && (_style.hilited_comment_text_color & 0xff000000)) ||
           (i != id && (_style.comment_text_color & 0xff000000));
       // "AI" 标记豁免于注释开关
-      const bool cmt_is_ai = comments.at(i).str == L"AI";
+      const bool cmt_is_ai = IsAiMarkerComment(comments.at(i).str);
       if (!comments.at(i).str.empty() && (cmtFontValid || cmt_is_ai) &&
           cmtFontNotTrans) {
         const std::wstring& comment = comments.at(i).str;

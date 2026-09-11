@@ -116,7 +116,8 @@ void weasel::VerticalLayout::DoLayout(CDCHandle dc, PDWR pDWR) {
         (i != id && (_style.comment_text_color & 0xff000000));
     // "AI" 标记豁免于注释开关
     if (!comments.at(i).str.empty() &&
-        (cmtFontValid || comments.at(i).str == L"AI") && cmtFontNotTrans) {
+        (cmtFontValid || IsAiMarkerComment(comments.at(i).str)) &&
+        cmtFontNotTrans) {
       w += space;
       comment_shift_width = max(comment_shift_width, w);
 

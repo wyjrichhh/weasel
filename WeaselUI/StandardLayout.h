@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Layout.h"
+#include <cwctype>
 #include <d2d1.h>
 #include <dwrite.h>
 #pragma comment(lib, "d2d1.lib")
@@ -9,6 +10,22 @@
 namespace weasel {
 const int MAX_CANDIDATES_COUNT = 100;
 const int STATUS_ICON_SIZE = GetSystemMetrics(SM_CXICON);
+
+// AI 标记豁免判定:插件注释为 "AI",但方案侧 comment_format 可能给注释
+// 包上全半角括号等装饰,剥掉装饰再比对
+inline bool IsAiMarkerComment(const std::wstring& s) {
+  auto wrapper = [](wchar_t c) {
+    return c == L'[' || c == L']' || c == 0xFF3B || c == 0xFF3D || c == L'(' ||
+           c == L')' || c == 0xFF08 || c == 0xFF09 || c == L'【' || c == L'】' ||
+           iswspace(c);
+  };
+  size_t b = 0, e = s.size();
+  while (b < e && wrapper(s[b]))
+    ++b;
+  while (e > b && wrapper(s[e - 1]))
+    --e;
+  return s.compare(b, e - b, L"AI") == 0;
+}
 
 class StandardLayout : public Layout {
  public:
