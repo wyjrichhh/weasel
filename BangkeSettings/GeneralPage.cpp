@@ -39,7 +39,7 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
   }
 
   commentHints_ = new QCheckBox(
-      QStringLiteral(u"候选词后显示注释（拼音提示等）"));
+      QStringLiteral(u"显示候选注释（AI 标记等）"));
 
   auto* form = new QFormLayout;
   form->setSpacing(8);
@@ -95,30 +95,37 @@ bool GeneralPage::save() {
   const QString sl = shiftL_->currentData().toString();
   const QString sr = shiftR_->currentData().toString();
   const bool hints = commentHints_->isChecked();
-  if (ps == initPs_ && sl == initShiftL_ && sr == initShiftR_ &&
-      hints == initCommentHints_)
-    return false;
-  // 重读再写:与 SwitcherPage 共写 default.custom.yaml,不能拿旧树覆写对方
-  api_->load_settings(settings_);
-  if (ps != initPs_)
-    api_->customize_int(settings_, "menu/page_size", ps);
-  if (sl != initShiftL_)
-    api_->customize_string(settings_, "ascii_composer/switch_key/Shift_L",
-                           sl.toUtf8().constData());
-  if (sr != initShiftR_)
-    api_->customize_string(settings_, "ascii_composer/switch_key/Shift_R",
-                           sr.toUtf8().constData());
-  // 注释是 weasel 样式键,落在 weasel.custom.yaml;开关换档 14/0
+  bool changed = false;
+
+  // default 侧:有变化才写(save_settings 无变化时返回 false,不能连坐)
+  if (ps != initPs_ || sl != initShiftL_ || sr != initShiftR_) {
+    // 重读再写:与 SwitcherPage 共写 default.custom.yaml,不能拿旧树覆写对方
+    api_->load_settings(settings_);
+    if (ps != initPs_)
+      api_->customize_int(settings_, "menu/page_size", ps);
+    if (sl != initShiftL_)
+      api_->customize_string(settings_, "ascii_composer/switch_key/Shift_L",
+                             sl.toUtf8().constData());
+    if (sr != initShiftR_)
+      api_->customize_string(settings_, "ascii_composer/switch_key/Shift_R",
+                             sr.toUtf8().constData());
+    if (!api_->save_settings(settings_))
+      return false;
+    initPs_ = ps;
+    initShiftL_ = sl;
+    initShiftR_ = sr;
+    changed = true;
+  }
+
+  // weasel 侧(注释总开关):同样有变化才写;先 reload 防 StylePage 旧树覆写
   if (hints != initCommentHints_) {
+    api_->load_settings(weaselStyle_);
     api_->customize_int(weaselStyle_, "style/comment_font_point",
                         hints ? 14 : 0);
-    api_->save_settings(weaselStyle_);
+    if (!api_->save_settings(weaselStyle_))
+      return false;
+    initCommentHints_ = hints;
+    changed = true;
   }
-  if (!api_->save_settings(settings_))
-    return false;
-  initPs_ = ps;
-  initShiftL_ = sl;
-  initShiftR_ = sr;
-  initCommentHints_ = hints;
-  return true;
+  return changed;
 }
