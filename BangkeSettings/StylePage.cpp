@@ -397,11 +397,12 @@ bool StylePage::save() {
       changed = true;
     }
   }
-  // 自定义配色:内容有变化才写;写入即切换方案生效
+  // 自定义配色:内容有变化才写。方案归属以下拉选择为准(选「自定义」时
+  // scheme 已是 bangke_custom);曾在此会话编辑过自定义不构成切回的理由
+  // ——否则会把用户随后显式选择的内置方案覆盖掉
   if (customDirty_ && custom_ != initCustom_) {
     for (const char* k : kCustomColorKeys)
       settings_.SetCustomColor(k, custom_[k]);
-    settings_.SelectColorScheme("bangke_custom");
     changed = true;
   }
   if (!changed)
