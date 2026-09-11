@@ -124,10 +124,13 @@ int Configurator::EnsureAiDefaults() {
       L"  schema_list:\n"
       L"    - schema: luna_pinyin\n"
       L"    - schema: rime_ice\n";
-  const std::filesystem::path dcustom = user_dir / L"default.custom.yaml";
-  if (!std::filesystem::exists(dcustom, ec)) {
-    std::ofstream o(dcustom, std::ios::binary);
-    o << wtou8(kDefaultSchemasYaml);
+  {
+    std::error_code dec;
+    const std::filesystem::path dcustom = user_dir / L"default.custom.yaml";
+    if (!std::filesystem::exists(dcustom, dec)) {
+      std::ofstream o(dcustom, std::ios::binary);
+      o << wtou8(kDefaultSchemasYaml);
+    }
   }
 
   const std::filesystem::path custom = user_dir / L"luna_pinyin.custom.yaml";
