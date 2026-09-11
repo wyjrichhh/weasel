@@ -1,14 +1,16 @@
 #pragma once
 #include <QWidget>
 
+#include <QStringList>
+
 class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
 class QFormLayout;
 class QSpinBox;
 
-// AI 预测配置页:读写 schema custom.yaml 的 ai_predict: 块(12 个键)。
-// 保存时由 MainWindow 统一触发重新部署。
+// AI 预测配置页:读写 schema custom.yaml 的 ai_predict: 块(12 个键),
+// 管辖所有接了 ai_predict 的方案;保存时由 MainWindow 统一触发重新部署。
 class AIPage : public QWidget {
   Q_OBJECT
  public:
@@ -33,7 +35,7 @@ class AIPage : public QWidget {
   QSpinBox* minContextPrompt_ = nullptr;
   class QLineEdit* modelPath_ = nullptr;
 
-  QString schemaCustomYaml() const;
+  QStringList wiredSchemaCustomYamls() const;
   // 载入时的控件状态签名;保存仅在有差异时写文件
   QString initState_;
 };
