@@ -110,8 +110,8 @@ bool GeneralPage::save() {
                            sr.toUtf8().constData());
   // 注释是 weasel 样式键,落在 weasel.custom.yaml;开关换档 14/0
   if (hints != initCommentHints_) {
-    weaselStyle_.customize_int("style/comment_font_point", hints ? 14 : 0);
-    weaselStyle_.save_settings();
+    weaselStyle_->customize_int("style/comment_font_point", hints ? 14 : 0);
+    weaselStyle_->save_settings();
   }
   if (!api_->save_settings(settings_))
     return false;
