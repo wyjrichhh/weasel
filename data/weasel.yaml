@@ -25,7 +25,8 @@ style:
   comment_font_face: Microsoft YaHei
   font_point: 14
   label_font_point: 11
-  comment_font_point: 14
+  # 0 = 不显示候选注释(拼音提示等);设置页可开
+  comment_font_point: 0
   candidate_abbreviate_length: 0
   click_to_capture: false
   horizontal: false

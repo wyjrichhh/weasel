@@ -1,5 +1,6 @@
 #include "GeneralPage.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
 #include <QSpinBox>
@@ -16,6 +17,7 @@
 GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
   api_ = leversApi();
   settings_ = api_->custom_settings_init("default", "Bangke::GeneralPage");
+  weaselStyle_ = api_->custom_settings_init("weasel", "Bangke::GeneralPage");
 
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(20, 16, 20, 16);
@@ -36,11 +38,15 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
     shiftR_->addItem(QString::fromUtf8(a.label), QString::fromLatin1(a.val));
   }
 
+  commentHints_ = new QCheckBox(
+      QStringLiteral(u"候选词后显示注释（拼音提示等）"));
+
   auto* form = new QFormLayout;
   form->setSpacing(8);
   form->addRow(QStringLiteral(u"每页候选数"), pageSize_);
   form->addRow(QStringLiteral(u"左 Shift 切换行为"), shiftL_);
   form->addRow(QStringLiteral(u"右 Shift 切换行为"), shiftR_);
+  form->addRow(QString(), commentHints_);
   layout->addWidget(makeCard(QStringLiteral(u"输入习惯"), form));
   layout->addStretch(1);
 
@@ -58,6 +64,15 @@ void GeneralPage::load() {
   if (rime->config_get_int(&config, "menu/page_size", &ps))
     pageSize_->setValue(ps);
   initPs_ = ps;
+
+  // 注释显示:0=隐藏(共享默认),14=显示;未打补丁即默认隐藏
+  api_->load_settings(weaselStyle_);
+  RimeConfig wcfg = {0};
+  int cfp = 0;
+  if (api_->settings_get_config(weaselStyle_, &wcfg))
+    rime->config_get_int(&wcfg, "style/comment_font_point", &cfp);
+  commentHints_->setChecked(cfp >= 14);
+  initCommentHints_ = cfp >= 14;
 
   // settings_get_config 只含 custom 补丁,不含合并后的共享默认;
   // 空 = 未打补丁,显示控件默认值
@@ -79,7 +94,9 @@ bool GeneralPage::save() {
   const int ps = pageSize_->value();
   const QString sl = shiftL_->currentData().toString();
   const QString sr = shiftR_->currentData().toString();
-  if (ps == initPs_ && sl == initShiftL_ && sr == initShiftR_)
+  const bool hints = commentHints_->isChecked();
+  if (ps == initPs_ && sl == initShiftL_ && sr == initShiftR_ &&
+      hints == initCommentHints_)
     return false;
   // 重读再写:与 SwitcherPage 共写 default.custom.yaml,不能拿旧树覆写对方
   api_->load_settings(settings_);
@@ -91,10 +108,16 @@ bool GeneralPage::save() {
   if (sr != initShiftR_)
     api_->customize_string(settings_, "ascii_composer/switch_key/Shift_R",
                            sr.toUtf8().constData());
+  // 注释是 weasel 样式键,落在 weasel.custom.yaml;开关换档 14/0
+  if (hints != initCommentHints_) {
+    weaselStyle_.customize_int("style/comment_font_point", hints ? 14 : 0);
+    weaselStyle_.save_settings();
+  }
   if (!api_->save_settings(settings_))
     return false;
   initPs_ = ps;
   initShiftL_ = sl;
   initShiftR_ = sr;
+  initCommentHints_ = hints;
   return true;
 }

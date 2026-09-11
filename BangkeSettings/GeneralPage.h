@@ -3,6 +3,7 @@
 
 #include <rime_levers_api.h>
 
+class QCheckBox;
 class QComboBox;
 class QSpinBox;
 
@@ -18,11 +19,15 @@ class GeneralPage : public QWidget {
  private:
   RimeLeversApi* api_ = nullptr;
   RimeCustomSettings* settings_ = nullptr;
+  // 注释显示是 weasel 样式键,写 weasel.custom.yaml(与 default 分开)
+  RimeCustomSettings* weaselStyle_ = nullptr;
   QSpinBox* pageSize_ = nullptr;
   QComboBox* shiftL_ = nullptr;
   QComboBox* shiftR_ = nullptr;
+  QCheckBox* commentHints_ = nullptr;
   // 载入时的原值(Shift 空串 = custom yaml 无此键);保存只写有变化的键
   int initPs_ = 0;
   QString initShiftL_;
   QString initShiftR_;
+  bool initCommentHints_ = false;
 };

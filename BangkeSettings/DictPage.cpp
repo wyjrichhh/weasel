@@ -65,13 +65,43 @@ void DictPage::setSessionActive(bool active) {
 
 void DictPage::populate() {
   dictList_->clear();
+  {  // TEMP-TRACE: 词典页空列表定位
+    wchar_t p[MAX_PATH] = {0};
+    ExpandEnvironmentStringsW(L"%TEMP%\\bk_dict_trace.log", p, MAX_PATH);
+    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f != INVALID_HANDLE_VALUE) {
+      char line[128];
+      snprintf(line, sizeof(line), "populate active=%d api=%d\r\n",
+               sessionActive_ ? 1 : 0, api_ ? 1 : 0);
+      DWORD w;
+      WriteFile(f, line, (DWORD)strlen(line), &w, NULL);
+      CloseHandle(f);
+    }
+  }
   if (!sessionActive_ || !api_)
     return;
   RimeUserDictIterator iter = {0};
   api_->user_dict_iterator_init(&iter);
-  while (const char* dict = api_->next_user_dict(&iter))
+  int n = 0;
+  while (const char* dict = api_->next_user_dict(&iter)) {
     dictList_->addItem(QString::fromStdString(dict));
+    ++n;
+  }
   api_->user_dict_iterator_destroy(&iter);
+  {  // TEMP-TRACE
+    wchar_t p[MAX_PATH] = {0};
+    ExpandEnvironmentStringsW(L"%TEMP%\\bk_dict_trace.log", p, MAX_PATH);
+    HANDLE f = CreateFileW(p, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f != INVALID_HANDLE_VALUE) {
+      char line[128];
+      snprintf(line, sizeof(line), "iterated %d dicts\r\n", n);
+      DWORD w;
+      WriteFile(f, line, (DWORD)strlen(line), &w, NULL);
+      CloseHandle(f);
+    }
+  }
   updateButtons();
 }
 
