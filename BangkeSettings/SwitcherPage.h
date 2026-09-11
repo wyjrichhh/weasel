@@ -26,7 +26,6 @@ class SwitcherPage : public QWidget {
   void loadSettings();
   void populate();
   void showDetails(RimeSchemaInfo* info);
-  void getMoreSchemas();
 
   RimeLeversApi* api_ = nullptr;
   RimeSwitcherSettings* settings_ = nullptr;

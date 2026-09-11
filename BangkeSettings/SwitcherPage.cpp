@@ -5,7 +5,6 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
-#include <QProcess>
 #include <QPushButton>
 #include <QTextBrowser>
 #include <windows.h>
@@ -21,12 +20,6 @@
 #include "Ui.h"
 
 // rime-install.bat 由 build.bat data 复制到安装目录
-static std::wstring GetBangkeRoot() {
-  std::wstring dir;
-  RegGetStringValue(HKEY_LOCAL_MACHINE, L"Software\\Bangke", L"BangkeRoot", dir);
-  return dir;
-}
-
 SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   api_ = leversApi();
 
@@ -40,10 +33,8 @@ SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   hotkeys_->setReadOnly(true);
 
   auto* refreshBtn = new QPushButton(QStringLiteral(u"刷新"), this);
-  auto* moreBtn = new QPushButton(QStringLiteral(u"获取更多方案…"), this);
   auto* btnRow = new QHBoxLayout();
   btnRow->addWidget(refreshBtn);
-  btnRow->addWidget(moreBtn);
   btnRow->addStretch();
 
   auto* leftLayout = new QVBoxLayout();
@@ -66,7 +57,6 @@ SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   layout->addWidget(rightCard, 2);
 
   connect(refreshBtn, &QPushButton::clicked, this, &SwitcherPage::forceLoad);
-  connect(moreBtn, &QPushButton::clicked, this, &SwitcherPage::getMoreSchemas);
   connect(schemaList_, &QListWidget::currentItemChanged, this,
           [this](QListWidgetItem* current, QListWidgetItem*) {
             if (current)
@@ -166,17 +156,6 @@ void SwitcherPage::showDetails(RimeSchemaInfo* info) {
   if (const char* description = api_->get_schema_description(info))
     (details += "\n\n") += description;
   description_->setText(QString::fromStdString(details));
-}
-
-void SwitcherPage::getMoreSchemas() {
-  std::wstring root = GetBangkeRoot();
-  if (root.empty())
-    return;
-  QProcess::startDetached(
-      "cmd", {"/k", QString::fromStdWString(root) + "\\rime-install.bat"},
-      QString::fromStdWString(root));
-  QMessageBox::information(this, QStringLiteral(u"获取更多方案"),
-                           QStringLiteral(u"在弹出的命令行窗口中按提示安装方案，\n完成后点击「刷新」重新加载列表。"));
 }
 
 bool SwitcherPage::save() {

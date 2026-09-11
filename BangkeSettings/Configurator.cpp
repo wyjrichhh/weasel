@@ -118,6 +118,18 @@ int Configurator::EnsureAiDefaults() {
       L"    search_range: 10\n"
       L"    min_hanzi: 2\n";
 
+  // 全新安装的方案集:明月 + 雾凇(对齐 Linux 版),仅缺文件时写入
+  static const wchar_t kDefaultSchemasYaml[] =
+      L"patch:\n"
+      L"  schema_list:\n"
+      L"    - schema: luna_pinyin\n"
+      L"    - schema: rime_ice\n";
+  const std::filesystem::path dcustom = user_dir / L"default.custom.yaml";
+  if (!std::filesystem::exists(dcustom, ec)) {
+    std::ofstream o(dcustom, std::ios::binary);
+    o << wtou8(kDefaultSchemasYaml);
+  }
+
   const std::filesystem::path custom = user_dir / L"luna_pinyin.custom.yaml";
   std::error_code ec;
   if (!std::filesystem::exists(custom, ec)) {

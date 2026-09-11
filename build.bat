@@ -181,7 +181,35 @@ if %build_weasel% == 1 (
   )
 )
 if %build_data% == 1 call :build_data
-if %build_opencc% == 1 call :build_opencc_data
+if %build_opencc% == 1 call :install_rime_ice
+rem 雾凇拼音(rime-ice):tarball 预置仓库根(不入库,网络不稳,离线安装)
+if not exist rime-ice.tar.gz (
+  echo [warn] rime-ice.tar.gz missing, skip
+  exit /b 0
+)
+if exist rime-ice-x rmdir /s /q rime-ice-x
+mkdir rime-ice-x
+tar -xzf rime-ice.tar.gz -C rime-ice-x --strip-components=1 2>nul
+rem others/ 内 GBK 文件名会解压报错,所需文件不受影响
+xcopy /E /I /Y rime-ice-x\cn_dicts output\data\cn_dicts >nul
+xcopy /E /I /Y rime-ice-x\en_dicts output\data\en_dicts >nul
+xcopy /E /I /Y rime-ice-x\lua output\data\lua >nul
+xcopy /E /I /Y rime-ice-x\opencc output\data\opencc >nul
+copy /Y rime-ice-x\rime_ice.schema.yaml output\data\ >nul
+copy /Y rime-ice-x\rime_ice.dict.yaml output\data\ >nul
+copy /Y rime-ice-x\melt_eng.dict.yaml output\data\ >nul
+copy /Y rime-ice-x\radical_pinyin.dict.yaml output\data\ >nul
+copy /Y rime-ice-x\symbols_v.yaml output\data\ >nul
+copy /Y rime-ice-x\symbols_caps_v.yaml output\data\ >nul
+copy /Y rime-ice-x\custom_phrase.txt output\data\ >nul
+rem 方案只保留 明月/雾凇(melt_eng/radical 仅挂词库,不装独立 schema)
+for %%f in (output\data\*.schema.yaml) do (
+  echo %%~nf | findstr /r /c:"^luna_pinyin$" /c:"^rime_ice$" >nul || del "%%f"
+)
+copy /Y data\weasel.yaml output\data\ >nul
+exit /b 0
+
+:build_opencc_data
 
 if %build_weasel% == 0 goto after_weasel
 
@@ -246,6 +274,7 @@ rem ---------------------------------------------------------------------------
   set rime_dir=output/data
   set WSLENV=plum_dir:rime_dir
   bash plum/rime-install %WEASEL_BUNDLED_RECIPES%
+  call :install_rime_ice
   if errorlevel 1 goto error
   exit /b
 

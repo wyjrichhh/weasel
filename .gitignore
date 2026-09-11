@@ -63,3 +63,5 @@ installer/Files.wxs
 *.bundle
 *.wixpdb
 models/
+rime-ice.tar.gz
+rime-ice-x/
