@@ -874,9 +874,10 @@ bool RimeWithWeaselHandler::_ShowMessage(Context& ctx, Status& status) {
     return counter;
   auto foption = m_show_notifications.find(m_option_name);
   auto falways = m_show_notifications.find("always");
-  if ((!add_session && (foption != m_show_notifications.end() ||
-                        falways != m_show_notifications.end())) ||
-      m_message_type == "deploy") {
+  // deploy 提示不再旁路闸门:部署反馈由设置程序的保存 toast 承担,
+  // 维护握手(如词典页进出)触发的"部署完成"气泡属于噪音
+  if (!add_session && (foption != m_show_notifications.end() ||
+                       falways != m_show_notifications.end())) {
     m_ui->Update(ctx, status);
     if (m_show_notifications_time)
       m_ui->ShowWithTimeout(m_show_notifications_time);
