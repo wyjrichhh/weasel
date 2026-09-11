@@ -135,7 +135,13 @@ HRESULT DirectWriteResources::InitResources(const wstring& label_font_face,
   init_font(font_face, font_point, pTextFormat, wrapping);
   init_font(font_face, font_point, pPreeditTextFormat, wrapping_preedit);
   init_font(label_font_face, label_font_point, pLabelTextFormat, wrapping);
-  init_font(comment_font_face, comment_font_point, pCommentTextFormat,
+  // 注释字号可为 0(隐藏拼音注释),但 AI 标记豁免于该开关且仍要绘制:
+  // 格式对象用标签字号兜底创建,可见性由布局层的键级判断决定
+  int comment_point_for_format = comment_font_point;
+  if (comment_point_for_format <= 0)
+    comment_point_for_format =
+        label_font_point > 0 ? label_font_point : font_point;
+  init_font(comment_font_face, comment_point_for_format, pCommentTextFormat,
             wrapping);
   return S_OK;
 }

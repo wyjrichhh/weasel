@@ -39,7 +39,7 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
   }
 
   commentHints_ = new QCheckBox(
-      QStringLiteral(u"显示候选注释（AI 标记等）"));
+      QStringLiteral(u"候选词后显示拼音注释"));
 
   auto* form = new QFormLayout;
   form->setSpacing(8);

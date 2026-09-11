@@ -114,19 +114,20 @@ void weasel::VerticalLayout::DoLayout(CDCHandle dc, PDWR pDWR) {
     bool cmtFontNotTrans =
         (i == id && (_style.hilited_comment_text_color & 0xff000000)) ||
         (i != id && (_style.comment_text_color & 0xff000000));
-    if (!comments.at(i).str.empty() && cmtFontValid && cmtFontNotTrans) {
+    // "AI" 标记豁免于注释开关
+    if (!comments.at(i).str.empty() &&
+        (cmtFontValid || comments.at(i).str == L"AI") && cmtFontNotTrans) {
       w += space;
       comment_shift_width = max(comment_shift_width, w);
 
       const std::wstring& comment = comments.at(i).str;
       GetTextSizeDW(comment, comment.length(), pDWR->pCommentTextFormat, pDWR,
                     &size);
-      _candidateCommentRects[i].SetRect(0, height, size.cx * cmtFontValid,
-                                        height + size.cy);
+      _candidateCommentRects[i].SetRect(0, height, size.cx, height + size.cy);
       _candidateCommentRects[i].OffsetRect(offsetX, offsetY);
-      w += size.cx * cmtFontValid;
+      w += size.cx;
       max_height_curren_candidate = max(max_height_curren_candidate, size.cy);
-      comment_width += size.cx * cmtFontValid;
+      comment_width += size.cx;
       max_comment_width = max(max_comment_width, comment_width);
     }
     int ol = 0, ot = 0, oc = 0;

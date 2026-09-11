@@ -111,15 +111,18 @@ void HorizontalLayout::DoLayout(CDCHandle dc, PDWR pDWR) {
       bool cmtFontNotTrans =
           (i == id && (_style.hilited_comment_text_color & 0xff000000)) ||
           (i != id && (_style.comment_text_color & 0xff000000));
-      if (!comments.at(i).str.empty() && cmtFontValid && cmtFontNotTrans) {
+      // "AI" 标记豁免于注释开关
+      const bool cmt_is_ai = comments.at(i).str == L"AI";
+      if (!comments.at(i).str.empty() && (cmtFontValid || cmt_is_ai) &&
+          cmtFontNotTrans) {
         const std::wstring& comment = comments.at(i).str;
         GetTextSizeDW(comment, comment.length(), pDWR->pCommentTextFormat, pDWR,
                       &size);
         w += _style.hilite_spacing;
-        _candidateCommentRects[i].SetRect(w, height, w + size.cx * cmtFontValid,
+        _candidateCommentRects[i].SetRect(w, height, w + size.cx,
                                           height + size.cy);
-        w += size.cx * cmtFontValid;
-        current_cand_width += (size.cx + _style.hilite_spacing) * cmtFontValid;
+        w += size.cx;
+        current_cand_width += size.cx + _style.hilite_spacing;
       } else /* Used for highlighted candidate calculation below */
         _candidateCommentRects[i].SetRect(w, height, w, height + size.cy);
 

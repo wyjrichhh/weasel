@@ -25,8 +25,8 @@ style:
   comment_font_face: Microsoft YaHei
   font_point: 14
   label_font_point: 11
-  # 注释通道保持开(AI 标记走这里);拼音注释在方案层关闭
-  comment_font_point: 14
+  # 0 = 隐藏拼音注释;AI 标记在面板层豁免,不受此开关影响
+  comment_font_point: 0
   candidate_abbreviate_length: 0
   click_to_capture: false
   horizontal: false
