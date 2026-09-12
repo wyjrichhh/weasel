@@ -34,17 +34,15 @@ build.bat           :: msbuild 全解决方案（x64 + Win32）
 ```powershell
 # 管理员会话；server 必须在交互桌面会话里启动，不要从 ssh 拉起
 cd C:\dev\weasel\output
-Copy-Item .\weaselx64.dll C:\Windows\System32\weasel.dll -Force
-Copy-Item .\weasel.dll C:\Windows\SysWOW64\weasel.dll -Force
-cmd /c "set TEXTSERVICE_PROFILE=hans&& C:\Windows\System32\regsvr32.exe /s C:\Windows\System32\weasel.dll"
-cmd /c "set TEXTSERVICE_PROFILE=hans&& C:\Windows\SysWOW64\regsvr32.exe /s C:\Windows\SysWOW64\weasel.dll"
-New-Item HKLM:\SOFTWARE\Rime\Weasel -Force
-Set-ItemProperty HKLM:\SOFTWARE\Rime\Weasel WeaselRoot 'C:\dev\weasel\output'
-Set-ItemProperty HKLM:\SOFTWARE\Rime\Weasel ServerExecutable 'BangkeServer.exe'
+Copy-Item .\bangkex64.dll C:\Windows\System32\bangke.dll -Force
+cmd /c "set TEXTSERVICE_PROFILE=hans&& C:\Windows\System32\regsvr32.exe /s C:\Windows\System32\bangke.dll"
+New-Item HKLM:\SOFTWARE\Bangke -Force
+Set-ItemProperty HKLM:\SOFTWARE\Bangke BangkeRoot 'C:\dev\weasel\output'
+Set-ItemProperty HKLM:\SOFTWARE\Bangke ServerExecutable 'BangkeServer.exe'
 New-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' BangkeServer -PropertyType String -Value 'C:\dev\weasel\output\BangkeServer.exe' -Force
 ```
 
-首次部署**不需要**跑 `WeaselDeployer.exe /deploy`（它是先弹方案选择对话框再部署，无桌面会话里会永远挂起等输入）——直接启动 `BangkeServer.exe`，`Initialize()` 的 `start_maintenance` 会自动完成首次部署（编译词库约 1-3 分钟）。
+（也可直接用 `scripts/dev_install.ps1`，上面是它做的事。）首次部署**不需要**手动跑设置程序——直接启动 `BangkeServer.exe`，`Initialize()` 的 `start_maintenance` 会自动完成首次部署（编译词库约 1-3 分钟）。
 
 ## 远程驱动（Mac → 17-Windows）
 

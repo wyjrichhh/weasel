@@ -20,7 +20,9 @@ if (-not (Test-Path "$root\msvcp140.dll")) {
   }
 }
 
-$exclude = @('bangkex64.dll', 'weasel.log', 'BangkeDeployer.exe')
+$exclude = @('bangkex64.dll', 'weasel.log', 'BangkeDeployer.exe',
+               'WinSparkle.dll', '7z.exe', '7z.dll', 'curl.exe',
+               'install.bat', 'uninstall.bat', 'stop_service.bat')
 # .dmp 曾把一个 534MB 崩溃转储打进 MSI;.wixpdb/.exp/.lib 是构建副产物
 $excludeExt = @('.log', '.pdb', '.old', '.msi', '.dmp', '.bak', '.tmp',
                 '.wixpdb', '.exp', '.lib')

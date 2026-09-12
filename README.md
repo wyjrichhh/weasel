@@ -1,117 +1,49 @@
-﻿【小狼毫】輸入法
-================
+# 蚌壳拼音 · Bangke Pinyin
 
-基於 中州韻輸入法引擎／Rime Input Method Engine 等開源技術
+Windows 平台的 [Rime](https://rime.im) 输入法,基于 [rime/weasel](https://github.com/rime/weasel)(小狼毫)深度定制的 x64-only 分支。
 
-式恕堂 版權所無
+## 特性
 
-[![Download](https://img.shields.io/github/v/release/rime/weasel)](https://github.com/rime/weasel/releases/latest)
-[![Build status](https://github.com/rime/weasel/actions/workflows/commit-ci.yml/badge.svg)](https://github.com/rime/weasel/actions/workflows/commit-ci.yml)
-[![GitHub Tag](https://img.shields.io/github/tag/rime/weasel.svg)](https://github.com/rime/weasel)
+- **AI 候选预测**:内置 [librime-ai-predict](librime/plugins/librime-ai-predict) 插件,CTranslate2 本地推理,长句输入时 AI 候选实时浮现(带 `AI` 标记),按键序号直选上屏
+- **内置方案**:明月拼音(`luna_pinyin`)与雾凇拼音(`rime_ice`,含词库与 librime-lua),安装即用
+- **现代候选面板**:纯 Direct2D 绘制,胶囊高亮、圆角、环阴影、逐像素半透明,跟随系统深浅色;8 套精选配色 + 完全自定义
+- **Qt 设置程序**:通用 / 界面样式 / AI / 高级四页,微信式行式排版与滑动开关,保存即热部署
+- **WiX MSI 安装器**:带 Qt 前端(装/修/卸/升级),全新安装自动播种用户配置与 AI 模型
+- **版本化二进制协议**:服务端↔TSF 前端走帧协议,按会话共享内存推送 AI 快照
 
-授權條款：GPLv3
+## 构建
 
-項目主頁：https://rime.im
+见 [docs/win-build.md](docs/win-build.md)(Visual Studio 2022 + boost + Qt6 + WiX,x64-only)。
 
-您可能還需要 RIME 用於其他操作系統的發行版：
+```bat
+build.bat          :: weasel 主件(dll/server/tests)
+build.bat settings :: Qt 设置程序
+build.bat data     :: 数据(plum + 雾凇离线铺设)
+build_msi.bat      :: MSI 安装包
+```
 
-  * ibus-rime、fcitx5-rime 或 fcitx-rime 用於 Linux
-  * 【鼠鬚管】用於 macOS （64位）
+## 目录
 
-安裝輸入法
-----------
+| 目录 | 内容 |
+|---|---|
+| `BangkeTSF/` | TSF 文本服务(前端,候选窗在应用进程内绘制) |
+| `BangkeServer/` | 算法服务进程 |
+| `BangkeIPC/` `BangkeIPCServer/` | 管道通信与二进制协议 |
+| `BangkeUI/` | Direct2D 候选面板与布局 |
+| `BangkeRime/` | Rime 集成层 |
+| `BangkeSettings/` | Qt 设置程序 |
+| `installer/` | WiX MSI + 安装器前端 |
+| `librime/plugins/librime-ai-predict/` | AI 预测插件 |
 
-本品適用於 Windows 8.1 ~ Windows 11
+> 兼容性说明:rime 配置节点沿用了上游的 `weasel.yaml` / `weasel.custom.yaml` 文件名,以保持用户配置习惯与文档通用性。
 
-初次安裝時，安裝程序將顯示「安裝選項」對話框。
+## 致谢
 
-若要將【小狼毫】註冊到繁體中文（臺灣）鍵盤佈局，請在「輸入語言」欄選擇「中文（臺灣）」，再點擊「安裝」按鈕。
+- [rime/weasel](https://github.com/rime/weasel) 及其贡献者 —— 本项目的基础
+- [rime](https://github.com/rime/librime) 输入法引擎
+- [雾凇拼音 rime-ice](https://github.com/iDvel/rime-ice)
+- [CTranslate2](https://github.com/OpenNMT/CTranslate2)
 
-安裝完成後，仍可由開始菜單打開「安裝選項」更改輸入語言。
+## 许可
 
-使用輸入法
-----------
-
-選取輸入法指示器菜單裏的【中】字樣圖標，開始用小狼毫寫字。
-
-可通過快捷鍵 <kbd>Ctrl+`</kbd> 或 <kbd>F4</kbd> 呼出方案選單、切換輸入方式。
-
-定製輸入法
-----------
-
-通過 開始菜單 » 小狼毫輸入法 訪問設定工具及常用位置。
-
-用戶詞庫、配置文件位於 `%AppData%\Rime`，可通過菜單中的「用戶文件夾」打開。高水平玩家調教 Rime 輸入法常會用到。
-
-修改詞庫、配置文件後，須「重新部署」方可生效。
-
-定製 Rime 的方法，請參考 Wiki [《定製指南》](https://github.com/rime/home/wiki/CustomizationGuide)。如需定製 Weasel 獨有的樣式和行為，請參考本倉庫 [Wiki 頁面](https://github.com/rime/weasel/wiki)。
-
-致謝
-----
-
-### 輸入方案設計：
-
-  * 【朙月拼音】系列及【八股文】詞典
-    - 部分數據來源於 CC-CEDICT、Android 拼音、新酷音、opencc 等開源項目
-    - 維護者：佛振、瑾昀
-  * 【注音／地球拼音】
-    - 維護者：佛振、瑾昀
-  * 【倉頡五代】
-    - 發明人：朱邦復先生
-    - 碼表源自 www.chinesecj.com
-    - 構詞碼表作者：惜緣
-
-  【五笔】【粵拼】【上海／蘇州吳語】【中古漢語拼音】【國際音標】等衆多方案
-  不再以安裝包預裝形式提供。可由 <https://github.com/rime/plum> 下載安裝。
-
-### 程序設計：
-
-  * [佛振](https://github.com/lotem)
-  * [鄒旭](https://github.com/zouxu09)
-  * [Xiangyan Sun](https://github.com/wishstudio)
-  * [Prcuvu](https://github.com/Prcuvu)
-  * [nameoverflow](https://github.com/nameoverflow)
-  * [fxliang](https://github.com/fxliang)
-  * [Azuk 443](https://github.com/determ1ne)
-
-  查看更多 [代碼貢獻者](https://github.com/rime/weasel/graphs/contributors)
-
-### 美術：
-
-  * 圖標設計／[Patricivs](https://github.com/Patricivs)
-  * 配色方案／Aben、P1461、Patricivs、skoj、佛振、五磅兔
-
-### 本品引用了以下開源軟件：
-
-  * [Boost C++ Libraries](http://www.boost.org/) (Boost Software License)
-  * [curl](https://curl.haxx.se/) (MIT/X derivate license)
-  * [google-glog](https://github.com/google/glog) (BSD 3-Clause License)
-  * [Google Test](https://github.com/google/googletest) (BSD 3-Clause License)
-  * [LevelDB](https://github.com/google/leveldb) (BSD 3-Clause License)
-  * [librime](https://github.com/rime/librime) (BSD 3-Clause License)
-  * [marisa-trie](https://github.com/s-yata/marisa-trie) (BSD 2-Clause License, LGPL 2.1)
-  * [OpenCC / 開放中文轉換](https://github.com/BYVoid/OpenCC) (Apache License 2.0)
-  * [plum](https://github.com/rime/plum) (GNU Lesser General Public License v3.0)
-  * [WinSparkle](https://github.com/vslavik/winsparkle) (MIT License)
-  * [yaml-cpp](https://github.com/jbeder/yaml-cpp) (MIT License)
-  * [7-Zip](https://www.7-zip.org) (GNU LGPLv2.1+ with unRAR restriction)
-
-問題與反饋
-----------
-
-發現程序有 bug，請到 GitHub 反饋
-<https://github.com/rime/weasel/issues>
-
-歡迎提交 pull request
-<https://github.com/rime/weasel/pulls>
-
-Rime 輸入法（不限於 Windows 平臺）功能、使用方法與配置相關的問題，請反饋到
-<https://github.com/rime/home/issues>
-
-聯繫方式
---------
-
-技術交流，歡迎光臨 [Rime 代碼之家](https://github.com/rime/home)，或致信 Rime 開發者 <rimeime@gmail.com>
-
-謝謝！
+GPL-3.0,见 [LICENSE.txt](LICENSE.txt)。
