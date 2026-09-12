@@ -66,9 +66,9 @@ AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   contextWindow_->setRange(1, 100);
   minContextPrompt_ = new QSpinBox;
   minContextPrompt_->setRange(1, 20);
+  quality_->setFixedWidth(96);
   for (auto* spin :
-       {quality_, targetIndex_, searchRange_, contextWindow_,
-        minContextPrompt_})
+       {targetIndex_, searchRange_, contextWindow_, minContextPrompt_})
     spin->setFixedWidth(96);
   modelPath_ = new QLineEdit;
   modelPath_->setReadOnly(true);
