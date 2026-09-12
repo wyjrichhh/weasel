@@ -29,6 +29,7 @@
 #include <msiquery.h>
 
 #include <tuple>
+#include <cstring>
 
 static const wchar_t* kUpgradeCode = L"{8F1D4B33-9C2A-4E6D-B0F7-3A5C8E21D940}";
 
@@ -734,8 +735,28 @@ class MainWindow : public QWidget {
   QPoint m_dragPos;
 };
 
+// 启动诊断:%TEMP%\bkinstaller.log(引导壳拉起失败定位用)
+static void BootLog(const char* msg) {
+  wchar_t tmp[MAX_PATH] = {0};
+  GetTempPathW(MAX_PATH, tmp);
+  const std::wstring path = std::wstring(tmp) + L"bkinstaller.log";
+  HANDLE f = CreateFileW(path.c_str(), FILE_APPEND_DATA,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS,
+                         FILE_ATTRIBUTE_NORMAL, NULL);
+  if (f == INVALID_HANDLE_VALUE)
+    return;
+  SetFilePointer(f, 0, NULL, FILE_END);
+  char line[160];
+  snprintf(line, sizeof(line), "%lu %s\r\n", GetTickCount(), msg);
+  DWORD w = 0;
+  WriteFile(f, line, (DWORD)strlen(line), &w, NULL);
+  CloseHandle(f);
+}
+
 int main(int argc, char* argv[]) {
+  BootLog("main enter");
   QApplication app(argc, argv);
+  BootLog("QApplication up");
   QApplication::setApplicationName(QStringLiteral(u"蚌壳拼音安装器"));
 
   app.setStyleSheet(QStringLiteral(uR"(
@@ -767,7 +788,10 @@ int main(int argc, char* argv[]) {
 
   MainWindow w;
   w.show();
-  return app.exec();
+  BootLog("window shown, entering exec");
+  const int ret = app.exec();
+  BootLog("exec returned");
+  return ret;
 }
 
 #include "main.moc"
