@@ -199,6 +199,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR, int) {
     PROCESS_INFORMATION pi{};
     if (CreateProcessW(exe.c_str(), cmdBuf.data(), NULL, NULL, FALSE, 0, NULL,
                        dir.c_str(), &si, &pi)) {
+      AllowSetForegroundWindow(pi.dwProcessId);  // 前台权交接,否则孩子窗口沉底
       wchar_t buf[128];
       swprintf_s(buf, L"created pid=%lu", pi.dwProcessId);
       Log(buf);

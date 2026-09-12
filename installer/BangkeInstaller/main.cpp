@@ -10,6 +10,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPointer>
 #include <QProcess>
@@ -268,7 +269,8 @@ class MainWindow : public QWidget {
     auto* title = new QHBoxLayout();
     auto* titleText = new QLabel(QStringLiteral(u"蚌壳拼音 · 安装"), panel);
     titleText->setObjectName("title");
-    m_closeBtn = new QPushButton(QStringLiteral(u"✕"), panel);
+    m_closeBtn = new QPushButton(QStringLiteral(u"×"), panel);
+  m_closeBtn->setToolTip(QStringLiteral(u"关闭"));
     m_closeBtn->setObjectName("close");
     m_closeBtn->setFixedSize(32, 32);
     connect(m_closeBtn, &QPushButton::clicked, this, [this] { close(); });
@@ -322,6 +324,11 @@ class MainWindow : public QWidget {
       return;
     }
     e->accept();
+  }
+  void keyPressEvent(QKeyEvent* e) override {
+    if (e->key() == Qt::Key_Escape)
+      close();  // 运行中会被 closeEvent 拦下并提示
+    QWidget::keyPressEvent(e);
   }
   void mousePressEvent(QMouseEvent* e) override {
     if (e->button() == Qt::LeftButton)
@@ -764,7 +771,7 @@ int main(int argc, char* argv[]) {
     #panel { background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #131b26, stop:1 #0d141d);
              border-radius: 14px; border: 1px solid #243244; }
     #title { font-size: 15px; color: #9fb6cd; }
-    #close { background: transparent; border: none; color: #7e93a8; font-size: 15px; }
+    #close { background: transparent; border: none; color: #9fb6cd; font-size: 18px; }
     #close:hover { background: #e81123; color: white; border-radius: 4px; }
     #logo { min-width: 92px; min-height: 92px; max-width: 92px; max-height: 92px;
             background: qradialgradient(cx:0.5, cy:0.35, radius:1.1, stop:0 #35618f, stop:1 #16233a);
@@ -788,6 +795,8 @@ int main(int argc, char* argv[]) {
 
   MainWindow w;
   w.show();
+  w.raise();
+  w.activateWindow();  // 提权链路不自动给前台,需自取
   BootLog("window shown, entering exec");
   const int ret = app.exec();
   BootLog("exec returned");
