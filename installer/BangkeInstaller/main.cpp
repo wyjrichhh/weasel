@@ -244,7 +244,7 @@ class CheckMark : public QWidget {
 class CloseButton : public QWidget {
  public:
   explicit CloseButton(QWidget* parent = nullptr) : QWidget(parent) {
-    setFixedSize(36, 26);
+    setFixedSize(40, 28);
     setCursor(Qt::PointingHandCursor);
     setToolTip(QStringLiteral(u"关闭"));
   }
@@ -253,24 +253,37 @@ class CloseButton : public QWidget {
   void paintEvent(QPaintEvent*) override {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
-    if (underMouse()) {
-      p.setPen(Qt::NoPen);
-      p.setBrush(QColor(0xe8, 0x11, 0x23));
-      p.drawRoundedRect(rect().adjusted(3, 2, -3, -2), 5, 5);
-    }
-    QPen pen(QColor(0xff, 0xff, 0xff), 1.8);
+    p.setPen(Qt::NoPen);
+    // 静止:浅钢蓝胶囊,与深底拉开层次;悬停/按下:红系
+    p.setBrush(underMouse() ? QColor(0xd1, 0x34, 0x38)
+                            : (isDown() ? QColor(0x2a, 0x3a, 0x4e)
+                                        : QColor(0x2c, 0x3d, 0x52)));
+    p.drawRoundedRect(rect(), 6, 6);
+    QPen pen(isDown() ? QColor(0xff, 0xff, 0xff) : QColor(0xea, 0xf2, 0xfb),
+             1.7);
     pen.setCapStyle(Qt::RoundCap);
     p.setPen(pen);
-    const int m = 9;
-    p.drawLine(m, m, width() - m, height() - m);
-    p.drawLine(width() - m, m, m, height() - m);
+    // 叉:占按钮约 40%,四边留白均匀
+    const int m = 12;
+    p.drawLine(m, 9, width() - m, height() - 9);
+    p.drawLine(width() - m, 9, m, height() - 9);
   }
   void enterEvent(QEnterEvent*) override { update(); }
   void leaveEvent(QEvent*) override { update(); }
+  void mousePressEvent(QMouseEvent*) override {
+    pressed_ = true;
+    update();
+  }
   void mouseReleaseEvent(QMouseEvent* e) override {
+    pressed_ = false;
+    update();
     if (rect().contains(e->pos()))
       topLevelWidget()->close();
   }
+
+ private:
+  bool isDown() const { return pressed_; }
+  bool pressed_ = false;
 };
 
 class MainWindow : public QWidget {
