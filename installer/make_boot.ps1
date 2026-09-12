@@ -41,6 +41,7 @@ New-Item $build -ItemType Directory -Force | Out-Null
 $id = 100
 $manifest = New-Object System.Text.StringBuilder
 $rc = New-Object System.Text.StringBuilder
+Copy-Item (Join-Path $root "resource\bangke.ico") $build -Force
 [void]$rc.AppendLine("// 自动生成:make_boot.ps1,勿手改")
 [void]$rc.AppendLine("1 ICON `"$($root.Replace('\', '\'))\resource\bangke.ico`"")
 foreach ($rel in $payload) {
