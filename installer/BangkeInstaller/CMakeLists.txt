@@ -21,6 +21,9 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()
 
+# 版本数在 configure 阶段烘进 rc:target_compile_definitions 不会到达 rc.exe
+configure_file(BangkeInstaller.rc.in BangkeInstaller.rc @ONLY)
+
 qt_add_executable(BangkeInstaller WIN32
   main.cpp
   BangkeInstaller.rc

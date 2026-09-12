@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # rime.dll 使用静态 MSVC 运行库，本程序须保持一致
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
+# 版本数在 configure 阶段烘进 rc:target_compile_definitions 不会到达 rc.exe
+configure_file(BangkeSettings.rc.in BangkeSettings.rc @ONLY)
+
 if(NOT DEFINED VERSION_MAJOR)
   set(VERSION_MAJOR 0)
   set(VERSION_MINOR 1)
