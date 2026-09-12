@@ -20,8 +20,8 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
   weaselStyle_ = api_->custom_settings_init("weasel", "Bangke::GeneralPage");
 
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(20, 16, 20, 16);
-  layout->setSpacing(12);
+  layout->setContentsMargins(16, 12, 16, 12);
+  layout->setSpacing(10);
 
   pageSize_ = new QSpinBox;
   pageSize_->setRange(1, 20);

@@ -176,8 +176,8 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
   preview_ = new SchemePreviewWidget(this);
 
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(20, 16, 20, 16);
-  layout->setSpacing(12);
+  layout->setContentsMargins(16, 12, 16, 12);
+  layout->setSpacing(10);
   layout->addWidget(makeCard(QStringLiteral(u"外观"), form));
 
   // ---- 布局微调(读 = 补丁 ⊕ 共享默认) ----

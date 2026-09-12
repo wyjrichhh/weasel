@@ -4,11 +4,12 @@
 #include <QBoxLayout>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QFrame>
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QStackedWidget>
-#include <QStatusBar>
 #include <QUrl>
 
 #include "AIPage.h"
@@ -22,11 +23,22 @@
 #include <WeaselUtility.h>
 #include <windows.h>
 
+// 紧凑窗口下内容高出视口时滚动,不高时撑满
+static QScrollArea* wrapInScroll(QWidget* page) {
+  auto* scroll = new QScrollArea;
+  scroll->setObjectName(QStringLiteral("pageScroll"));
+  scroll->setWidget(page);
+  scroll->setWidgetResizable(true);
+  scroll->setFrameShape(QFrame::NoFrame);
+  return scroll;
+}
+
 MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
                        QWidget* parent)
     : QMainWindow(parent), configurator_(configurator) {
   setWindowTitle(QStringLiteral(u"蚌壳拼音 · 设置"));
-  resize(920, 600);
+  resize(680, 460);
+  setMinimumSize(600, 400);
 
   switcherPage_ = new SwitcherPage(this);
   generalPage_ = new GeneralPage(this);
@@ -34,20 +46,28 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   aiPage_ = new AIPage(this);
   dictPage_ = new DictPage(this);
 
+  // 高级页 = 方案选单 + 用户词典:两页内容都偏稀,合并不再各占一屏
+  auto* advanced = new QWidget(this);
+  auto* advLayout = new QVBoxLayout(advanced);
+  advLayout->setContentsMargins(16, 12, 16, 12);
+  advLayout->setSpacing(10);
+  advLayout->addWidget(switcherPage_);
+  advLayout->addWidget(dictPage_);
+  advLayout->addStretch(1);
+
   stack_ = new QStackedWidget(this);
-  stack_->addWidget(switcherPage_);
-  stack_->addWidget(generalPage_);
-  stack_->addWidget(stylePage_);
-  stack_->addWidget(aiPage_);
-  stack_->addWidget(dictPage_);
+  stack_->addWidget(wrapInScroll(generalPage_));
+  stack_->addWidget(wrapInScroll(stylePage_));
+  stack_->addWidget(wrapInScroll(aiPage_));
+  stack_->addWidget(wrapInScroll(advanced));
 
   nav_ = new QListWidget(this);
   nav_->setObjectName(QStringLiteral("nav"));
-  nav_->setFixedWidth(136);
+  nav_->setFixedWidth(112);
   nav_->setFrameShape(QFrame::NoFrame);
   nav_->setSpacing(2);
-  nav_->addItems({QStringLiteral(u"方案选单"), QStringLiteral(u"通用设置"), QStringLiteral(u"界面样式"), QStringLiteral(u"AI 预测"), QStringLiteral(u"词典管理")});
-  nav_->setCurrentRow(openDictPage ? 4 : 0);
+  nav_->addItems({QStringLiteral(u"通用设置"), QStringLiteral(u"界面样式"), QStringLiteral(u"AI 预测"), QStringLiteral(u"高级")});
+  nav_->setCurrentRow(openDictPage ? 3 : 0);
 
   auto* saveBtn = new QPushButton(QStringLiteral(u"保存"), this);
   saveBtn->setObjectName(QStringLiteral("primary"));
@@ -64,16 +84,19 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   auto* body = new QWidget(this);
   body->setObjectName(QStringLiteral("pageRoot"));
   auto* bodyLayout = new QVBoxLayout(body);
-  bodyLayout->setContentsMargins(16, 12, 16, 12);
+  bodyLayout->setContentsMargins(16, 12, 16, 10);
   bodyLayout->setSpacing(10);
   auto* topRow = new QHBoxLayout();
   topRow->setSpacing(12);
   topRow->addWidget(nav_);
   topRow->addWidget(stack_, 1);
   bodyLayout->addLayout(topRow, 1);
+  auto* line = new QFrame(body);
+  line->setObjectName(QStringLiteral("line"));
+  line->setFrameShape(QFrame::HLine);
+  bodyLayout->addWidget(line);
   bodyLayout->addLayout(bottomRow);
   setCentralWidget(body);
-  statusBar()->showMessage(QStringLiteral(u"修改后点击「保存并重新部署」生效"));
 
   connect(nav_, &QListWidget::currentRowChanged, this,
           &MainWindow::onPageChanged);
@@ -109,21 +132,20 @@ bool MainWindow::nativeEvent(const QByteArray& eventType, void* message,
 void MainWindow::onPageChanged(int index) {
   stack_->setCurrentIndex(index);
   dictPage_->setSessionActive(false);
-  // 离开词典页立即结束部署会话:BeginDictSession 拿住的 BangkeDeployerMutex
+  // 离开高级页立即结束部署会话:BeginDictSession 拿住的 BangkeDeployerMutex
   // 若握到关窗,之后点「保存并重新部署」必撞"另一项部署任务"
   configurator_->EndDictSession();
-  // 五页布局: 0=方案 1=通用 2=界面样式 3=AI 4=词典
+  // 四页布局: 0=通用 1=界面样式 2=AI 3=高级(方案+词典)
   // 进入即重读配置(含外部/部署后的变更),未保存的改动随之丢弃
-  if (index == 4) {
+  if (index == 3) {
+    switcherPage_->load();
     if (configurator_->BeginDictSession())
       dictPage_->setSessionActive(true);
   } else if (index == 0) {
-    switcherPage_->load();
-  } else if (index == 1) {
     generalPage_->load();
-  } else if (index == 2) {
+  } else if (index == 1) {
     stylePage_->forceLoad();
-  } else if (index == 3) {
+  } else if (index == 2) {
     aiPage_->load();
   }
 }
@@ -163,7 +185,6 @@ void MainWindow::saveAndDeploy() {
   }
   if (ret == 0) {
     makeToast(QStringLiteral(u"已保存,输入法即刻生效"), this);
-    statusBar()->showMessage(QStringLiteral(u"已保存"), 3000);
   }
 }
 

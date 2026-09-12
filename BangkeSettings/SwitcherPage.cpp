@@ -49,8 +49,8 @@ SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   rightLayout->addWidget(hotkeys_);
 
   auto* layout = new QHBoxLayout(this);
-  layout->setContentsMargins(20, 16, 20, 16);
-  layout->setSpacing(12);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(10);
   auto* leftCard = makeCard(QString(), leftLayout, this);
   auto* rightCard = makeCard(QString(), rightLayout, this);
   layout->addWidget(leftCard, 3);

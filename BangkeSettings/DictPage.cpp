@@ -30,8 +30,8 @@ DictPage::DictPage(QWidget* parent) : QWidget(parent) {
   importBtn_ = new QPushButton(QStringLiteral(u"从文本导入…"), this);
 
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(20, 16, 20, 16);
-  layout->setSpacing(12);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(10);
   auto* cardBody = new QVBoxLayout();
   cardBody->addWidget(dictList_, 1);
   auto* btnRow = new QHBoxLayout();

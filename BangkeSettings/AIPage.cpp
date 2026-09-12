@@ -6,7 +6,6 @@
 #include <QDoubleSpinBox>
 #include <QFile>
 #include <QFormLayout>
-#include <QGroupBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
@@ -20,8 +19,8 @@
 
 AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(20, 16, 20, 16);
-  layout->setSpacing(12);
+  layout->setContentsMargins(16, 12, 16, 12);
+  layout->setSpacing(10);
 
   enabled_ = new QCheckBox(QStringLiteral(u"启用 AI 预测"));
   schemaLabel_ = new QLabel;
@@ -67,17 +66,15 @@ AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   modelPath_ = new QLineEdit;
   modelPath_->setReadOnly(true);
 
-  auto* adv = new QGroupBox(QStringLiteral(u"高级选项"));
-  auto* advForm = new QFormLayout(adv);
-  advForm->setContentsMargins(10, 8, 10, 10);
+  auto* advForm = new QFormLayout();
+  advForm->setSpacing(8);
   advForm->addRow(QStringLiteral(u"候选质量 (quality)"), quality_);
   advForm->addRow(QStringLiteral(u"AI 候选显示位置 (target_index)"), targetIndex_);
   advForm->addRow(QStringLiteral(u"去重扫描范围 (search_range)"), searchRange_);
   advForm->addRow(QStringLiteral(u"上下文窗口 (context_window_size)"), contextWindow_);
   advForm->addRow(QStringLiteral(u"上下文最小拼音数"), minContextPrompt_);
   advForm->addRow(QStringLiteral(u"模型路径"), modelPath_);
-  layout->addSpacing(16);
-  layout->addWidget(adv);
+  layout->addWidget(makeCard(QStringLiteral(u"高级选项"), advForm));
   layout->addStretch(1);
 
   load();

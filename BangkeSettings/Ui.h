@@ -14,8 +14,8 @@ inline QFrame* makeCard(const QString& title, QLayout* inner,
   auto* f = new QFrame(parent);
   f->setObjectName(QStringLiteral("card"));
   auto* v = new QVBoxLayout(f);
-  v->setContentsMargins(16, 12, 16, 16);
-  v->setSpacing(10);
+  v->setContentsMargins(14, 10, 14, 12);
+  v->setSpacing(8);
   if (!title.isEmpty()) {
     auto* t = new QLabel(title, f);
     t->setObjectName(QStringLiteral("cardTitle"));
