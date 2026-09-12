@@ -2,7 +2,7 @@
 // 作为 RCDATA 资源嵌入本 exe。运行时解包到 %TEMP%\BangkeSetup\,
 // 拉起安装界面,安装器退出后清理临时目录。
 // 载荷布局由资源 IDR_MANIFEST(100) 描述:每行 "资源ID|相对路径"。
-// 本体 asInvoker(只写 %TEMP%),UAC 由内层安装器触发,只弹一次。
+// 本体 requireAdministrator:双击即 UAC 一次(正规安装器惯例),子进程直启免代理。
 #include <windows.h>
 #include <shlwapi.h>
 
@@ -187,30 +187,31 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR, int) {
     wcscpy_s(g_msg, L"");
     DestroyWindow(g_wnd);
     const std::wstring exe = dir + L"\\BangkeInstaller.exe";
-    // 安装器带 requireAdministrator 清单,CreateProcessW 拉不起来
-    // (ERROR_ELEVATION_REQUIRED);ShellExecuteEx 才会触发 UAC 弹窗
-    SHELLEXECUTEINFOW sei{};
-    sei.cbSize = sizeof(sei);
-    sei.lpFile = exe.c_str();
-    sei.lpDirectory = dir.c_str();
-    sei.nShow = SW_SHOWNORMAL;
-    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-    if (ShellExecuteExW(&sei)) {
+    // 本壳已 requireAdministrator(双击时 UAC 提权一次,与正规安装器一致),
+    // 提权父进程可直接 CreateProcessW 子安装器:真句柄,确定性等待。
+    // 此前 ShellExecuteEx 交提权代理不回句柄,壳随即清理临时目录,
+    // 把刚被代理拉起的安装器连文件带目录拆了
+    const std::wstring cmd = L"\"" + exe + L"\"";
+    std::vector<wchar_t> cmdBuf(cmd.begin(), cmd.end());
+    cmdBuf.push_back(L'\0');
+    STARTUPINFOW si{};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi{};
+    if (CreateProcessW(exe.c_str(), cmdBuf.data(), NULL, NULL, FALSE, 0, NULL,
+                       dir.c_str(), &si, &pi)) {
       wchar_t buf[128];
-      swprintf_s(buf, L"launch ok, hProcess=%p", sei.hProcess);
+      swprintf_s(buf, L"created pid=%lu", pi.dwProcessId);
       Log(buf);
-      if (sei.hProcess) {
-        const DWORD wr = WaitForSingleObject(sei.hProcess, INFINITE);
-        DWORD code = 0;
-        GetExitCodeProcess(sei.hProcess, &code);
-        swprintf_s(buf, L"wait=%lu exitcode=%lu", wr, code);
-        Log(buf);
-        CloseHandle(sei.hProcess);
-      }
-      Log(L"installer exited");
+      WaitForSingleObject(pi.hProcess, INFINITE);
+      DWORD code = 0;
+      GetExitCodeProcess(pi.hProcess, &code);
+      swprintf_s(buf, L"exitcode=%lu", code);
+      Log(buf);
+      CloseHandle(pi.hProcess);
+      CloseHandle(pi.hThread);
     } else {
       wchar_t buf[128];
-      swprintf_s(buf, L"ShellExecuteEx failed, err=%lu", GetLastError());
+      swprintf_s(buf, L"CreateProcess failed, err=%lu", GetLastError());
       Log(buf);
       ok = false;
     }
