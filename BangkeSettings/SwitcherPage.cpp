@@ -10,6 +10,7 @@
 #include <windows.h>
 
 #include <cstring>
+#include <functional>
 #include <set>
 #include <string>
 #include <vector>
@@ -19,12 +20,48 @@
 
 #include "Ui.h"
 
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QVBoxLayout>
+
+#include <vector>
+
+// 方案行:整行可点(看说明),右侧滑块控启用
+class SchemaRowWidget : public QWidget {
+ public:
+  SchemaRowWidget(const QString& name, std::function<void()> onActivate,
+                   QWidget* parent)
+      : QWidget(parent), onActivate_(std::move(onActivate)) {
+    setObjectName(QStringLiteral("schemaRow"));
+    auto* h = new QHBoxLayout(this);
+    h->setContentsMargins(2, 9, 2, 9);
+    h->setSpacing(12);
+    auto* title = new QLabel(name, this);
+    title->setObjectName(QStringLiteral("rowTitle"));
+    h->addWidget(title);
+    h->addStretch(1);
+    sw_ = new ToggleSwitch(this);
+    h->addWidget(sw_, 0, Qt::AlignRight | Qt::AlignVCenter);
+  }
+  ToggleSwitch* sw() const { return sw_; }
+
+ protected:
+  void mousePressEvent(QMouseEvent*) override { onActivate_(); }
+
+ private:
+  ToggleSwitch* sw_ = nullptr;
+  std::function<void()> onActivate_;
+};
+
 // rime-install.bat 由 build.bat data 复制到安装目录
 SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   api_ = leversApi();
 
-  schemaList_ = new QListWidget(this);
-  schemaList_->setSelectionMode(QAbstractItemView::SingleSelection);
+  listHost_ = new QWidget(this);
+  auto* rowsLayout = new QVBoxLayout(listHost_);
+  rowsLayout->setContentsMargins(0, 0, 0, 0);
+  rowsLayout->setSpacing(0);
+  rowsLayout->addStretch(1);
 
   description_ = new QTextBrowser(this);
   description_->setOpenExternalLinks(false);
@@ -38,8 +75,9 @@ SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   btnRow->addStretch();
 
   auto* leftLayout = new QVBoxLayout();
-  leftLayout->addWidget(new QLabel(QStringLiteral(u"已选方案置顶并勾选，勾选即启用："), this));
-  leftLayout->addWidget(schemaList_, 1);
+  leftLayout->addWidget(
+      new QLabel(QStringLiteral(u"已启用方案置顶；点击行查看说明。"), this));
+  leftLayout->addWidget(listHost_, 1);
   leftLayout->addLayout(btnRow);
 
   auto* rightLayout = new QVBoxLayout();
@@ -57,13 +95,6 @@ SwitcherPage::SwitcherPage(QWidget* parent) : QWidget(parent) {
   layout->addWidget(rightCard, 2);
 
   connect(refreshBtn, &QPushButton::clicked, this, &SwitcherPage::forceLoad);
-  connect(schemaList_, &QListWidget::currentItemChanged, this,
-          [this](QListWidgetItem* current, QListWidgetItem*) {
-            if (current)
-              showDetails((RimeSchemaInfo*)current->data(Qt::UserRole).toULongLong());
-          });
-  connect(schemaList_, &QListWidget::itemChanged, this,
-          [this](QListWidgetItem*) { modified_ = true; });
 }
 
 SwitcherPage::~SwitcherPage() {
@@ -93,6 +124,24 @@ void SwitcherPage::loadSettings() {
   populate();
 }
 
+void SwitcherPage::addRow(RimeSchemaListItem& item,
+                           RimeSchemaInfo* info,
+                           bool checked,
+                           size_t index) {
+  // 布局形态:[row0, 发丝线, row1, ..., stretch],全部按位插入
+  auto* rowsLayout = static_cast<QVBoxLayout*>(listHost_->layout());
+  if (index > 0)
+    rowsLayout->insertWidget((int)index * 2 - 1, makeHairline());
+  auto* row = new SchemaRowWidget(
+      QString::fromStdString(item.name),
+      [this, info] { showDetails(info); }, listHost_);
+  row->sw()->setChecked(checked);
+  connect(row->sw(), &ToggleSwitch::toggled, this,
+          [this](bool) { modified_ = true; });
+  rowsLayout->insertWidget((int)index * 2, row);
+  rows_.push_back({info, row->sw(), row});
+}
+
 void SwitcherPage::populate() {
   if (!settings_)
     return;
@@ -104,10 +153,17 @@ void SwitcherPage::populate() {
   api_->get_available_schema_list(settings_, &available_);
   api_->get_selected_schema_list(settings_, &selected);
 
-  schemaList_->blockSignals(true);
-  schemaList_->clear();
+  rows_.clear();
+  auto* rowsLayout = static_cast<QVBoxLayout*>(listHost_->layout());
+  while (rowsLayout->count() > 1) {  // 末尾的 stretch 保留
+    auto* item = rowsLayout->takeAt(0);
+    if (item->widget())
+      item->widget()->deleteLater();
+    delete item;
+  }
   size_t k = 0;
   std::set<void*> recruited;
+  std::vector<bool> checked(available_.size, false);
   for (size_t i = 0; i < selected.size; ++i) {
     const char* schema_id = selected.list[i].schema_id;
     for (size_t j = 0; j < available_.size; ++j) {
@@ -116,11 +172,8 @@ void SwitcherPage::populate() {
       if (!strcmp(item.schema_id, schema_id) &&
           recruited.find(info) == recruited.end()) {
         recruited.insert(info);
-        auto* row = new QListWidgetItem(QString::fromStdString(item.name));
-        row->setFlags(row->flags() | Qt::ItemIsUserCheckable);
-        row->setCheckState(Qt::Checked);
-        row->setData(Qt::UserRole, (qulonglong)info);
-        schemaList_->insertItem(k++, row);
+        checked[j] = true;
+        addRow(item, info, true, k++);
         break;
       }
     }
@@ -130,14 +183,9 @@ void SwitcherPage::populate() {
     RimeSchemaInfo* info = (RimeSchemaInfo*)item.reserved;
     if (recruited.find(info) == recruited.end()) {
       recruited.insert(info);
-      auto* row = new QListWidgetItem(QString::fromStdString(item.name));
-      row->setFlags(row->flags() | Qt::ItemIsUserCheckable);
-      row->setCheckState(Qt::Unchecked);
-      row->setData(Qt::UserRole, (qulonglong)info);
-      schemaList_->insertItem(k++, row);
+      addRow(item, info, false, k++);
     }
   }
-  schemaList_->blockSignals(false);
   api_->schema_list_destroy(&selected);
 
   if (const char* hotkeys = api_->get_hotkeys(settings_))
@@ -159,15 +207,13 @@ void SwitcherPage::showDetails(RimeSchemaInfo* info) {
 }
 
 bool SwitcherPage::save() {
-  if (!modified_ || !settings_ || schemaList_->count() == 0)
+  if (!modified_ || !settings_ || rows_.empty())
     return false;
   std::vector<const char*> selection;
-  for (int i = 0; i < schemaList_->count(); ++i) {
-    if (schemaList_->item(i)->checkState() != Qt::Checked)
+  for (auto& rec : rows_) {
+    if (!rec.sw->isChecked())
       continue;
-    if (auto* info =
-            (RimeSchemaInfo*)schemaList_->item(i)->data(Qt::UserRole).toULongLong())
-      selection.push_back(api_->get_schema_id(info));
+    selection.push_back(api_->get_schema_id(rec.info));
   }
   if (selection.empty()) {
     QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"), QStringLiteral(u"至少要选用一项方案。"));

@@ -2,11 +2,14 @@
 
 #include <QWidget>
 
+#include <functional>
+#include <vector>
+
 #include "Levers.h"
 
-class QListWidget;
 class QLineEdit;
 class QTextBrowser;
+class ToggleSwitch;
 
 class SwitcherPage : public QWidget {
   Q_OBJECT
@@ -24,6 +27,7 @@ class SwitcherPage : public QWidget {
 
  private:
   void loadSettings();
+  void addRow(RimeSchemaListItem& item, RimeSchemaInfo* info, bool checked, size_t index);
   void populate();
   void showDetails(RimeSchemaInfo* info);
 
@@ -31,7 +35,13 @@ class SwitcherPage : public QWidget {
   RimeSwitcherSettings* settings_ = nullptr;
   RimeSchemaList available_ = {0};
 
-  QListWidget* schemaList_ = nullptr;
+  struct SchemaRowRec {
+    RimeSchemaInfo* info = nullptr;
+    ToggleSwitch* sw = nullptr;
+    QWidget* row = nullptr;
+  };
+  QWidget* listHost_ = nullptr;
+  std::vector<SchemaRowRec> rows_;
   QTextBrowser* description_ = nullptr;
   QLineEdit* hotkeys_ = nullptr;
   bool loaded_ = false;

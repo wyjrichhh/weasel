@@ -56,15 +56,21 @@ void Configurator::Initialize() {
 }
 
 int Configurator::UpdateWorkspace(bool report_errors) {
-  HANDLE hMutex = CreateMutexW(NULL, TRUE, L"BangkeDeployerMutex");
-  if (!hMutex)
-    return 1;
-  if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    CloseHandle(hMutex);
-    if (report_errors)
-      QMessageBox::information(nullptr, QStringLiteral(u"蚌壳拼音"),
-                               QStringLiteral(u"正在执行另一项部署任务，方才所做的修改将在输入法再次启动后生效。"));
-    return 1;
+  // 词典会话(高级页)已持有同一互斥:同进程重入合法,直接复用;
+  // 否则跨进程的"另一项部署任务"检测照旧
+  const bool ownMutex = !m_hDictMutex;
+  HANDLE hMutex = NULL;
+  if (ownMutex) {
+    hMutex = CreateMutexW(NULL, TRUE, L"BangkeDeployerMutex");
+    if (!hMutex)
+      return 1;
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+      CloseHandle(hMutex);
+      if (report_errors)
+        QMessageBox::information(nullptr, QStringLiteral(u"蚌壳拼音"),
+                                 QStringLiteral(u"正在执行另一项部署任务，方才所做的修改将在输入法再次启动后生效。"));
+      return 1;
+    }
   }
 
   bangke::Client client;
@@ -77,7 +83,8 @@ int Configurator::UpdateWorkspace(bool report_errors) {
     rime->deploy_config_file("weasel.yaml", "config_version");
   }
 
-  CloseHandle(hMutex);
+  if (ownMutex)
+    CloseHandle(hMutex);
 
   if (client.Connect())
     client.EndMaintenance();
