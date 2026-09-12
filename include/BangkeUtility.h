@@ -33,6 +33,9 @@ inline std::wstring getUsername() {
 
 // data directories
 std::filesystem::path BangkeSharedDataPath();
+// 用户目录种子(方案表/AI 接线/模型),设置程序 /install 与服务端首启调用
+int BangkeEnsureUserSeeds();
+
 std::filesystem::path BangkeUserDataPath();
 inline fs::path BangkeLogPath() {
   WCHAR _path[MAX_PATH] = {0};

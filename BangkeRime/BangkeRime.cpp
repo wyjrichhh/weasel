@@ -7,6 +7,7 @@
 #include <BangkeUtility.h>
 
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <array>
 #include <vector>
@@ -152,6 +153,10 @@ void BangkeRimeHandler::_Initialize(bool ignore_deployer) {
   if (m_disabled) {
     return;
   }
+
+  // 首启兜底:安装器的 FirstDeploy 若被互斥/上下文问题跳过,
+  // 种子在这里补上(幂等,存在性检查开销可忽略),部署才能带上雾凇与 AI
+  BangkeEnsureUserSeeds();
 
   LOG(INFO) << "Initializing la rime.";
   rime_api->initialize(NULL);
@@ -1648,3 +1653,4 @@ void BangkeRimeHandler::_UpdateInlinePreeditStatus(BangkeSessionId ipc_id) {
   // show soft cursor on the panel but not inline
   rime_api->set_option(session_id, "soft_cursor", Bool(!inline_preedit));
 }
+

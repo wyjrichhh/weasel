@@ -49,10 +49,15 @@ void showUsage(QWidget* parent) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  // BangkeTSF 以此互斥量探测部署进程是否在运行，勿改名
-  HANDLE hMutex = CreateMutexW(NULL, TRUE, L"BangkeDeployerExclusiveMutex");
-  if (!hMutex || GetLastError() == ERROR_ALREADY_EXISTS)
-    return 1;
+  const Mode mode0 = argc > 1 ? parseMode(QString::fromLocal8Bit(argv[1])) : Mode::Gui;
+  // 单实例互斥只约束 GUI;CLI(/install /deploy 等)曾被它静默挡掉
+  // (退出码 1 恰好是 CA 的"成功"),种子从没真正跑过
+  HANDLE hMutex = nullptr;
+  if (mode0 == Mode::Gui) {
+    hMutex = CreateMutexW(NULL, TRUE, L"BangkeDeployerExclusiveMutex");
+    if (!hMutex || GetLastError() == ERROR_ALREADY_EXISTS)
+      return 1;
+  }
 
   int ret = 0;
   {
