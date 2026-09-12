@@ -18,6 +18,12 @@
 #include <QStackedWidget>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QPropertyAnimation>
+#include <QGraphicsOpacityEffect>
+#include <QGraphicsDropShadowEffect>
+#include <QVariantAnimation>
+#include <QEasingCurve>
+#include <QPainter>
 #include <windows.h>
 #include <msi.h>
 #include <msiquery.h>
@@ -117,6 +123,118 @@ static QStringList BuildArgs(const MsiJob& job) {
   return args;
 }
 
+// ---------------- 动效部件 ----------------
+
+// 不确定进度条:细轨道 + 循环扫光,替代 QProgressBar 的呆板 busy 块
+class BusyBar : public QWidget {
+ public:
+  explicit BusyBar(QWidget* parent = nullptr) : QWidget(parent) {
+    setFixedHeight(6);
+    setAttribute(Qt::WA_TransparentForMouseEvents);
+    auto* a = new QVariantAnimation(this);
+    a->setStartValue(0.0);
+    a->setEndValue(1.0);
+    a->setDuration(1400);
+    a->setLoopCount(-1);
+    connect(a, &QVariantAnimation::valueChanged, this, [this](const QVariant& v) {
+      m_phase = v.toReal();
+      update();
+    });
+    a->start();
+  }
+
+ protected:
+  void paintEvent(QPaintEvent*) override {
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(0x0b, 0x11, 0x19));
+    p.drawRoundedRect(rect(), 3, 3);
+    const qreal chunk = width() * 0.36;
+    const qreal x = -chunk + (width() + chunk * 2) * m_phase;
+    QLinearGradient g(x, 0, x + chunk, 0);
+    g.setColorAt(0.0, QColor(0x2f, 0x7c, 0xd6, 0));
+    g.setColorAt(0.5, QColor(0x4a, 0xa8, 0xf0));
+    g.setColorAt(1.0, QColor(0x2f, 0x7c, 0xd6, 0));
+    p.setBrush(g);
+    p.drawRoundedRect(QRectF(x, 0, chunk, height()), 3, 3);
+  }
+
+ private:
+  qreal m_phase = 0.0;
+};
+
+// 完成页对勾:环先画出,勾/X 随笔画出
+class CheckMark : public QWidget {
+ public:
+  explicit CheckMark(QWidget* parent = nullptr) : QWidget(parent) {
+    setFixedSize(72, 72);
+    m_anim = new QVariantAnimation(this);
+    m_anim->setDuration(900);
+    m_anim->setEasingCurve(QEasingCurve::OutCubic);
+    connect(m_anim, &QVariantAnimation::valueChanged, this, [this](const QVariant& v) {
+      m_t = v.toReal();
+      update();
+    });
+  }
+  void start(bool ok) {
+    m_ok = ok;
+    m_t = 0.0;
+    update();
+    m_anim->stop();
+    m_anim->setStartValue(0.0);
+    m_anim->setEndValue(1.0);
+    m_anim->start();
+  }
+
+ protected:
+  void paintEvent(QPaintEvent*) override {
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    const QColor c = m_ok ? QColor(0x4c, 0xc3, 0x8a) : QColor(0xe0, 0x56, 0x56);
+    const QRectF r = rect().adjusted(6, 6, -6, -6);
+    QPen pen(c, 3.2);
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setJoinStyle(Qt::RoundJoin);
+    p.setPen(pen);
+    const qreal ringT = qBound(0.0, m_t / 0.55, 1.0);
+    p.drawArc(r, 90 * 16, -int(360 * 16 * ringT));
+    if (m_t > 0.55) {
+      const qreal t = (m_t - 0.55) / 0.45;
+      const QPointF c0 = r.center();
+      if (m_ok) {
+        const QPointF a = c0 + QPointF(-r.width() * 0.24, r.height() * 0.02);
+        const QPointF b = c0 + QPointF(-r.width() * 0.05, r.height() * 0.22);
+        const QPointF d = c0 + QPointF(r.width() * 0.27, -r.height() * 0.20);
+        const qreal t2 = t * 2;
+        if (t2 <= 1.0)
+          p.drawLine(a, a + (b - a) * t2);
+        else {
+          p.drawLine(a, b);
+          p.drawLine(b, b + (d - b) * (t2 - 1.0));
+        }
+      } else {
+        const QPointF tl = r.topLeft() + QPointF(r.width() * 0.22, r.height() * 0.22);
+        const QPointF br = r.bottomRight() + QPointF(-r.width() * 0.22, -r.height() * 0.22);
+        const QPointF bl = r.bottomLeft() + QPointF(r.width() * 0.22, -r.height() * 0.22);
+        const QPointF tr = r.topRight() + QPointF(-r.width() * 0.22, r.height() * 0.22);
+        const qreal t2 = t * 2;
+        if (t2 <= 1.0)
+          p.drawLine(tl, tl + (br - tl) * t2);
+        else {
+          p.drawLine(tl, br);
+          p.drawLine(bl, bl + (tr - bl) * (t2 - 1.0));
+        }
+      }
+    }
+  }
+
+ private:
+  QVariantAnimation* m_anim = nullptr;
+  qreal m_t = 0.0;
+  bool m_ok = true;
+};
+
 // ---------------- UI ----------------
 
 class MainWindow : public QWidget {
@@ -126,12 +244,20 @@ class MainWindow : public QWidget {
   MainWindow() {
     setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
     setAttribute(Qt::WA_TranslucentBackground);
+    setWindowOpacity(0.0);  // 入场动画从全透明起步
     resize(600, 440);
 
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
     auto* panel = new QFrame(this);
     panel->setObjectName("panel");
+    // 深底浮层感:面板投影
+    auto* shadow = new QGraphicsDropShadowEffect(this);
+    shadow->setBlurRadius(48);
+    shadow->setOffset(0, 10);
+    shadow->setColor(QColor(0, 0, 0, 150));
+    panel->setGraphicsEffect(shadow);
+    root->setContentsMargins(18, 14, 18, 22);  // 给投影留边
     root->addWidget(panel);
 
     auto* box = new QVBoxLayout(panel);
@@ -161,6 +287,27 @@ class MainWindow : public QWidget {
   }
 
  protected:
+  void showEvent(QShowEvent* e) override {
+    QWidget::showEvent(e);
+    if (m_entered)
+      return;
+    m_entered = true;
+    // 入场:淡入 + 14px 上滑
+    auto* fade = new QPropertyAnimation(this, "windowOpacity", this);
+    fade->setDuration(320);
+    fade->setStartValue(0.0);
+    fade->setEndValue(1.0);
+    fade->setEasingCurve(QEasingCurve::OutCubic);
+    fade->start(QAbstractAnimation::DeleteWhenStopped);
+    const QPoint dst = pos();
+    move(dst + QPoint(0, 14));
+    auto* slide = new QPropertyAnimation(this, "pos", this);
+    slide->setDuration(380);
+    slide->setStartValue(dst + QPoint(0, 14));
+    slide->setEndValue(dst);
+    slide->setEasingCurve(QEasingCurve::OutCubic);
+    slide->start(QAbstractAnimation::DeleteWhenStopped);
+  }
   // 任务进行中禁止关闭：中断 msiexec 并不可靠（客户端进程被杀后服务端事务照跑），
   // 且安装中途退出 UI 曾引发 Qt 内部 UAF 崩溃，索性从结构上禁止该路径。
   void closeEvent(QCloseEvent* e) override {
@@ -190,6 +337,45 @@ class MainWindow : public QWidget {
  private:
   static QString progressHint() { return QStringLiteral(u"过程中请勿关闭本窗口"); }
 
+  // 子部件淡入;播完移除效果,避免常驻离屏渲染
+  void fadeInWidget(QWidget* w, int ms = 240) {
+    auto* fx = new QGraphicsOpacityEffect(w);
+    w->setGraphicsEffect(fx);
+    auto* a = new QPropertyAnimation(fx, "opacity", w);
+    a->setDuration(ms);
+    a->setStartValue(0.0);
+    a->setEndValue(1.0);
+    a->setEasingCurve(QEasingCurve::OutCubic);
+    connect(a, &QPropertyAnimation::finished, this, [w] { w->setGraphicsEffect(nullptr); });
+    a->start(QAbstractAnimation::DeleteWhenStopped);
+  }
+  void switchPage(QFrame* next) {
+    m_stack->setCurrentWidget(next);
+    fadeInWidget(next);
+  }
+  // 阶段文案:淡出→换字→淡入
+  void setActionText(const QString& text) {
+    if (m_actionLabel->text() == text)
+      return;
+    auto* fx = new QGraphicsOpacityEffect(m_actionLabel);
+    m_actionLabel->setGraphicsEffect(fx);
+    auto* out = new QPropertyAnimation(fx, "opacity", m_actionLabel);
+    out->setDuration(140);
+    out->setStartValue(1.0);
+    out->setEndValue(0.0);
+    connect(out, &QPropertyAnimation::finished, this, [this, text, fx] {
+      m_actionLabel->setText(text);
+      auto* inAnim = new QPropertyAnimation(fx, "opacity", m_actionLabel);
+      inAnim->setDuration(140);
+      inAnim->setStartValue(0.0);
+      inAnim->setEndValue(1.0);
+      connect(inAnim, &QPropertyAnimation::finished, this,
+              [this] { m_actionLabel->setGraphicsEffect(nullptr); });
+      inAnim->start(QAbstractAnimation::DeleteWhenStopped);
+    });
+    out->start(QAbstractAnimation::DeleteWhenStopped);
+  }
+
   void startJob(MsiJob::Op op) {
     if (m_msiPath.isEmpty()) {
       QMessageBox::warning(this, QStringLiteral(u"蚌壳拼音"),
@@ -197,14 +383,13 @@ class MainWindow : public QWidget {
       return;
     }
     m_job = MsiJob{op, m_msiPath, m_productCode, !m_productCode.isEmpty()};
-    m_bar->setRange(0, 0);  // 不确定进度：以 msiexec 退出码为准
-    m_actionLabel->setText(QStringLiteral(u"正在准备…"));
+    setActionText(QStringLiteral(u"正在准备…"));
     m_progressTitle->setText(op == MsiJob::Uninstall ? QStringLiteral(u"正在卸载 蚌壳拼音")
                                 : op == MsiJob::Repair  ? QStringLiteral(u"正在修复 蚌壳拼音")
                                                         : QStringLiteral(u"正在安装 蚌壳拼音"));
     m_progressHint->setText(progressHint());
     m_running = true;
-    m_stack->setCurrentWidget(progressPage_);
+    switchPage(progressPage_);
 
     QFile::remove(MsiLogPath(m_msiPath));
     m_proc = new QProcess(this);
@@ -289,7 +474,7 @@ class MainWindow : public QWidget {
       }
     }
     if (bestText)
-      m_actionLabel->setText(QString::fromWCharArray(bestText));
+      setActionText(QString::fromWCharArray(bestText));
   }
 
   void msiFinished() {
@@ -297,7 +482,7 @@ class MainWindow : public QWidget {
     m_running = false;
     const int r = m_exitCode;
     if (m_proc) { m_proc->deleteLater(); m_proc = nullptr; }
-    m_stack->setCurrentWidget(finishPage_);
+    switchPage(finishPage_);
 
     const bool ok = (r == 0);
     if (ok) {
@@ -328,6 +513,7 @@ class MainWindow : public QWidget {
       m_finishDetail->setText(QStringLiteral(u"详细日志：") +
                               QDir::toNativeSeparators(MsiLogPath(m_msiPath)));
     }
+    m_check->start(ok);
     m_launchCheck->setVisible(ok && m_job.op != MsiJob::Uninstall);
     m_logoffBtn->setVisible(ok && m_job.op == MsiJob::Uninstall);
     m_openLogBtn->setVisible(!ok && !m_msiPath.isEmpty());
@@ -452,9 +638,7 @@ class MainWindow : public QWidget {
     m_progressTitle->setAlignment(Qt::AlignCenter);
     m_actionLabel = new QLabel(QStringLiteral(u"正在准备…"), progressPage_);
     m_actionLabel->setAlignment(Qt::AlignCenter);
-    m_bar = new QProgressBar(progressPage_);
-    m_bar->setTextVisible(false);
-    m_bar->setFixedHeight(6);
+    m_bar = new BusyBar(progressPage_);
     m_progressHint = new QLabel(progressPage_);
     m_progressHint->setObjectName("sub");
     m_progressHint->setAlignment(Qt::AlignCenter);
@@ -474,6 +658,7 @@ class MainWindow : public QWidget {
     auto* box = new QVBoxLayout(finishPage_);
     box->setContentsMargins(48, 44, 48, 32);
     box->setSpacing(12);
+    m_check = new CheckMark(finishPage_);
     m_finishTitle = new QLabel(finishPage_);
     m_finishTitle->setObjectName("finishTitle");
     m_finishTitle->setAlignment(Qt::AlignCenter);
@@ -511,6 +696,8 @@ class MainWindow : public QWidget {
       close();
     });
     box->addStretch();
+    box->addWidget(m_check, 0, Qt::AlignHCenter);
+    box->addSpacing(4);
     box->addWidget(m_finishTitle);
     box->addWidget(m_finishDetail);
     box->addWidget(m_launchCheck, 0, Qt::AlignHCenter);
@@ -530,7 +717,9 @@ class MainWindow : public QWidget {
   QLabel *m_installedLabel = nullptr, *m_pkgLabel = nullptr, *m_msiMissing = nullptr,
          *m_progressTitle = nullptr, *m_actionLabel = nullptr, *m_progressHint = nullptr,
          *m_finishTitle = nullptr, *m_finishDetail = nullptr;
-  QProgressBar* m_bar = nullptr;
+  BusyBar* m_bar = nullptr;
+  CheckMark* m_check = nullptr;
+  bool m_entered = false;
   QCheckBox* m_launchCheck = nullptr;
   QPushButton *m_primaryBtn = nullptr, *m_closeBtn = nullptr,
               *m_logoffBtn = nullptr, *m_openLogBtn = nullptr;
