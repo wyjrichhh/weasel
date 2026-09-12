@@ -6,6 +6,8 @@
 class QComboBox;
 class QSpinBox;
 
+class ToggleSwitch;
+
 // 通用配置页:经 rime levers 写 default.custom.yaml
 // (menu/page_size、ascii_composer/switch_key),与 SwitcherPage 共写一文件。
 class GeneralPage : public QWidget {
@@ -23,7 +25,6 @@ class GeneralPage : public QWidget {
   QSpinBox* pageSize_ = nullptr;
   QComboBox* shiftL_ = nullptr;
   QComboBox* shiftR_ = nullptr;
-  class ToggleSwitch;
   ToggleSwitch* commentHints_ = nullptr;
   // 载入时的原值(Shift 空串 = custom yaml 无此键);保存只写有变化的键
   int initPs_ = 0;

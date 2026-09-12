@@ -9,6 +9,8 @@ class QFormLayout;
 class QLabel;
 class QSpinBox;
 
+class ToggleSwitch;
+
 // AI 预测配置页:读写"当前方案"custom.yaml 的 ai_predict: 块(12 个键)。
 // 当前方案取自 user.yaml 的 previously_selected_schema,切换方案后
 // 重新进入页面即重载;保存时由 MainWindow 统一触发重新部署。
@@ -23,7 +25,6 @@ class AIPage : public QWidget {
  private:
   QString stateSignature() const;
 
-  class ToggleSwitch;
   ToggleSwitch* enabled_ = nullptr;
   QComboBox* device_ = nullptr;
   QSpinBox* maxTokens_ = nullptr;
