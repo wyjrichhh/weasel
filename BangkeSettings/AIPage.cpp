@@ -1,6 +1,5 @@
 #include "AIPage.h"
 
-#include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
 #include <QDoubleSpinBox>
@@ -22,13 +21,12 @@ AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   layout->setContentsMargins(16, 12, 16, 12);
   layout->setSpacing(10);
 
-  enabled_ = new QCheckBox(QStringLiteral(u"启用 AI 预测"));
+  enabled_ = new ToggleSwitch;
   schemaLabel_ = new QLabel;
-  auto* basic = new QVBoxLayout();
-  basic->addWidget(schemaLabel_);
-  basic->addWidget(enabled_);
+  schemaLabel_->setObjectName(QStringLiteral("hint"));
 
   device_ = new QComboBox;
+  device_->setFixedWidth(150);
   device_->addItem(QStringLiteral(u"CPU"), QStringLiteral("cpu"));
   device_->addItem(QStringLiteral(u"CUDA (GPU)"), QStringLiteral("cuda"));
   maxTokens_ = new QSpinBox;
@@ -40,15 +38,20 @@ AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   minInput_->setRange(1, 100);
   minHanzi_ = new QSpinBox;
   minHanzi_->setRange(1, 10);
+  for (auto* spin : {maxTokens_, debounce_, minInput_, minHanzi_})
+    spin->setFixedWidth(96);
 
-  auto* form = new QFormLayout;
-  form->setSpacing(8);
-  form->addRow(QStringLiteral(u"设备"), device_);
-  form->addRow(QStringLiteral(u"最大 token 数"), maxTokens_);
-  form->addRow(QStringLiteral(u"防抖"), debounce_);
-  form->addRow(QStringLiteral(u"最小输入长度"), minInput_);
-  form->addRow(QStringLiteral(u"最少汉字数"), minHanzi_);
-  basic->addLayout(form);
+  auto* basic = new QVBoxLayout();
+  basic->addWidget(schemaLabel_);
+  basic->addLayout(makeSettingRows({
+      makeSettingRow(QStringLiteral(u"启用 AI 预测"), enabled_,
+                     QStringLiteral(u"开关作用于当前方案")),
+      makeSettingRow(QStringLiteral(u"设备"), device_),
+      makeSettingRow(QStringLiteral(u"最大 token 数"), maxTokens_),
+      makeSettingRow(QStringLiteral(u"防抖"), debounce_),
+      makeSettingRow(QStringLiteral(u"最小输入长度"), minInput_),
+      makeSettingRow(QStringLiteral(u"最少汉字数"), minHanzi_),
+  }));
   layout->addWidget(makeCard(QStringLiteral(u"基本"), basic));
 
   quality_ = new QDoubleSpinBox;
@@ -63,18 +66,27 @@ AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   contextWindow_->setRange(1, 100);
   minContextPrompt_ = new QSpinBox;
   minContextPrompt_->setRange(1, 20);
+  for (auto* spin :
+       {quality_, targetIndex_, searchRange_, contextWindow_,
+        minContextPrompt_})
+    spin->setFixedWidth(96);
   modelPath_ = new QLineEdit;
   modelPath_->setReadOnly(true);
+  modelPath_->setFixedWidth(280);
 
-  auto* advForm = new QFormLayout();
-  advForm->setSpacing(8);
-  advForm->addRow(QStringLiteral(u"候选质量 (quality)"), quality_);
-  advForm->addRow(QStringLiteral(u"AI 候选显示位置 (target_index)"), targetIndex_);
-  advForm->addRow(QStringLiteral(u"去重扫描范围 (search_range)"), searchRange_);
-  advForm->addRow(QStringLiteral(u"上下文窗口 (context_window_size)"), contextWindow_);
-  advForm->addRow(QStringLiteral(u"上下文最小拼音数"), minContextPrompt_);
-  advForm->addRow(QStringLiteral(u"模型路径"), modelPath_);
-  layout->addWidget(makeCard(QStringLiteral(u"高级选项"), advForm));
+  layout->addWidget(makeCard(
+      QStringLiteral(u"高级选项"),
+      makeSettingRows({
+          makeSettingRow(QStringLiteral(u"候选质量 (quality)"), quality_),
+          makeSettingRow(QStringLiteral(u"AI 候选显示位置 (target_index)"),
+                         targetIndex_),
+          makeSettingRow(QStringLiteral(u"去重扫描范围 (search_range)"),
+                         searchRange_),
+          makeSettingRow(QStringLiteral(u"上下文窗口 (context_window_size)"),
+                         contextWindow_),
+          makeSettingRow(QStringLiteral(u"上下文最小拼音数"), minContextPrompt_),
+          makeSettingRow(QStringLiteral(u"模型路径"), modelPath_),
+      })));
   layout->addStretch(1);
 
   load();

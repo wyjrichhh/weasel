@@ -1,6 +1,5 @@
 #include "GeneralPage.h"
 
-#include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
 #include <QSpinBox>
@@ -26,9 +25,12 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
   pageSize_ = new QSpinBox;
   pageSize_->setRange(1, 20);
   pageSize_->setValue(5);
+  pageSize_->setFixedWidth(96);
 
   shiftL_ = new QComboBox;
   shiftR_ = new QComboBox;
+  shiftL_->setFixedWidth(150);
+  shiftR_->setFixedWidth(150);
   const struct { const char* val; const char* label; } actions[] = {
       {"commit_code", "提交编码"}, {"commit_text", "提交中文"},
       {"inline_ascii", "内嵌英文"}, {"clear", "清除"}, {"noop", "无操作"},
@@ -38,16 +40,17 @@ GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
     shiftR_->addItem(QString::fromUtf8(a.label), QString::fromLatin1(a.val));
   }
 
-  commentHints_ = new QCheckBox(
-      QStringLiteral(u"候选词后显示拼音注释"));
+  commentHints_ = new ToggleSwitch;
 
-  auto* form = new QFormLayout;
-  form->setSpacing(8);
-  form->addRow(QStringLiteral(u"每页候选数"), pageSize_);
-  form->addRow(QStringLiteral(u"左 Shift 切换行为"), shiftL_);
-  form->addRow(QStringLiteral(u"右 Shift 切换行为"), shiftR_);
-  form->addRow(QString(), commentHints_);
-  layout->addWidget(makeCard(QStringLiteral(u"输入习惯"), form));
+  layout->addWidget(makeCard(
+      QStringLiteral(u"输入习惯"),
+      makeSettingRows({
+          makeSettingRow(QStringLiteral(u"每页候选数"), pageSize_),
+          makeSettingRow(QStringLiteral(u"左 Shift 切换行为"), shiftL_),
+          makeSettingRow(QStringLiteral(u"右 Shift 切换行为"), shiftR_),
+          makeSettingRow(QStringLiteral(u"候选词后显示拼音注释"), commentHints_,
+                         QStringLiteral(u"关闭时仅保留 AI 标记")),
+      })));
   layout->addStretch(1);
 
   load();

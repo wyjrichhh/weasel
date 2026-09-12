@@ -48,6 +48,12 @@ QFrame#card { background: #FFFFFF; border: 1px solid #E7E9EC; border-radius: 8px
 QFrame#line { border: none; border-top: 1px solid #E7E9EC; }
 QLabel#cardTitle { font-size: 9.5pt; font-weight: 600; color: #6B7280; }
 QLabel#hint { color: #6B7280; }
+QLabel#rowTitle { font-weight: 600; color: #1F2329; }
+QLabel#rowHint { color: #6B7280; font-size: 8.5pt; }
+QSlider::groove:horizontal { height: 4px; border-radius: 2px; background: #E4E6EA; }
+QSlider::sub-page:horizontal { background: #0D9488; border-radius: 2px; }
+QSlider::handle:horizontal { width: 14px; height: 14px; margin: -5px 0; border-radius: 7px; background: #FFFFFF; border: 1px solid #0D9488; }
+QSlider::handle:horizontal:hover { border-color: #0B6E64; }
 QLabel { color: #1F2329; background: transparent; }
 
 QScrollArea#pageScroll { background: transparent; border: none; }
@@ -133,6 +139,12 @@ QFrame#card { background: #242428; border: 1px solid #33333A; border-radius: 8px
 QFrame#line { border: none; border-top: 1px solid #2A2A30; }
 QLabel#cardTitle { font-size: 9.5pt; font-weight: 600; color: #9AA0A6; }
 QLabel#hint { color: #9AA0A6; }
+QLabel#rowTitle { font-weight: 600; color: #E6E7EA; }
+QLabel#rowHint { color: #9AA0A6; font-size: 8.5pt; }
+QSlider::groove:horizontal { height: 4px; border-radius: 2px; background: #3A3A42; }
+QSlider::sub-page:horizontal { background: #14B8A6; border-radius: 2px; }
+QSlider::handle:horizontal { width: 14px; height: 14px; margin: -5px 0; border-radius: 7px; background: #2B2B30; border: 1px solid #14B8A6; }
+QSlider::handle:horizontal:hover { border-color: #5EEAD4; }
 QLabel { color: #E6E7EA; background: transparent; }
 
 QScrollArea#pageScroll { background: transparent; border: none; }

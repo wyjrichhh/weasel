@@ -3,7 +3,6 @@
 
 #include <QStringList>
 
-class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
 class QFormLayout;
@@ -24,7 +23,8 @@ class AIPage : public QWidget {
  private:
   QString stateSignature() const;
 
-  QCheckBox* enabled_ = nullptr;
+  class ToggleSwitch;
+  ToggleSwitch* enabled_ = nullptr;
   QComboBox* device_ = nullptr;
   QSpinBox* maxTokens_ = nullptr;
   QSpinBox* debounce_ = nullptr;

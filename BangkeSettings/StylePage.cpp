@@ -167,11 +167,14 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
   layoutCombo_->addItem(QStringLiteral(u"竖排"), QStringLiteral("vertical"));
   layoutCombo_->addItem(QStringLiteral(u"横排"), QStringLiteral("horizontal"));
 
-  auto* form = new QFormLayout();
-  form->setSpacing(8);
-  form->addRow(QStringLiteral(u"配色方案："), schemeCombo_);
-  form->addRow(QStringLiteral(u"字体大小："), fontSize_);
-  form->addRow(QStringLiteral(u"候选窗排列："), layoutCombo_);
+  schemeCombo_->setFixedWidth(170);
+  fontSize_->setFixedWidth(96);
+  layoutCombo_->setFixedWidth(110);
+  auto* form = makeSettingRows({
+      makeSettingRow(QStringLiteral(u"配色方案"), schemeCombo_),
+      makeSettingRow(QStringLiteral(u"字体大小"), fontSize_),
+      makeSettingRow(QStringLiteral(u"候选窗排列"), layoutCombo_),
+  });
 
   preview_ = new SchemePreviewWidget(this);
 
@@ -196,29 +199,25 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
       {"shadow_radius", "阴影范围", 0, 32, 10},
       {"shadow_offset_y", "阴影纵向偏移", -16, 16, 3},
   };
-  auto* grid = new QFormLayout();
-  grid->setSpacing(8);
+  std::vector<QWidget*> tuningRows;
   for (const auto& d : defs) {
     auto* spin = new QSpinBox(this);
     spin->setRange(d.lo, d.hi);
+    spin->setFixedWidth(96);
     layoutSpins_.push_back({spin, d.key});
-    grid->addRow(QString::fromUtf8(d.label), spin);
+    tuningRows.push_back(
+        makeSettingRow(QString::fromUtf8(d.label), spin));
   }
-  layout->addWidget(makeCard(QStringLiteral(u"布局微调"), grid));
+  layout->addWidget(makeCard(QStringLiteral(u"布局微调"), makeSettingRows(tuningRows)));
 
   // ---- 自定义配色 ----
-  auto* colorRow = new QHBoxLayout();
-  colorRow->setSpacing(12);
   backColorBtn_ = colorButton("back_color", QStringLiteral(u"背景颜色"));
   hiliteColorBtn_ =
       colorButton("hilited_candidate_back_color", QStringLiteral(u"高亮颜色"));
   textColorBtn_ = colorButton("text_color", QStringLiteral(u"文字颜色"));
-  colorRow->addWidget(backColorBtn_);
-  colorRow->addWidget(hiliteColorBtn_);
-  colorRow->addWidget(textColorBtn_);
-  colorRow->addStretch();
 
   opacitySlider_ = new QSlider(Qt::Horizontal, this);
+  opacitySlider_->setFixedWidth(180);
   opacitySlider_->setRange(55, 100);
   opacitySlider_->setValue(95);
   connect(opacitySlider_, &QSlider::valueChanged, this, [this](int pct) {
@@ -232,11 +231,12 @@ StylePage::StylePage(QWidget* parent) : QWidget(parent) {
 
   auto* customCard = new QVBoxLayout();
   customCard->setSpacing(8);
-  customCard->addLayout(colorRow);
-  auto* opacityRow = new QHBoxLayout();
-  opacityRow->addWidget(new QLabel(QStringLiteral(u"背景不透明度"), this));
-  opacityRow->addWidget(opacitySlider_, 1);
-  customCard->addLayout(opacityRow);
+  customCard->addLayout(makeSettingRows({
+      makeSettingRow(QStringLiteral(u"背景颜色"), backColorBtn_),
+      makeSettingRow(QStringLiteral(u"高亮颜色"), hiliteColorBtn_),
+      makeSettingRow(QStringLiteral(u"文字颜色"), textColorBtn_),
+      makeSettingRow(QStringLiteral(u"背景不透明度"), opacitySlider_),
+  }));
   auto* hint = new QLabel(
       QStringLiteral(u"调整任一颜色或透明度后,将以「自定义」配色生效。"), this);
   hint->setObjectName(QStringLiteral("hint"));
