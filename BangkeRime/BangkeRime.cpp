@@ -144,7 +144,11 @@ void BangkeRimeHandler::_Setup() {
 }
 
 void BangkeRimeHandler::Initialize() {
-  m_disabled = _IsDeployerRunning();
+  _Initialize(false);
+}
+
+void BangkeRimeHandler::_Initialize(bool ignore_deployer) {
+  m_disabled = !ignore_deployer && _IsDeployerRunning();
   if (m_disabled) {
     return;
   }
@@ -639,7 +643,7 @@ void BangkeRimeHandler::StartMaintenance() {
 
 void BangkeRimeHandler::EndMaintenance() {
   if (m_disabled) {
-    Initialize();
+    _Initialize(true);
     _UpdateUI(0);
   }
   m_session_status_map.clear();

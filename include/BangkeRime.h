@@ -51,6 +51,13 @@ class BangkeRimeHandler : public bangke::RequestHandler {
   BangkeRimeHandler(bangke::UI* ui);
   virtual ~BangkeRimeHandler();
   virtual void Initialize();
+
+ private:
+  // ignore_deployer:EndMaintenance 强起用——部署已完成,互斥尚未松手
+  // 不构成障碍;启动路径仍要检查(真有部署器在场则等 AddSession 再试)
+  void _Initialize(bool ignore_deployer);
+
+ public:
   virtual void Finalize();
   virtual DWORD FindSession(BangkeSessionId ipc_id);
   virtual DWORD AddSession(LPWSTR buffer, EatLine eat = 0);
