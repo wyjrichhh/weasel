@@ -57,13 +57,18 @@ foreach ($rel in $payload) {
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 $vs = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
 $devcmd = Join-Path $vs "Common7\Tools\VsDevCmd.bat"
-$src = Join-Path $PSScriptRoot "BangkeBoot\main.cpp"
+# 在构建目录内编译,避开 /Fo"路径\ 末尾反斜杠吃引号的坑;
+# .rc 需 rc.exe 先编成 .res,再随 cl 链接
 $exe = Join-Path $build "BangkeBoot.exe"
-$cmd = "`"$devcmd`" -arch=amd64 -host_arch=amd64 && cl /nologo /O2 /MT /DUNICODE /D_UNICODE " +
-       "$($src.Replace('\', '\')) $($build.Replace('\', '\'))\boot_payload.rc /Fo`"$($build.Replace('\', '\'))\`" " +
-       "/Fe`"$($exe.Replace('\', '\'))`" /link /SUBSYSTEM:WINDOWS user32.lib gdi32.lib shlwapi.lib"
-cmd /c $cmd | Out-Null
-if (-not (Test-Path $exe)) { throw "引导壳编译失败(需 VsDevCmd 环境,或看上方 cl 输出)" }
+$cmd = "`"$devcmd`" -arch=amd64 -host_arch=amd64 && cd /d `"$($build.Replace('\', '\'))`" && " +
+       "rc /nologo /foboot.res boot_payload.rc && " +
+       "cl /nologo /O2 /MT /DUNICODE /D_UNICODE `"$($PSScriptRoot.Replace('\', '\'))\BangkeBoot\main.cpp`" boot.res /FeBangkeBoot.exe /link /SUBSYSTEM:WINDOWS user32.lib gdi32.lib shlwapi.lib"
+$out = cmd /c $cmd 2>&1
+$code = $LASTEXITCODE
+if ($code -ne 0 -or -not (Test-Path $exe)) {
+  $out | Select-Object -Last 10 | ForEach-Object { Write-Output $_ }
+  throw "引导壳编译失败 (exit=$code)"
+}
 
 New-Item (Join-Path $root "dist") -ItemType Directory -Force | Out-Null
 $dist = Join-Path $root "dist\BangkeSetup-$version-win64.exe"
