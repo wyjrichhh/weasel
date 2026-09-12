@@ -167,19 +167,20 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR, int) {
   if (ok) {
     wcscpy_s(g_msg, L"");
     DestroyWindow(g_wnd);
-    STARTUPINFOW si{};
-    si.cb = sizeof(si);
-    PROCESS_INFORMATION pi{};
     const std::wstring exe = dir + L"\\BangkeInstaller.exe";
-    const std::wstring cmd = L"\"" + exe + L"\"";
-    // CreateProcessW 的命令行参数必须可写(它可能原地修改),wstring 不保证
-    std::vector<wchar_t> cmdBuf(cmd.begin(), cmd.end());
-    cmdBuf.push_back(L'\0');
-    if (CreateProcessW(exe.c_str(), cmdBuf.data(), NULL, NULL, FALSE, 0, NULL,
-                       dir.c_str(), &si, &pi)) {
-      WaitForSingleObject(pi.hProcess, INFINITE);
-      CloseHandle(pi.hProcess);
-      CloseHandle(pi.hThread);
+    // 安装器带 requireAdministrator 清单,CreateProcessW 拉不起来
+    // (ERROR_ELEVATION_REQUIRED);ShellExecuteEx 才会触发 UAC 弹窗
+    SHELLEXECUTEINFOW sei{};
+    sei.cbSize = sizeof(sei);
+    sei.lpFile = exe.c_str();
+    sei.lpDirectory = dir.c_str();
+    sei.nShow = SW_SHOWNORMAL;
+    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+    if (ShellExecuteExW(&sei)) {
+      if (sei.hProcess) {
+        WaitForSingleObject(sei.hProcess, INFINITE);
+        CloseHandle(sei.hProcess);
+      }
     } else {
       ok = false;
     }
