@@ -196,9 +196,15 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR, int) {
     sei.nShow = SW_SHOWNORMAL;
     sei.fMask = SEE_MASK_NOCLOSEPROCESS;
     if (ShellExecuteExW(&sei)) {
-      Log(L"installer launched, waiting");
+      wchar_t buf[128];
+      swprintf_s(buf, L"launch ok, hProcess=%p", sei.hProcess);
+      Log(buf);
       if (sei.hProcess) {
-        WaitForSingleObject(sei.hProcess, INFINITE);
+        const DWORD wr = WaitForSingleObject(sei.hProcess, INFINITE);
+        DWORD code = 0;
+        GetExitCodeProcess(sei.hProcess, &code);
+        swprintf_s(buf, L"wait=%lu exitcode=%lu", wr, code);
+        Log(buf);
         CloseHandle(sei.hProcess);
       }
       Log(L"installer exited");
