@@ -42,6 +42,7 @@ $id = 100
 $manifest = New-Object System.Text.StringBuilder
 $rc = New-Object System.Text.StringBuilder
 [void]$rc.AppendLine("// 自动生成:make_boot.ps1,勿手改")
+[void]$rc.AppendLine("1 ICON `"$($root.Replace('\', '\'))\resource\bangke.ico`"")
 foreach ($rel in $payload) {
   $id++
   [void]$manifest.AppendLine("$id|$rel")

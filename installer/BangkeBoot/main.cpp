@@ -18,6 +18,24 @@ static const wchar_t* kWndClass = L"BangkeBoot";
 static wchar_t g_msg[128] = L"正在准备安装…";
 static HWND g_wnd = NULL;
 
+// 诊断日志:%TEMP%\bangkeboot.log(分发版出问题时一条双击即可定位)
+static void Log(const wchar_t* msg) {
+  wchar_t tmp[MAX_PATH] = {0};
+  GetTempPathW(MAX_PATH, tmp);
+  const std::wstring path = std::wstring(tmp) + L"bangkeboot.log";
+  HANDLE f = CreateFileW(path.c_str(), FILE_APPEND_DATA,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS,
+                         FILE_ATTRIBUTE_NORMAL, NULL);
+  if (f == INVALID_HANDLE_VALUE)
+    return;
+  SetFilePointer(f, 0, NULL, FILE_END);
+  wchar_t line[256];
+  swprintf_s(line, L"%lu %s\r\n", GetTickCount(), msg);
+  DWORD w = 0;
+  WriteFile(f, line, (DWORD)(wcslen(line) * sizeof(wchar_t)), &w, NULL);
+  CloseHandle(f);
+}
+
 static std::wstring SlashPath(const std::wstring& p) {
   std::wstring r = p;
   for (auto& c : r)
@@ -164,6 +182,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR, int) {
   CreateDirectoryW(dir.c_str(), NULL);
 
   bool ok = ExtractPayload(dir);
+  Log(ok ? L"extract ok" : L"extract FAILED");
   if (ok) {
     wcscpy_s(g_msg, L"");
     DestroyWindow(g_wnd);
@@ -177,19 +196,24 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR, int) {
     sei.nShow = SW_SHOWNORMAL;
     sei.fMask = SEE_MASK_NOCLOSEPROCESS;
     if (ShellExecuteExW(&sei)) {
+      Log(L"installer launched, waiting");
       if (sei.hProcess) {
         WaitForSingleObject(sei.hProcess, INFINITE);
         CloseHandle(sei.hProcess);
       }
+      Log(L"installer exited");
     } else {
+      wchar_t buf[128];
+      swprintf_s(buf, L"ShellExecuteEx failed, err=%lu", GetLastError());
+      Log(buf);
       ok = false;
     }
   }
   if (!ok) {
-    wcscpy_s(g_msg, L"解包失败,请重新下载安装包");
-    InvalidateRect(g_wnd, NULL, TRUE);
-    Pump();
-    Sleep(2500);
+    wchar_t buf[256];
+    swprintf_s(buf, L"蚌壳安装引导失败\n错误码 %lu\n详情见 %%TEMP%%\\bangkeboot.log",
+               GetLastError());
+    MessageBoxW(NULL, buf, L"蚌壳拼音", MB_ICONERROR | MB_OK);
   }
   DeleteTree(dir);
   return 0;
