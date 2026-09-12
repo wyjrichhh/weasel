@@ -1,4 +1,4 @@
-# 生成单文件分发 exe:图形安装器 + 最新 MSI + Qt 运行库 全部嵌进
+﻿# 生成单文件分发 exe:图形安装器 + 最新 MSI + Qt 运行库 全部嵌进
 # 一个原生引导壳(installer\BangkeBoot)。
 # 用法: 在仓库根,先完成 build.bat settings / build_installer.bat / build_msi.bat,
 #       再 powershell -File installer\make_boot.ps1
@@ -62,7 +62,7 @@ $devcmd = Join-Path $vs "Common7\Tools\VsDevCmd.bat"
 $exe = Join-Path $build "BangkeBoot.exe"
 $cmd = "`"$devcmd`" -arch=amd64 -host_arch=amd64 && cd /d `"$($build.Replace('\', '\'))`" && " +
        "rc /nologo /foboot.res boot_payload.rc && " +
-       "cl /nologo /O2 /MT /DUNICODE /D_UNICODE `"$($PSScriptRoot.Replace('\', '\'))\BangkeBoot\main.cpp`" boot.res /FeBangkeBoot.exe /link /SUBSYSTEM:WINDOWS user32.lib gdi32.lib shlwapi.lib"
+       "cl /nologo /O2 /MT /utf-8 /DUNICODE /D_UNICODE `"$($PSScriptRoot.Replace('\', '\'))\BangkeBoot\main.cpp`" boot.res /FeBangkeBoot.exe /link /SUBSYSTEM:WINDOWS user32.lib gdi32.lib shlwapi.lib"
 $out = cmd /c $cmd 2>&1
 $code = $LASTEXITCODE
 if ($code -ne 0 -or -not (Test-Path $exe)) {
