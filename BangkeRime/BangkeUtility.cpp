@@ -90,11 +90,12 @@ int BangkeEnsureUserSeeds() {
       L"    min_hanzi: 2\n";
 
   // 全新安装的方案集:明月 + 雾凇(对齐 Linux 版),仅缺文件时写入
+  // 列序即默认方案序:雾凇打头,全新安装落在雾凇上
   static const wchar_t kDefaultSchemasYaml[] =
       L"patch:\n"
       L"  schema_list:\n"
-      L"    - schema: luna_pinyin\n"
-      L"    - schema: rime_ice\n";
+      L"    - schema: rime_ice\n"
+      L"    - schema: luna_pinyin\n";
   {
     std::error_code dec;
     const std::filesystem::path dcustom = user_dir / L"default.custom.yaml";
