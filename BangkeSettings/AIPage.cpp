@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QStringList>
@@ -23,7 +24,9 @@ AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   layout->setSpacing(12);
 
   enabled_ = new QCheckBox(QStringLiteral(u"启用 AI 预测"));
+  schemaLabel_ = new QLabel;
   auto* basic = new QVBoxLayout();
+  basic->addWidget(schemaLabel_);
   basic->addWidget(enabled_);
 
   device_ = new QComboBox;
@@ -80,30 +83,6 @@ AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   load();
 }
 
-// 接了 ai_predict 的方案 custom yaml 全集;luna_pinyin 排头做展示基准,
-// 保证读取顺序稳定。保存对所有这些文件统一生效。
-QStringList AIPage::wiredSchemaCustomYamls() const {
-  const QDir dir(QString::fromStdWString(WeaselUserDataPath().wstring()));
-  QStringList wired;
-  for (const QString& name :
-       dir.entryList({"*.custom.yaml"}, QDir::Files, QDir::Name)) {
-    QFile f(dir.filePath(name));
-    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
-      continue;
-    const bool hit = QString::fromUtf8(f.readAll())
-                         .contains(QStringLiteral("  ai_predict:"));
-    f.close();
-    if (hit)
-      wired << dir.filePath(name);
-  }
-  const QString luna = dir.filePath(QStringLiteral("luna_pinyin.custom.yaml"));
-  if (wired.contains(luna)) {
-    wired.removeAll(luna);
-    wired.prepend(luna);
-  }
-  return wired;
-}
-
 // 逐行扫描 yaml:只取 ai_predict: 块下已知键的值,其余行不管。
 // 这是读;写用 save() 里的"替换已知行"策略——与 fcitx5-rime config-ui 同款。
 static QString findValue(const QString& yaml, const QString& key) {
@@ -114,11 +93,56 @@ static QString findValue(const QString& yaml, const QString& key) {
   return QString();
 }
 
+// 当前方案:rime 把最近选择的方案记在 user.yaml(previously_selected_schema)。
+// 取不到时退到方案列表第一个。
+QString AIPage::currentSchemaId() const {
+  const QDir dir(QString::fromStdWString(WeaselUserDataPath().wstring()));
+  QFile u(dir.filePath(QStringLiteral("user.yaml")));
+  if (u.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    const QString yaml = QString::fromUtf8(u.readAll());
+    u.close();
+    static const QRegularExpression rx(
+        QStringLiteral("(?m)^\\s*previously_selected_schema:\\s*(\\S+)"));
+    auto m = rx.match(yaml);
+    if (m.hasMatch())
+      return m.captured(1);
+  }
+  QFile d(dir.filePath(QStringLiteral("default.custom.yaml")));
+  if (d.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    const QString yaml = QString::fromUtf8(d.readAll());
+    d.close();
+    static const QRegularExpression rx(QStringLiteral("schema:\\s*(\\S+)"));
+    auto m = rx.match(yaml);
+    if (m.hasMatch())
+      return m.captured(1);
+  }
+  return QStringLiteral("luna_pinyin");
+}
+
+QString AIPage::schemaCustomYaml(const QString& schemaId) const {
+  const QDir dir(QString::fromStdWString(WeaselUserDataPath().wstring()));
+  return dir.filePath(schemaId + QStringLiteral(".custom.yaml"));
+}
+
+// 展示名取共享数据目录 <id>.schema.yaml 的顶层 name:;取不到用 id
+QString AIPage::schemaDisplayName(const QString& schemaId) const {
+  const QDir dir(QString::fromStdWString(WeaselSharedDataPath().wstring()));
+  QFile f(dir.filePath(schemaId + QStringLiteral(".schema.yaml")));
+  if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    const QString v =
+        findValue(QString::fromUtf8(f.readAll()), QStringLiteral("name"));
+    f.close();
+    if (!v.isEmpty())
+      return v;
+  }
+  return schemaId;
+}
+
 void AIPage::load() {
-  const QStringList files = wiredSchemaCustomYamls();
-  if (files.isEmpty())
-    return;
-  QFile f(files.first());
+  const QString schema = currentSchemaId();
+  schemaLabel_->setText(QStringLiteral(u"当前方案:%1").arg(
+      schemaDisplayName(schema)));
+  QFile f(schemaCustomYaml(schema));
   if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
     return;
   const QString yaml = QString::fromUtf8(f.readAll());
@@ -161,14 +185,18 @@ QString AIPage::stateSignature() const {
 
 // 保存:读全文,逐行替换已知键的值;块内缺的键追加。
 // 未管理的行(含注释、engine 配置等)原样保留——与 fcitx5-rime config-ui 同款纪律。
-// 对所有接了 ai_predict 的方案统一写入。
+// 只写当前方案的 custom yaml。
 bool AIPage::save() {
   const QString sig = stateSignature();
   if (sig == initState_)
     return false;
 
-  const QStringList files = wiredSchemaCustomYamls();
-  bool any = false;
+  QFile f(schemaCustomYaml(currentSchemaId()));
+  QString yaml;
+  if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    yaml = QString::fromUtf8(f.readAll());
+    f.close();
+  }
 
   // 键值对;写入时必须在 ai_predict: 块内(4 空格缩进,patch:→ai_predict:→键)
   struct KV { const char* key; QString val; };
@@ -187,64 +215,53 @@ bool AIPage::save() {
       {"model_path", modelPath_->text()},
   };
 
-  for (const QString& path : files) {
-    QFile f(path);
-    QString yaml;
-    if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      yaml = QString::fromUtf8(f.readAll());
-      f.close();
+  // 定位 ai_predict: 块:在 patch: 下的 "  ai_predict:" 行
+  // 块内键的缩进是 4 空格( "    key: value" )
+  const int apStart = yaml.indexOf(QStringLiteral("  ai_predict:"));
+  if (apStart < 0)
+    return false;  // 无 ai_predict 块则不写(避免在错误位置追加)
+
+  // 找块尾:下一个缩进 ≤2 空格的非空行
+  int apEnd = yaml.length();
+  int pos = yaml.indexOf(QLatin1Char('\n'), apStart);
+  while (pos >= 0) {
+    const int nextNL = yaml.indexOf(QLatin1Char('\n'), pos + 1);
+    if (nextNL < 0)
+      break;
+    const QString line = yaml.mid(pos + 1, nextNL - pos - 1);
+    if (!line.isEmpty() && !line.startsWith(QStringLiteral("    "))) {
+      apEnd = pos + 1;
+      break;
     }
-
-    // 定位 ai_predict: 块:在 patch: 下的 "  ai_predict:" 行
-    // 块内键的缩进是 4 空格( "    key: value" )
-    const int apStart = yaml.indexOf(QStringLiteral("  ai_predict:"));
-    if (apStart < 0)
-      continue;  // 无 ai_predict 块则不写(避免在错误位置追加)
-
-    // 找块尾:下一个缩进 ≤2 空格的非空行
-    int apEnd = yaml.length();
-    int pos = yaml.indexOf(QLatin1Char('\n'), apStart);
-    while (pos >= 0) {
-      const int nextNL = yaml.indexOf(QLatin1Char('\n'), pos + 1);
-      if (nextNL < 0)
-        break;
-      const QString line = yaml.mid(pos + 1, nextNL - pos - 1);
-      if (!line.isEmpty() && !line.startsWith(QStringLiteral("    "))) {
-        apEnd = pos + 1;
-        break;
-      }
-      pos = nextNL;
-    }
-    const QString block = yaml.mid(apStart, apEnd - apStart);
-
-    // 逐键替换或追加到块内
-    QString newBlock = block;
-    for (const auto& kv : kvs) {
-      const QString key = QString::fromLatin1(kv.key);
-      const QRegularExpression rx(
-          QStringLiteral("(^|\n)    %1:\s*[^\n]*").arg(
-              QRegularExpression::escape(key)));
-      auto m2 = rx.match(newBlock);
-      if (m2.hasMatch()) {
-        newBlock.replace(m2.capturedStart(), m2.capturedLength(),
-                         m2.captured(1) + QStringLiteral("    ") + key +
-                             QStringLiteral(": ") + kv.val);
-      } else {
-        // 追加到块内最后一行后
-        if (!newBlock.endsWith(QLatin1Char('\n')))
-          newBlock += QLatin1Char('\n');
-        newBlock += QStringLiteral("    %1: %2\n").arg(key, kv.val);
-      }
-    }
-    yaml.replace(apStart, apEnd - apStart, newBlock);
-
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
-      continue;
-    f.write(yaml.toUtf8());
-    f.close();
-    any = true;
+    pos = nextNL;
   }
-  if (any)
-    initState_ = sig;
-  return any;
+  const QString block = yaml.mid(apStart, apEnd - apStart);
+
+  // 逐键替换或追加到块内
+  QString newBlock = block;
+  for (const auto& kv : kvs) {
+    const QString key = QString::fromLatin1(kv.key);
+    const QRegularExpression rx(
+        QStringLiteral("(^|\n)    %1:\s*[^\n]*").arg(
+            QRegularExpression::escape(key)));
+    auto m2 = rx.match(newBlock);
+    if (m2.hasMatch()) {
+      newBlock.replace(m2.capturedStart(), m2.capturedLength(),
+                       m2.captured(1) + QStringLiteral("    ") + key +
+                           QStringLiteral(": ") + kv.val);
+    } else {
+      // 追加到块内最后一行后
+      if (!newBlock.endsWith(QLatin1Char('\n')))
+        newBlock += QLatin1Char('\n');
+      newBlock += QStringLiteral("    %1: %2\n").arg(key, kv.val);
+    }
+  }
+  yaml.replace(apStart, apEnd - apStart, newBlock);
+
+  if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+    return false;
+  f.write(yaml.toUtf8());
+  f.close();
+  initState_ = sig;
+  return true;
 }
