@@ -23,7 +23,8 @@ qt_standard_project_setup()
 
 # 版本数与图标绝对路径在 configure 阶段烘进 rc:
 # target_compile_definitions 不会到达 rc.exe,生成目录也让相对路径失锚
-string(REPLACE "/" "\\" RC_ICON "${CMAKE_CURRENT_SOURCE_DIR}/../../resource/bangke.ico")
+get_filename_component(RC_ICON "${CMAKE_CURRENT_SOURCE_DIR}/../../resource/bangke.ico" ABSOLUTE)
+string(REPLACE "/" "\\" RC_ICON "${RC_ICON}")
 configure_file(BangkeInstaller.rc.in BangkeInstaller.rc @ONLY)
 
 qt_add_executable(BangkeInstaller WIN32
