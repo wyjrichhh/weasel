@@ -277,8 +277,9 @@ for %%f in (output\data\*.schema.yaml) do (
   echo %%~nf | findstr /r /c:"^luna_pinyin$" /c:"^rime_ice$" >nul || del "%%f"
 )
 copy /Y data\weasel.yaml output\data\ >nul
-rem 拼音注释(spelling_hints)关闭:错音提示因此退化,按需取舍
-powershell -NoProfile -Command "$f='output\data\rime_ice.schema.yaml'; $t=[IO.File]::ReadAllText($f); $t=$t.Replace('spelling_hints: 8','spelling_hints: 0'); [IO.File]::WriteAllText($f,$t,(New-Object Text.UTF8Encoding($false)))"
+rem 拼音注释内容源:开关走 style/comment_font_point(渲染端门控),
+rem 两方案都生成 spelling_hints,luna 上游默认没有,缺则补
+powershell -NoProfile -Command "$f='output\data\luna_pinyin.schema.yaml'; $t=[IO.File]::ReadAllText($f); if(-not $t.Contains('spelling_hints')){ $t=$t -replace '(?m)^translator:\r?\n', ('translator:'+[char]10+'  spelling_hints: 8'+[char]10) }; [IO.File]::WriteAllText($f,$t,(New-Object Text.UTF8Encoding($false)))"
 exit /b 0
 
 :build_opencc_data
