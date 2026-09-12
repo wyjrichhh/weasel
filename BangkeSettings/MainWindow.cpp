@@ -151,6 +151,11 @@ void MainWindow::onPageChanged(int index) {
 }
 
 void MainWindow::saveAndDeploy() {
+  // 部署独占:高级页词典会话握着维护握手,叠加部署会令服务端
+  // 二次 Finalize rime(双杀),先收掉,完事在原页重建
+  dictPage_->setSessionActive(false);
+  configurator_->EndDictSession();
+
   bool modified = switcherPage_->save();
   modified = stylePage_->save() || modified;
   modified = generalPage_->save() || modified;
@@ -186,6 +191,9 @@ void MainWindow::saveAndDeploy() {
   if (ret == 0) {
     makeToast(QStringLiteral(u"已保存,输入法即刻生效"), this);
   }
+
+  if (nav_->currentRow() == 3 && configurator_->BeginDictSession())
+    dictPage_->setSessionActive(true);
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
