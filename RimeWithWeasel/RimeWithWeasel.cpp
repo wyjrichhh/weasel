@@ -239,6 +239,19 @@ DWORD RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat) {
   session_status.style = m_base_style;
   session_status.session_id = session_id;
   _ReadClientInfo(ipc_id, buffer);
+  // 同一应用出现第二条会话(部署恢复的旧 ipc + 客户端重连的新 ipc)只留新的,
+  // 旧的 rime 会话当场销毁,防泄漏
+  if (!session_status.client_app.empty()) {
+    for (auto it = m_session_status_map.begin();
+         it != m_session_status_map.end();) {
+      if (it->first != ipc_id &&
+          it->second.client_app == session_status.client_app) {
+        rime_api->destroy_session(it->second.session_id);
+        it = m_session_status_map.erase(it);
+      } else
+        ++it;
+    }
+  }
 
   RIME_STRUCT(RimeStatus, status);
   if (rime_api->get_status(session_id, &status)) {
@@ -284,6 +297,7 @@ DWORD RimeWithWeaselHandler::RemoveSession(WeaselSessionId ipc_id) {
   // TODO: force committing? otherwise current composition would be lost
   rime_api->destroy_session(to_session_id(ipc_id));
   m_session_status_map.erase(ipc_id);
+  m_pending_restore.erase((DWORD)ipc_id);
   m_active_session = 0;
   return 0;
 }
@@ -563,6 +577,7 @@ void RimeWithWeaselHandler::_ReadClientInfo(WeaselSessionId ipc_id,
     }
   }
   SessionStatus& session_status = get_session_status(ipc_id);
+  session_status.client_app = app_name;
   RimeSessionId session_id = session_status.session_id;
   // set app specific options
   if (!app_name.empty()) {
@@ -610,6 +625,13 @@ void RimeWithWeaselHandler::_GetCandidateInfo(CandidateInfo& cinfo,
 }
 
 void RimeWithWeaselHandler::StartMaintenance() {
+  // 部署要销毁 rime 会话,但客户端仍握着旧 ipc_id;不快照身份的话,
+  // AI 推送(按 rime_sid 查表)会哑火到应用重抢焦点
+  m_pending_restore.clear();
+  for (const auto& pair : m_session_status_map) {
+    if (!pair.second.client_app.empty())
+      m_pending_restore.emplace(pair.first, pair.second.client_app);
+  }
   m_session_status_map.clear();
   Finalize();
   _UpdateUI(0);
@@ -621,6 +643,50 @@ void RimeWithWeaselHandler::EndMaintenance() {
     _UpdateUI(0);
   }
   m_session_status_map.clear();
+  // 按快照重建:客户端 ipc_id 不变,推送槽(s_snap_handles)未随部署销毁,
+  // 恢复后 AI 推送无缝续上
+  if (!m_pending_restore.empty()) {
+    const auto pending = std::move(m_pending_restore);
+    for (const auto& pair : pending)
+      _RestoreSession(pair.first, pair.second);
+  }
+}
+
+void RimeWithWeaselHandler::_RestoreSession(WeaselSessionId ipc_id,
+                                            const std::string& client_app) {
+  if (m_disabled)
+    return;
+  RimeSessionId session_id = (RimeSessionId)rime_api->create_session();
+  if (!session_id)
+    return;
+  SessionStatus& session_status = new_session_status(ipc_id);
+  session_status.style = m_base_style;
+  session_status.session_id = session_id;
+  session_status.client_app = client_app;
+  if (!client_app.empty()) {
+    rime_api->set_property(session_id, "client_app", client_app.c_str());
+    auto it = m_app_options.find(client_app);
+    if (it != m_app_options.end()) {
+      AppOptions& options(m_app_options[it->first]);
+      for (const auto& pair : options)
+        rime_api->set_option(session_id, pair.first.c_str(), Bool(pair.second));
+    }
+  }
+  rime_api->set_option(session_id, "inline_preedit",
+                       Bool(m_base_style.inline_preedit));
+  rime_api->set_option(session_id, "soft_cursor",
+                       Bool(!m_base_style.inline_preedit));
+
+  RIME_STRUCT(RimeStatus, status);
+  if (rime_api->get_status(session_id, &status)) {
+    m_last_schema_id = status.schema_id;
+    _LoadSchemaSpecificSettings(ipc_id, status.schema_id);
+    _LoadAppInlinePreeditSet(ipc_id, true);
+    _UpdateInlinePreeditStatus(ipc_id);
+    session_status.status = status;
+    session_status.__synced = false;
+    rime_api->free_status(&status);
+  }
 }
 
 void RimeWithWeaselHandler::SetOption(WeaselSessionId ipc_id,

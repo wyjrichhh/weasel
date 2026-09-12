@@ -33,6 +33,7 @@ struct SessionStatus {
   RimeStatus status;
   bool __synced;
   RimeSessionId session_id;
+  std::string client_app;  // 部署后按它恢复 ipc 会话
 };
 typedef std::map<DWORD, SessionStatus> SessionStatusMap;
 typedef DWORD WeaselSessionId;
@@ -91,6 +92,7 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
   bool _Respond(WeaselSessionId ipc_id, EatLine eat, bool include_commit = true);
   bool _RespondFrame(WeaselSessionId ipc_id, EatLine eat, bool include_commit);
   void _ReadClientInfo(WeaselSessionId ipc_id, LPWSTR buffer);
+  void _RestoreSession(WeaselSessionId ipc_id, const std::string& client_app);
   void _GetCandidateInfo(weasel::CandidateInfo& cinfo, RimeContext& ctx);
   void _GetStatus(weasel::Status& stat,
                   WeaselSessionId ipc_id,
@@ -133,6 +135,8 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
   static std::string m_option_name;
   static std::mutex m_notifier_mutex;
   SessionStatusMap m_session_status_map;
+  // 部署窗口期的 ipc↔client_app 快照,EndMaintenance 据此重建会话
+  std::map<DWORD, std::string> m_pending_restore;
   bool m_current_dark_mode;
   bool m_global_ascii_mode;
   int m_show_notifications_time;
