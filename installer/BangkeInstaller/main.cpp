@@ -328,7 +328,9 @@ class BeachScene : public QWidget {
     sand.setColorAt(1, QColor(0xe6, 0xc4, 0x92));
     p.setPen(Qt::NoPen);
     p.setBrush(sand);
-    p.drawChord(QRect(-w * 0.2, h * 0.60, w * 1.4, h * 0.45), 0, 180 * 16);
+    p.drawChord(QRect((int)(-w * 0.2), (int)(h * 0.60), (int)(w * 1.4),
+                     (int)(h * 0.45)),
+                 0, 180 * 16);
 
     // 浪沫:相位推进再退回,冲刷沙滩
     const qreal wt = m_wave < 0.55 ? m_wave / 0.55 : 1.0 - (m_wave - 0.55) / 0.45;
