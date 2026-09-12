@@ -771,8 +771,8 @@ int main(int argc, char* argv[]) {
     #panel { background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #131b26, stop:1 #0d141d);
              border-radius: 14px; border: 1px solid #243244; }
     #title { font-size: 15px; color: #9fb6cd; }
-    #close { background: transparent; border: none; color: #9fb6cd; font-size: 18px; }
-    #close:hover { background: #e81123; color: white; border-radius: 4px; }
+    #close { background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.14); color: #dce7f2; font-size: 15px; font-weight: 600; border-radius: 6px; }
+    #close:hover { background: #e81123; border-color: #e81123; color: white; }
     #logo { min-width: 92px; min-height: 92px; max-width: 92px; max-height: 92px;
             background: qradialgradient(cx:0.5, cy:0.35, radius:1.1, stop:0 #35618f, stop:1 #16233a);
             border-radius: 24px; color: #eaf2fb; font-size: 52px; font-weight: 600;
