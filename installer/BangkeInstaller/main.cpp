@@ -16,6 +16,7 @@
 #include <QProcess>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QStyle>
 #include <QStackedWidget>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -269,10 +270,13 @@ class MainWindow : public QWidget {
     auto* title = new QHBoxLayout();
     auto* titleText = new QLabel(QStringLiteral(u"蚌壳拼音 · 安装"), panel);
     titleText->setObjectName("title");
-    m_closeBtn = new QPushButton(QStringLiteral(u"×"), panel);
-  m_closeBtn->setToolTip(QStringLiteral(u"关闭"));
+    m_closeBtn = new QPushButton(panel);
     m_closeBtn->setObjectName("close");
-    m_closeBtn->setFixedSize(32, 32);
+    // 字体字形(✕/×)在部分环境缺字渲染成空白;系统原生标题栏关闭图标不依赖字体
+    m_closeBtn->setIcon(QApplication::style()->standardIcon(
+        QStyle::SP_TitleBarCloseButton));
+    m_closeBtn->setToolTip(QStringLiteral(u"关闭"));
+    m_closeBtn->setFixedSize(36, 26);
     connect(m_closeBtn, &QPushButton::clicked, this, [this] { close(); });
     title->addSpacing(24);
     title->addWidget(titleText);
@@ -771,7 +775,7 @@ int main(int argc, char* argv[]) {
     #panel { background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #131b26, stop:1 #0d141d);
              border-radius: 14px; border: 1px solid #243244; }
     #title { font-size: 15px; color: #9fb6cd; }
-    #close { background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.14); color: #dce7f2; font-size: 15px; font-weight: 600; border-radius: 6px; }
+    #close { background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 6px; }
     #close:hover { background: #e81123; border-color: #e81123; color: white; }
     #logo { min-width: 92px; min-height: 92px; max-width: 92px; max-height: 92px;
             background: qradialgradient(cx:0.5, cy:0.35, radius:1.1, stop:0 #35618f, stop:1 #16233a);
