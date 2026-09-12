@@ -240,6 +240,39 @@ class CheckMark : public QWidget {
 
 // ---------------- UI ----------------
 
+// 自绘关闭钮:粗白 × 由线条画出,不依赖字体/系统图标(两者在用户环境均失灵)
+class CloseButton : public QWidget {
+ public:
+  explicit CloseButton(QWidget* parent = nullptr) : QWidget(parent) {
+    setFixedSize(36, 26);
+    setCursor(Qt::PointingHandCursor);
+    setToolTip(QStringLiteral(u"关闭"));
+  }
+
+ protected:
+  void paintEvent(QPaintEvent*) override {
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    if (underMouse()) {
+      p.setPen(Qt::NoPen);
+      p.setBrush(QColor(0xe8, 0x11, 0x23));
+      p.drawRoundedRect(rect().adjusted(3, 2, -3, -2), 5, 5);
+    }
+    QPen pen(QColor(0xff, 0xff, 0xff), 1.8);
+    pen.setCapStyle(Qt::RoundCap);
+    p.setPen(pen);
+    const int m = 9;
+    p.drawLine(m, m, width() - m, height() - m);
+    p.drawLine(width() - m, m, m, height() - m);
+  }
+  void enterEvent(QEnterEvent*) override { update(); }
+  void leaveEvent(QEvent*) override { update(); }
+  void mouseReleaseEvent(QMouseEvent* e) override {
+    if (rect().contains(e->pos()))
+      topLevelWidget()->close();
+  }
+};
+
 class MainWindow : public QWidget {
   Q_OBJECT
 
@@ -270,14 +303,7 @@ class MainWindow : public QWidget {
     auto* title = new QHBoxLayout();
     auto* titleText = new QLabel(QStringLiteral(u"蚌壳拼音 · 安装"), panel);
     titleText->setObjectName("title");
-    m_closeBtn = new QPushButton(panel);
-    m_closeBtn->setObjectName("close");
-    // 字体字形(✕/×)在部分环境缺字渲染成空白;系统原生标题栏关闭图标不依赖字体
-    m_closeBtn->setIcon(QApplication::style()->standardIcon(
-        QStyle::SP_TitleBarCloseButton));
-    m_closeBtn->setToolTip(QStringLiteral(u"关闭"));
-    m_closeBtn->setFixedSize(36, 26);
-    connect(m_closeBtn, &QPushButton::clicked, this, [this] { close(); });
+    m_closeBtn = new CloseButton(panel);
     title->addSpacing(24);
     title->addWidget(titleText);
     title->addStretch();
@@ -733,8 +759,9 @@ class MainWindow : public QWidget {
   CheckMark* m_check = nullptr;
   bool m_entered = false;
   QCheckBox* m_launchCheck = nullptr;
-  QPushButton *m_primaryBtn = nullptr, *m_closeBtn = nullptr,
-              *m_logoffBtn = nullptr, *m_openLogBtn = nullptr;
+  QPushButton* m_primaryBtn = nullptr;
+  QPushButton *m_logoffBtn = nullptr, *m_openLogBtn = nullptr;
+  CloseButton* m_closeBtn = nullptr;
   MsiJob m_job;
   bool m_running = false;
   QProcess* m_proc = nullptr;
@@ -775,8 +802,6 @@ int main(int argc, char* argv[]) {
     #panel { background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #131b26, stop:1 #0d141d);
              border-radius: 14px; border: 1px solid #243244; }
     #title { font-size: 15px; color: #9fb6cd; }
-    #close { background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 6px; }
-    #close:hover { background: #e81123; border-color: #e81123; color: white; }
     #logo { min-width: 92px; min-height: 92px; max-width: 92px; max-height: 92px;
             background: qradialgradient(cx:0.5, cy:0.35, radius:1.1, stop:0 #35618f, stop:1 #16233a);
             border-radius: 24px; color: #eaf2fb; font-size: 52px; font-weight: 600;
