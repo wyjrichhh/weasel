@@ -168,8 +168,11 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR, int) {
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi{};
     const std::wstring exe = dir + L"\\BangkeInstaller.exe";
-    std::wstring cmd = L"\"" + exe + L"\"";
-    if (CreateProcessW(exe.c_str(), cmd.data(), NULL, NULL, FALSE, 0, NULL,
+    const std::wstring cmd = L"\"" + exe + L"\"";
+    // CreateProcessW 的命令行参数必须可写(它可能原地修改),wstring 不保证
+    std::vector<wchar_t> cmdBuf(cmd.begin(), cmd.end());
+    cmdBuf.push_back(L'\0');
+    if (CreateProcessW(exe.c_str(), cmdBuf.data(), NULL, NULL, FALSE, 0, NULL,
                        dir.c_str(), &si, &pi)) {
       WaitForSingleObject(pi.hProcess, INFINITE);
       CloseHandle(pi.hProcess);
