@@ -46,13 +46,31 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   aiPage_ = new AIPage(this);
   dictPage_ = new DictPage(this);
 
-  // 高级页 = 方案选单 + 用户词典:两页内容都偏稀,合并不再各占一屏
+  // 快捷入口随高级页(底部只留保存,整体更清爽)
+  auto* userDirBtn = new QPushButton(QStringLiteral(u"打开用户文件夹"), this);
+  auto* logDirBtn = new QPushButton(QStringLiteral(u"打开日志文件夹"), this);
+  connect(userDirBtn, &QPushButton::clicked, this, [] {
+    QDesktopServices::openUrl(
+        QUrl::fromLocalFile(QString::fromStdWString(BangkeUserDataPath().wstring())));
+  });
+  connect(logDirBtn, &QPushButton::clicked, this, [] {
+    QDesktopServices::openUrl(
+        QUrl::fromLocalFile(QString::fromStdWString(BangkeLogPath().wstring())));
+  });
+
+  // 高级页 = 方案选单 + 用户词典 + 快捷入口
   auto* advanced = new QWidget(this);
   auto* advLayout = new QVBoxLayout(advanced);
   advLayout->setContentsMargins(16, 12, 16, 12);
   advLayout->setSpacing(10);
   advLayout->addWidget(switcherPage_);
   advLayout->addWidget(dictPage_);
+  advLayout->addWidget(makeCard(
+      QStringLiteral(u"快捷入口"),
+      makeSettingRows({
+          makeSettingRow(QStringLiteral(u"用户文件夹"), userDirBtn),
+          makeSettingRow(QStringLiteral(u"日志文件夹"), logDirBtn),
+      })));
   advLayout->addStretch(1);
 
   stack_ = new QStackedWidget(this);
@@ -72,12 +90,8 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   auto* saveBtn = new QPushButton(QStringLiteral(u"保存"), this);
   saveBtn->setObjectName(QStringLiteral("primary"));
   saveBtn->setDefault(true);
-  auto* userDirBtn = new QPushButton(QStringLiteral(u"打开用户文件夹"), this);
-  auto* logDirBtn = new QPushButton(QStringLiteral(u"打开日志文件夹"), this);
 
   auto* bottomRow = new QHBoxLayout();
-  bottomRow->addWidget(userDirBtn);
-  bottomRow->addWidget(logDirBtn);
   bottomRow->addStretch();
   bottomRow->addWidget(saveBtn);
 
@@ -101,14 +115,6 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   connect(nav_, &QListWidget::currentRowChanged, this,
           &MainWindow::onPageChanged);
   connect(saveBtn, &QPushButton::clicked, this, &MainWindow::saveAndDeploy);
-  connect(userDirBtn, &QPushButton::clicked, this, [] {
-    QDesktopServices::openUrl(
-        QUrl::fromLocalFile(QString::fromStdWString(BangkeUserDataPath().wstring())));
-  });
-  connect(logDirBtn, &QPushButton::clicked, this, [] {
-    QDesktopServices::openUrl(
-        QUrl::fromLocalFile(QString::fromStdWString(BangkeLogPath().wstring())));
-  });
 
   onPageChanged(nav_->currentRow());
 }
