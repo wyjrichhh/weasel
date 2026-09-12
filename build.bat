@@ -193,7 +193,8 @@ set WEASEL_PROJECT_PROPERTIES=BOOST_ROOT^
   VERSION_MINOR^
   VERSION_PATCH^
   PRODUCT_VERSION^
-  FILE_VERSION
+  FILE_VERSION^
+  WEASEL_BUILD
 
 cscript.exe render.js weasel.props %WEASEL_PROJECT_PROPERTIES%
 
@@ -362,7 +363,7 @@ rem ---------------------------------------------------------------------------
     exit /b 1
   )
   where cmake >nul 2>&1 || set PATH=%DEVTOOLS_PATH%%PATH%
-  cmake -S BangkeSettings -B BangkeSettings\build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH=%QT_DIR% -DVERSION_MAJOR=%VERSION_MAJOR% -DVERSION_MINOR=%VERSION_MINOR% -DVERSION_PATCH=%VERSION_PATCH%
+  cmake -S BangkeSettings -B BangkeSettings\build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH=%QT_DIR% -DVERSION_MAJOR=%VERSION_MAJOR% -DVERSION_MINOR=%VERSION_MINOR% -DVERSION_PATCH=%VERSION_PATCH% -DVERSION_BUILD=%WEASEL_BUILD%
   if errorlevel 1 goto error
   cmake --build BangkeSettings\build --config %build_config%
   if errorlevel 1 goto error

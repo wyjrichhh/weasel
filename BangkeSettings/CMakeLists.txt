@@ -12,6 +12,9 @@ if(NOT DEFINED VERSION_MAJOR)
   set(VERSION_MINOR 1)
   set(VERSION_PATCH 0)
 endif()
+if(NOT DEFINED VERSION_BUILD)
+  set(VERSION_BUILD 0)
+endif()
 
 if(NOT DEFINED ENV{BOOST_ROOT})
   message(FATAL_ERROR "BOOST_ROOT not set; run from env.bat / build.bat")
@@ -61,6 +64,7 @@ target_compile_definitions(BangkeSettings PRIVATE
   VERSION_MAJOR=${VERSION_MAJOR}
   VERSION_MINOR=${VERSION_MINOR}
   VERSION_PATCH=${VERSION_PATCH}
+  VERSION_BUILD=${VERSION_BUILD}
 )
 
 target_compile_options(BangkeSettings PRIVATE /utf-8 /Zc:threadSafeInit-)

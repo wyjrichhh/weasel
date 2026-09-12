@@ -8,6 +8,7 @@
     <VERSION_PATCH>$VERSION_PATCH</VERSION_PATCH>
     <PRODUCT_VERSION>$PRODUCT_VERSION</PRODUCT_VERSION>
     <FILE_VERSION>$FILE_VERSION</FILE_VERSION>
+    <WEASEL_BUILD>$WEASEL_BUILD</WEASEL_BUILD>
   </PropertyGroup>
   <ItemGroup>
     <BuildMacro Include="BOOST_ROOT">
@@ -21,11 +22,11 @@
   </ItemGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>VERSION_MAJOR=$(VERSION_MAJOR);VERSION_MINOR=$(VERSION_MINOR);VERSION_PATCH=$(VERSION_PATCH);PRODUCT_VERSION=$(PRODUCT_VERSION);FILE_VERSION=$(FILE_VERSION);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>VERSION_MAJOR=$(VERSION_MAJOR);VERSION_MINOR=$(VERSION_MINOR);VERSION_PATCH=$(VERSION_PATCH);PRODUCT_VERSION=$(PRODUCT_VERSION);FILE_VERSION=$(FILE_VERSION);WEASEL_BUILD=$(WEASEL_BUILD);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/utf-8</AdditionalOptions>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>$(PreprocessorDefinitions);VERSION_MAJOR=$(VERSION_MAJOR);VERSION_MINOR=$(VERSION_MINOR);VERSION_PATCH=$(VERSION_PATCH);PRODUCT_VERSION=$(PRODUCT_VERSION);FILE_VERSION=$(FILE_VERSION);</PreprocessorDefinitions>
+      <PreprocessorDefinitions>$(PreprocessorDefinitions);VERSION_MAJOR=$(VERSION_MAJOR);VERSION_MINOR=$(VERSION_MINOR);VERSION_PATCH=$(VERSION_PATCH);PRODUCT_VERSION=$(PRODUCT_VERSION);FILE_VERSION=$(FILE_VERSION);WEASEL_BUILD=$(WEASEL_BUILD);</PreprocessorDefinitions>
     </ResourceCompile>
   </ItemDefinitionGroup>
 </Project>

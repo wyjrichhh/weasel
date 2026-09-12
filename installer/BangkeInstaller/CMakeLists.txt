@@ -1,5 +1,18 @@
 cmake_minimum_required(VERSION 3.21)
-project(BangkeInstaller LANGUAGES CXX)
+project(BangkeInstaller LANGUAGES CXX RC)
+
+if(NOT DEFINED VERSION_MAJOR)
+  set(VERSION_MAJOR 0)
+endif()
+if(NOT DEFINED VERSION_MINOR)
+  set(VERSION_MINOR 1)
+endif()
+if(NOT DEFINED VERSION_PATCH)
+  set(VERSION_PATCH 0)
+endif()
+if(NOT DEFINED VERSION_BUILD)
+  set(VERSION_BUILD 0)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,9 +23,16 @@ qt_standard_project_setup()
 
 qt_add_executable(BangkeInstaller WIN32
   main.cpp
+  BangkeInstaller.rc
 )
 
 target_link_libraries(BangkeInstaller PRIVATE Qt6::Widgets msi.lib)
+target_compile_definitions(BangkeInstaller PRIVATE
+  VERSION_MAJOR=${VERSION_MAJOR}
+  VERSION_MINOR=${VERSION_MINOR}
+  VERSION_PATCH=${VERSION_PATCH}
+  VERSION_BUILD=${VERSION_BUILD}
+)
 target_compile_options(BangkeInstaller PRIVATE /utf-8)
 # 提权声明走链接器，避免与默认 manifest 合并冲突
 set_target_properties(BangkeInstaller PROPERTIES
