@@ -214,9 +214,8 @@ void BangkePanel::_CreateLayout() {
 
   Layout* layout = NULL;
   if (m_style.layout_type == UIStyle::LAYOUT_VERTICAL ||
-      m_style.layout_type == UIStyle::LAYOUT_VERTICAL_FULLSCREEN ||
       m_style.layout_type == UIStyle::LAYOUT_VERTICAL_TEXT) {
-    // LAYOUT_VERTICAL_TEXT 由 VHorizontalLayout 提供完整支持，MVP 阶段先回落到竖排
+    // LAYOUT_VERTICAL_TEXT 未做逐字竖排,先回落到竖排
     layout = new VerticalLayout(m_style, m_ctx, m_status, pDWR);
   } else {
     layout = new HorizontalLayout(m_style, m_ctx, m_status, pDWR);

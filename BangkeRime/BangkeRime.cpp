@@ -1382,11 +1382,6 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
                style.paging_on_scroll);
   _RimeGetBool(config, "style/click_to_capture", initialize,
                style.click_to_capture, true, false);
-  _RimeGetBool(config, "style/fullscreen", false, style.layout_type,
-               ((style.layout_type == UIStyle::LAYOUT_HORIZONTAL)
-                    ? UIStyle::LAYOUT_HORIZONTAL_FULLSCREEN
-                    : UIStyle::LAYOUT_VERTICAL_FULLSCREEN),
-               style.layout_type);
   _RimeGetBool(config, "style/vertical_text", false, style.layout_type,
                UIStyle::LAYOUT_VERTICAL_TEXT, style.layout_type);
   _RimeGetBool(config, "style/vertical_text_left_to_right", false,
@@ -1413,21 +1408,13 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
   _RimeGetIntStr(config, "style/layout/max_height", style.max_height, 0, 0,
                  _abs);
   // layout (alternative to style/horizontal)
-  static constexpr Array<UIStyle::LayoutType, 5> _layoutArr = {
+  static constexpr Array<UIStyle::LayoutType, 3> _layoutArr = {
       {{"vertical", UIStyle::LAYOUT_VERTICAL},
        {"horizontal", UIStyle::LAYOUT_HORIZONTAL},
-       {"vertical_text", UIStyle::LAYOUT_VERTICAL_TEXT},
-       {"vertical+fullscreen", UIStyle::LAYOUT_VERTICAL_FULLSCREEN},
-       {"horizontal+fullscreen", UIStyle::LAYOUT_HORIZONTAL_FULLSCREEN}}};
+       {"vertical_text", UIStyle::LAYOUT_VERTICAL_TEXT}}};
   _RimeParseStringOptWithFallback(config, "style/layout/type",
                                   style.layout_type, _layoutArr,
                                   style.layout_type);
-  // disable max_width when full screen
-  if (style.layout_type == UIStyle::LAYOUT_HORIZONTAL_FULLSCREEN ||
-      style.layout_type == UIStyle::LAYOUT_VERTICAL_FULLSCREEN) {
-    style.max_width = 0;
-    style.inline_preedit = false;
-  }
   _RimeGetIntStr(config, "style/layout/border", style.border,
                  "style/layout/border_width", 0, _abs);
   _RimeGetIntStr(config, "style/layout/margin_x", style.margin_x);
@@ -1445,10 +1432,6 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
                  _abs);
   _RimeGetIntStr(config, "style/layout/shadow_radius", style.shadow_radius, 0,
                  0, _abs);
-  // disable shadow for fullscreen layout
-  style.shadow_radius *=
-      (!(style.layout_type == UIStyle::LAYOUT_HORIZONTAL_FULLSCREEN ||
-         style.layout_type == UIStyle::LAYOUT_VERTICAL_FULLSCREEN));
   _RimeGetIntStr(config, "style/layout/shadow_offset_x", style.shadow_offset_x);
   _RimeGetIntStr(config, "style/layout/shadow_offset_y", style.shadow_offset_y);
   // round_corner as alias of hilited_corner_radius
@@ -1463,8 +1446,7 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
     // if hilite_padding over spacing, increase spacing
     style.spacing = max(style.spacing, style.hilite_padding_y * 2);
     // hilite_padding vs candidate_spacing
-    if (style.layout_type == UIStyle::LAYOUT_VERTICAL_FULLSCREEN ||
-        style.layout_type == UIStyle::LAYOUT_VERTICAL) {
+    if (style.layout_type == UIStyle::LAYOUT_VERTICAL) {
       // vertical, if hilite_padding_y over candidate spacing,
       // increase candidate spacing
       style.candidate_spacing =

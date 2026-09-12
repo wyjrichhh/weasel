@@ -373,25 +373,17 @@ void StandardLayout::UpdateStatusIconLayout(int* width, int* height) {
       }
     }
   }
-  if (IS_FULLSCREENLAYOUT(_style))
-    _statusIconRect.OffsetRect(-_style.border, -_style.border);
 }
 
 bool StandardLayout::IsInlinePreedit() const {
   return _style.inline_preedit &&
-         (_style.client_caps & bangke::INLINE_PREEDIT_CAPABLE) != 0 &&
-         _style.layout_type != UIStyle::LAYOUT_VERTICAL_FULLSCREEN &&
-         _style.layout_type != UIStyle::LAYOUT_HORIZONTAL_FULLSCREEN;
+         (_style.client_caps & bangke::INLINE_PREEDIT_CAPABLE) != 0;
 }
 
 bool StandardLayout::ShouldDisplayStatusIcon() const {
   // rule 1. emphasis ascii mode
   // rule 2. show status icon when switching mode
   // rule 3. always show status icon with tips
-  // rule 4. rule 3 excluding tips FullScreenLayout with strings
-  return ((_status.ascii_mode && !_style.inline_preedit) ||
-          !_status.composing || !_context.aux.empty()) &&
-         !((_style.layout_type == UIStyle::LAYOUT_HORIZONTAL_FULLSCREEN ||
-            _style.layout_type == UIStyle::LAYOUT_VERTICAL_FULLSCREEN) &&
-           !_context.aux.empty());
+  return (_status.ascii_mode && !_style.inline_preedit) ||
+         !_status.composing || !_context.aux.empty();
 }

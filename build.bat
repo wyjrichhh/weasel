@@ -216,7 +216,6 @@ rem -------------------------------------------------------------------------
 rem build boost
 :build_boost
   set BJAM_OPTIONS_COMMON=-j%NUMBER_OF_PROCESSORS%^
-    --with-serialization^
     --with-thread^
     define=BOOST_USE_WINAPI_VERSION=0x0603^
     toolset=%BJAM_TOOLSET%^

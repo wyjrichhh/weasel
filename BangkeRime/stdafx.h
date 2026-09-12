@@ -13,8 +13,6 @@
 #pragma warning(disable : 4819)
 
 #include <boost/interprocess/streams/bufferstream.hpp>
-#include <boost/archive/text_woarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
 #include <boost/thread.hpp>
 
 #pragma warning(default : 4819)

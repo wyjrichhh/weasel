@@ -15,7 +15,6 @@
 #pragma warning(disable : 4996)
 
 #include <boost/interprocess/streams/bufferstream.hpp>
-#include <boost/archive/text_wiarchive.hpp> 
 
 #pragma warning(default: 4819)
 #pragma warning(default: 4996)
