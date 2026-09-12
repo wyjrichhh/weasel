@@ -26,6 +26,7 @@
 #include <QVariantAnimation>
 #include <QEasingCurve>
 #include <QPainter>
+#include <QPainterPath>
 #include <windows.h>
 #include <msi.h>
 #include <msiquery.h>
@@ -239,6 +240,166 @@ class CheckMark : public QWidget {
 };
 
 // ---------------- UI ----------------
+
+// 海滩场景:天/海/沙 + 循环冲刷的浪 + 随安装阶段张开的蚌壳与珍珠。
+// 开合度 setProgress 绑定真实阶段序(非假百分比),插值缓动过渡
+class BeachScene : public QWidget {
+ public:
+  explicit BeachScene(QWidget* parent = nullptr) : QWidget(parent) {
+    setFixedSize(340, 200);
+    setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_timer = new QTimer(this);
+    connect(m_timer, &QTimer::timeout, this, [this] {
+      m_wave += 0.016;
+      if (m_wave >= 1.0)
+        m_wave -= 1.0;
+      update();
+    });
+    m_openAnim = new QVariantAnimation(this);
+    m_openAnim->setDuration(700);
+    m_openAnim->setEasingCurve(QEasingCurve::OutCubic);
+    connect(m_openAnim, &QVariantAnimation::valueChanged, this,
+            [this](const QVariant& v) {
+              m_open = v.toReal();
+              update();
+            });
+  }
+  void setProgress(qreal p) {
+    p = qBound(0.0, p, 1.0);
+    m_openAnim->stop();
+    m_openAnim->setStartValue(m_open);
+    m_openAnim->setEndValue(p);
+    m_openAnim->start();
+  }
+
+ protected:
+  void showEvent(QShowEvent* e) override {
+    QWidget::showEvent(e);
+    m_timer->start(33);  // 波浪只在可见时跑,不空烧 CPU
+  }
+  void hideEvent(QHideEvent* e) override {
+    QWidget::hideEvent(e);
+    m_timer->stop();
+  }
+  void paintEvent(QPaintEvent*) override {
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    const int w = width(), h = height();
+    QPainterPath clip;
+    clip.addRoundedRect(rect(), 12, 12);
+    p.setClipPath(clip);
+
+    // 天空(晨光)
+    QLinearGradient sky(0, 0, 0, h * 0.42);
+    sky.setColorAt(0, QColor(0xff, 0xe8, 0xc2));
+    sky.setColorAt(1, QColor(0xff, 0xc9, 0x8f));
+    p.fillRect(QRect(0, 0, w, h * 0.42), sky);
+    // 太阳光晕
+    QRadialGradient sun(QPointF(w * 0.78, h * 0.15), 42);
+    sun.setColorAt(0, QColor(255, 250, 230, 220));
+    sun.setColorAt(1, QColor(255, 250, 230, 0));
+    p.setBrush(sun);
+    p.setPen(Qt::NoPen);
+    p.drawEllipse(QPointF(w * 0.78, h * 0.15), 42, 42);
+
+    // 海
+    QLinearGradient sea(0, h * 0.40, 0, h * 0.68);
+    sea.setColorAt(0, QColor(0x3f, 0x9e, 0xd9));
+    sea.setColorAt(1, QColor(0x1d, 0x6f, 0xa5));
+    p.fillRect(QRect(0, h * 0.40, w, h * 0.28), sea);
+    // 海面波光:两条微动细线
+    for (int i = 0; i < 2; ++i) {
+      const qreal y = h * (0.46 + i * 0.07);
+      p.setPen(QPen(QColor(255, 255, 255, 70), 1.4));
+      QPainterPath linePath;
+      for (int x = 0; x <= w; x += 8) {
+        const qreal yy = y + 1.6 * sin(x * 0.05 + m_wave * 6.28 + i * 2.0);
+        if (x == 0)
+          linePath.moveTo(x, yy);
+        else
+          linePath.lineTo(x, yy);
+      }
+      p.drawPath(linePath);
+    }
+
+    // 沙滩
+    QLinearGradient sand(0, h * 0.66, 0, h);
+    sand.setColorAt(0, QColor(0xf4, 0xdc, 0xb6));
+    sand.setColorAt(1, QColor(0xe6, 0xc4, 0x92));
+    p.setPen(Qt::NoPen);
+    p.setBrush(sand);
+    p.drawChord(QRect(-w * 0.2, h * 0.60, w * 1.4, h * 0.45), 0, 180 * 16);
+
+    // 浪沫:相位推进再退回,冲刷沙滩
+    const qreal wt = m_wave < 0.55 ? m_wave / 0.55 : 1.0 - (m_wave - 0.55) / 0.45;
+    const qreal eased = 1.0 - (1.0 - wt) * (1.0 - wt);
+    const qreal waveY = h * 0.72 - 24 * eased;
+    p.setPen(QPen(QColor(255, 255, 255, 90 + 90 * eased), 3.0, Qt::RoundCap));
+    QPainterPath foam;
+    for (int x = 0; x <= w; x += 8) {
+      const qreal yy = waveY + 2.2 * sin(x * 0.04 + m_wave * 6.28);
+      if (x == 0)
+        foam.moveTo(x, yy);
+      else
+        foam.lineTo(x, yy);
+    }
+    p.drawPath(foam);
+
+    // ---- 蚌壳(中心铰链,两瓣随 m_open 张开) ----
+    const QPointF hinge(w * 0.5, h * 0.86);
+    const int R = 52;
+    // 珍珠:开合度驱动大小与光晕
+    if (m_open > 0.05) {
+      const QPointF pc = hinge + QPointF(0, -R * 0.42 - 6 * m_open);
+      const int pr = 11 + 5 * m_open;
+      QRadialGradient glow(pc, pr * 2.2);
+      glow.setColorAt(0, QColor(255, 245, 250, 150 * m_open));
+      glow.setColorAt(1, QColor(255, 245, 250, 0));
+      p.setBrush(glow);
+      p.drawEllipse(pc, pr * 2.2, pr * 2.2);
+      QRadialGradient pearl(pc.x() - pr * 0.3, pc.y() - pr * 0.3, pr * 1.6);
+      pearl.setColorAt(0, QColor(0xff, 0xff, 0xff));
+      pearl.setColorAt(0.55, QColor(0xf8, 0xe3, 0xea));
+      pearl.setColorAt(1, QColor(0xd9, 0xb8, 0xc4));
+      p.setBrush(pearl);
+      p.drawEllipse(pc, pr, pr);
+    }
+    // 两瓣扇壳
+    for (int side = -1; side <= 1; side += 2) {
+      p.save();
+      p.translate(hinge);
+      p.rotate(side * (8 + 40 * m_open));  // 闭合时微张缝,进度满时 ~48°
+      QPainterPath valve;
+      valve.moveTo(0, 0);
+      valve.arcTo(QRectF(-R, -R, R * 2, R * 2), 90, -side * 58.0);
+      valve.closeSubpath();
+      QLinearGradient shellGrad(0, -R, 0, 0);
+      shellGrad.setColorAt(0, QColor(0xf7, 0xc9, 0x9b));
+      shellGrad.setColorAt(1, QColor(0xd1, 0x92, 0x5c));
+      p.setBrush(shellGrad);
+      p.setPen(QPen(QColor(0xb5, 0x7c, 0x48), 1.2));
+      p.drawPath(valve);
+      // 放射肋线
+      p.setPen(QPen(QColor(0xc0, 0x85, 0x50, 160), 1.0));
+      for (int k = 1; k <= 3; ++k) {
+        const qreal ang = (90 - side * (58.0 * k / 4.0)) * 3.14159 / 180.0;
+        p.drawLine(QPointF(0, 0),
+                   QPointF(R * 0.94 * cos(ang), -R * 0.94 * sin(ang)));
+      }
+      p.restore();
+    }
+    // 铰链阴影
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(0xb5, 0x8a, 0x5e, 90));
+    p.drawEllipse(hinge + QPointF(0, 3), R * 0.8, 7);
+  }
+
+ private:
+  QTimer* m_timer = nullptr;
+  QVariantAnimation* m_openAnim = nullptr;
+  qreal m_open = 0.0;
+  qreal m_wave = 0.0;
+};
 
 // 自绘关闭钮:粗白 × 由线条画出,不依赖字体/系统图标(两者在用户环境均失灵)
 class CloseButton : public QWidget {
@@ -516,16 +677,31 @@ class MainWindow : public QWidget {
         {"Cleanup", L"正在清理残留"},
     };
     int bestPos = -1;
+    const char* bestKey = nullptr;
     const wchar_t* bestText = nullptr;
     for (const auto& s : steps) {
       const int p = chunk.lastIndexOf(s.a);
       if (p > bestPos) {
         bestPos = p;
+        bestKey = s.a;
         bestText = s.t;
       }
     }
-    if (bestText)
+    if (bestKey) {
       setActionText(QString::fromWCharArray(bestText));
+      // 按部署序列换算阶段进度,蚌壳随之张开(真实进度,非假百分比)
+      static const char* kOrder[] = {"StopServer",  "ClearPendingDelete", "InstallValidate",
+                                     "InstallFiles", "WriteRegistryValues", "RegisterTSF",
+                                     "FirstDeploy",  "StartServer",         "RemoveFiles",
+                                     "UnregisterTSF", "Cleanup"};
+      const int N = sizeof(kOrder) / sizeof(kOrder[0]);
+      for (int i = 0; i < N; ++i) {
+        if (!strcmp(bestKey, kOrder[i])) {
+          m_scene->setProgress(i / (qreal)(N - 1));
+          break;
+        }
+      }
+    }
   }
 
   void msiFinished() {
@@ -685,6 +861,7 @@ class MainWindow : public QWidget {
     auto* box = new QVBoxLayout(progressPage_);
     box->setContentsMargins(48, 48, 48, 48);
     box->setSpacing(12);
+    m_scene = new BeachScene(progressPage_);
     m_progressTitle = new QLabel(progressPage_);
     m_progressTitle->setAlignment(Qt::AlignCenter);
     m_actionLabel = new QLabel(QStringLiteral(u"正在准备…"), progressPage_);
@@ -694,6 +871,8 @@ class MainWindow : public QWidget {
     m_progressHint->setObjectName("sub");
     m_progressHint->setAlignment(Qt::AlignCenter);
     box->addStretch();
+    box->addWidget(m_scene, 0, Qt::AlignHCenter);
+    box->addSpacing(10);
     box->addWidget(m_progressTitle);
     box->addWidget(m_actionLabel);
     box->addWidget(m_bar);
@@ -769,6 +948,7 @@ class MainWindow : public QWidget {
          *m_progressTitle = nullptr, *m_actionLabel = nullptr, *m_progressHint = nullptr,
          *m_finishTitle = nullptr, *m_finishDetail = nullptr;
   BusyBar* m_bar = nullptr;
+  BeachScene* m_scene = nullptr;
   CheckMark* m_check = nullptr;
   bool m_entered = false;
   QCheckBox* m_launchCheck = nullptr;
