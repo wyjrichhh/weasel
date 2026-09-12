@@ -1,6 +1,9 @@
 # Windows/VS resource files must stay CRLF; enforced so Mac-side edits cannot flip them
 # .rc 是 UTF-16(带 BOM),text 归一化会在字节层破坏内容,必须按二进制保存
 *.rc -text
+*.cpp text eol=crlf
+*.h text eol=crlf
+*.def text eol=crlf
 *.bat text eol=crlf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
