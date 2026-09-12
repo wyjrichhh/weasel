@@ -21,7 +21,9 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()
 
-# 版本数在 configure 阶段烘进 rc:target_compile_definitions 不会到达 rc.exe
+# 版本数与图标绝对路径在 configure 阶段烘进 rc:
+# target_compile_definitions 不会到达 rc.exe,生成目录也让相对路径失锚
+string(REPLACE "/" "\\" RC_ICON "${CMAKE_CURRENT_SOURCE_DIR}/../../resource/bangke.ico")
 configure_file(BangkeInstaller.rc.in BangkeInstaller.rc @ONLY)
 
 qt_add_executable(BangkeInstaller WIN32

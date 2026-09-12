@@ -7,7 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # rime.dll 使用静态 MSVC 运行库，本程序须保持一致
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-# 版本数在 configure 阶段烘进 rc:target_compile_definitions 不会到达 rc.exe
+# 版本数与图标绝对路径在 configure 阶段烘进 rc:
+# target_compile_definitions 不会到达 rc.exe,生成目录也让相对路径失锚
+string(REPLACE "/" "\\" RC_ICON "${CMAKE_CURRENT_SOURCE_DIR}/../resource/bangke.ico")
 configure_file(BangkeSettings.rc.in BangkeSettings.rc @ONLY)
 
 if(NOT DEFINED VERSION_MAJOR)

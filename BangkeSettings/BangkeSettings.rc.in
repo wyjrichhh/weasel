@@ -1,7 +1,7 @@
 // BangkeSettings resource
 #define IDI_MAIN 101
 
-IDI_MAIN ICON "..\\resource\\bangke.ico"
+IDI_MAIN ICON "@RC_ICON@"
 
 #define VER_STRINGIZE(x) #x
 #define VER_STR(x) VER_STRINGIZE(x)
