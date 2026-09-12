@@ -14,7 +14,7 @@
 #include <QVBoxLayout>
 
 #include "Ui.h"
-#include <WeaselUtility.h>
+#include <BangkeUtility.h>
 
 AIPage::AIPage(QWidget* parent) : QWidget(parent) {
   auto* layout = new QVBoxLayout(this);
@@ -105,7 +105,7 @@ static QString findValue(const QString& yaml, const QString& key) {
 // 当前方案:rime 把最近选择的方案记在 user.yaml(previously_selected_schema)。
 // 取不到时退到方案列表第一个。
 QString AIPage::currentSchemaId() const {
-  const QDir dir(QString::fromStdWString(WeaselUserDataPath().wstring()));
+  const QDir dir(QString::fromStdWString(BangkeUserDataPath().wstring()));
   QFile u(dir.filePath(QStringLiteral("user.yaml")));
   if (u.open(QIODevice::ReadOnly | QIODevice::Text)) {
     const QString yaml = QString::fromUtf8(u.readAll());
@@ -129,13 +129,13 @@ QString AIPage::currentSchemaId() const {
 }
 
 QString AIPage::schemaCustomYaml(const QString& schemaId) const {
-  const QDir dir(QString::fromStdWString(WeaselUserDataPath().wstring()));
+  const QDir dir(QString::fromStdWString(BangkeUserDataPath().wstring()));
   return dir.filePath(schemaId + QStringLiteral(".custom.yaml"));
 }
 
 // 展示名取共享数据目录 <id>.schema.yaml 的顶层 name:;取不到用 id
 QString AIPage::schemaDisplayName(const QString& schemaId) const {
-  const QDir dir(QString::fromStdWString(WeaselSharedDataPath().wstring()));
+  const QDir dir(QString::fromStdWString(BangkeSharedDataPath().wstring()));
   QFile f(dir.filePath(schemaId + QStringLiteral(".schema.yaml")));
   if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
     const QString v =

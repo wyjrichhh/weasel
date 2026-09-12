@@ -3,9 +3,9 @@ param (
     [switch]$i
 )
 
-$WEASEL_SOURCE_PATH = @("RimeWithWeasel", "BangkeSettings",
-  "WeaselIPC", "WeaselIPCServer", "WeaselServer", "WeaselSetup",
-  "WeaselTSF", "WeaselUI", "include", "test")
+$BANGKE_SOURCE_PATH = @("BangkeRime", "BangkeSettings",
+  "BangkeIPC", "BangkeIPCServer", "BangkeServer",
+  "BangkeTSF", "BangkeUI", "include", "test")
 $excludePatterns = Get-Content .exclude_pattern.txt
 
 function ShouldExclude($filePath) {
@@ -19,7 +19,7 @@ function ShouldExclude($filePath) {
 
 $filesToProcess = @()
 
-$WEASEL_SOURCE_PATH | ForEach-Object {
+$BANGKE_SOURCE_PATH | ForEach-Object {
   $filesToProcess += Get-ChildItem -Path $_ -Recurse -Include *.cpp, *.h |
   Where-Object { $_.FullName -notmatch "include[\\/]wtl[\\/]" -and -not (ShouldExclude $_.FullName) } |
   ForEach-Object { $_.FullName }

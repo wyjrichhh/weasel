@@ -13,7 +13,7 @@
 #include <windows.h>
 
 #include <rime_api.h>
-#include <WeaselUtility.h>
+#include <BangkeUtility.h>
 
 static void RevealInExplorer(const QString& path) {
   QProcess::startDetached("explorer", {"/select,", QDir::toNativeSeparators(path)});

@@ -20,7 +20,7 @@
 #include "SwitcherPage.h"
 #include "Theme.h"
 #include "Ui.h"
-#include <WeaselUtility.h>
+#include <BangkeUtility.h>
 #include <windows.h>
 
 // 紧凑窗口下内容高出视口时滚动,不高时撑满
@@ -103,11 +103,11 @@ MainWindow::MainWindow(Configurator* configurator, bool openDictPage,
   connect(saveBtn, &QPushButton::clicked, this, &MainWindow::saveAndDeploy);
   connect(userDirBtn, &QPushButton::clicked, this, [] {
     QDesktopServices::openUrl(
-        QUrl::fromLocalFile(QString::fromStdWString(WeaselUserDataPath().wstring())));
+        QUrl::fromLocalFile(QString::fromStdWString(BangkeUserDataPath().wstring())));
   });
   connect(logDirBtn, &QPushButton::clicked, this, [] {
     QDesktopServices::openUrl(
-        QUrl::fromLocalFile(QString::fromStdWString(WeaselLogPath().wstring())));
+        QUrl::fromLocalFile(QString::fromStdWString(BangkeLogPath().wstring())));
   });
 
   onPageChanged(nav_->currentRow());

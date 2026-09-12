@@ -98,7 +98,7 @@
     <!--
       卸载残留清理：在 RemoveFiles 之前跑（此时 BangkeSettings.exe 尚在）。
       被应用进程加载的 System32\bangke.dll 删不掉时转由下次重启删除；
-      旧版遗留的 WeaselServer 自启键仅在目标已是幽灵时移除，不影响共存的官方小狼毫。
+      旧版遗留的 BangkeServer 自启键仅在目标已是幽灵时移除，不影响共存的官方小狼毫。
     -->
     <CustomAction Id="Cleanup" Directory="INSTALLDIR"
                   ExeCommand="&quot;[INSTALLDIR]BangkeSettings.exe&quot; /cleanup"

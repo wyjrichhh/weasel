@@ -6,7 +6,7 @@
 #include <string>
 
 #include "Levers.h"
-#include <WeaselUtility.h>
+#include <BangkeUtility.h>
 #include <rime_api.h>
 
 UIStyleSettings::UIStyleSettings() {
@@ -30,7 +30,7 @@ bool UIStyleSettings::GetPresetColorSchemes(
   // 直接读共享 weasel.yaml,行扫描 preset_color_schemes: 块:
   // 二空格 "  <id>:" 条目行与随后的 "    name: <名称>" 配对。
   // 不走 rime API——config_load_string 对大 yaml 不稳定。
-  std::ifstream ifs(wtou8(WeaselSharedDataPath().wstring()) + "\\weasel.yaml");
+  std::ifstream ifs(wtou8(BangkeSharedDataPath().wstring()) + "\\weasel.yaml");
   if (!ifs.good())
     return false;
   std::string line;
@@ -93,7 +93,7 @@ static unsigned int NormalizeColor(unsigned int v,
 std::map<std::string, unsigned int> UIStyleSettings::GetSchemeColors(
     const std::string& color_scheme_id) {
   std::map<std::string, unsigned int> result;
-  std::ifstream ifs(wtou8(WeaselSharedDataPath().wstring()) + "\\weasel.yaml");
+  std::ifstream ifs(wtou8(BangkeSharedDataPath().wstring()) + "\\weasel.yaml");
   if (!ifs.good())
     return result;
   std::string line;
@@ -198,7 +198,7 @@ void UIStyleSettings::SetHorizontal(bool value) {
 // 共享 weasel.yaml 的 style:→layout: 块整表(显示"当前生效值"的默认基线)
 static std::map<std::string, int> ScanSharedLayout() {
   std::map<std::string, int> result;
-  std::ifstream ifs(wtou8(WeaselSharedDataPath().wstring()) + "\\weasel.yaml");
+  std::ifstream ifs(wtou8(BangkeSharedDataPath().wstring()) + "\\weasel.yaml");
   if (!ifs.good())
     return result;
   std::string line;

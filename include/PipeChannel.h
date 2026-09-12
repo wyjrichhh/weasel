@@ -6,7 +6,7 @@
 #include <boost/thread.hpp>
 #include <boost/thread/tss.hpp>
 
-namespace weasel {
+namespace bangke {
 
 class PipeChannelBase {
  public:
@@ -201,4 +201,4 @@ class PipeChannel : public PipeChannelBase {
     return (buff_size - _ResSize) * sizeof(char) / sizeof(wchar_t);
   }
 };
-};  // namespace weasel
+};  // namespace bangke

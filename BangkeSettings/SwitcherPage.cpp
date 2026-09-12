@@ -15,7 +15,7 @@
 #include <vector>
 
 #include <rime_levers_api.h>
-#include <WeaselUtility.h>
+#include <BangkeUtility.h>
 
 #include "Ui.h"
 

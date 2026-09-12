@@ -1,9 +1,9 @@
 rem Customize your build environment and save the modified copy to env.bat
 
-set WEASEL_ROOT=%CD%
+set BANGKE_ROOT=%CD%
 
 rem REQUIRED: path to Boost source directory
-if not defined BOOST_ROOT set BOOST_ROOT=%WEASEL_ROOT%\deps\boost_1_78_0
+if not defined BOOST_ROOT set BOOST_ROOT=%BANGKE_ROOT%\deps\boost_1_78_0
 
 rem OPTIONAL: architecture, Visual Studio version and platform toolset
 rem set ARCH=Win32

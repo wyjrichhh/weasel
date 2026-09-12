@@ -16,7 +16,7 @@
 GeneralPage::GeneralPage(QWidget* parent) : QWidget(parent) {
   api_ = leversApi();
   settings_ = api_->custom_settings_init("default", "Bangke::GeneralPage");
-  weaselStyle_ = api_->custom_settings_init("weasel", "Bangke::GeneralPage");
+  bangkeStyle_ = api_->custom_settings_init("weasel", "Bangke::GeneralPage");
 
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(16, 12, 16, 12);
@@ -69,10 +69,10 @@ void GeneralPage::load() {
   initPs_ = ps;
 
   // 注释显示:0=隐藏(共享默认),14=显示;未打补丁即默认隐藏
-  api_->load_settings(weaselStyle_);
+  api_->load_settings(bangkeStyle_);
   RimeConfig wcfg = {0};
   int cfp = 0;
-  if (api_->settings_get_config(weaselStyle_, &wcfg))
+  if (api_->settings_get_config(bangkeStyle_, &wcfg))
     rime->config_get_int(&wcfg, "style/comment_font_point", &cfp);
   commentHints_->setChecked(cfp >= 14);
   initCommentHints_ = cfp >= 14;
@@ -122,10 +122,10 @@ bool GeneralPage::save() {
 
   // weasel 侧(注释总开关):同样有变化才写;先 reload 防 StylePage 旧树覆写
   if (hints != initCommentHints_) {
-    api_->load_settings(weaselStyle_);
-    api_->customize_int(weaselStyle_, "style/comment_font_point",
+    api_->load_settings(bangkeStyle_);
+    api_->customize_int(bangkeStyle_, "style/comment_font_point",
                         hints ? 14 : 0);
-    if (!api_->save_settings(weaselStyle_))
+    if (!api_->save_settings(bangkeStyle_))
       return false;
     initCommentHints_ = hints;
     changed = true;

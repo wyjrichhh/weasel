@@ -1,7 +1,7 @@
 ﻿# 蚌壳拼音部署自检：验证三件套二进制、运行态、模型与配置
-# 用法：powershell -File scripts\preflight.ps1 [-ExpectWeasel <sha>] [-ExpectLibrime <sha>]
+# 用法：powershell -File scripts\preflight.ps1 [-ExpectBangke <sha>] [-ExpectLibrime <sha>]
 param(
-  [string]$ExpectWeasel = "",
+  [string]$ExpectBangke = "",
   [string]$ExpectLibrime = ""
 )
 $ErrorActionPreference = 'Continue'
@@ -36,7 +36,7 @@ function FindBytes([string]$file, [string]$needle, [switch]$Wide) {
 "`n--- 1. 代码版本 ---"
 $w = git -C $repo rev-parse --short HEAD
 $l = git -C "$repo\librime" rev-parse --short HEAD
-Check "weasel HEAD" ($ExpectWeasel -eq "" -or $w -eq $ExpectWeasel) "$w$(if ($ExpectWeasel) { " (期望 $ExpectWeasel)" })"
+Check "bangke HEAD" ($ExpectBangke -eq "" -or $w -eq $ExpectBangke) "$w$(if ($ExpectBangke) { " (期望 $ExpectBangke)" })"
 Check "librime HEAD" ($ExpectLibrime -eq "" -or $l -eq $ExpectLibrime) "$l$(if ($ExpectLibrime) { " (期望 $ExpectLibrime)" })"
 $dirty = @(git -C $repo status --porcelain | Where-Object { $_ -notmatch 'librime|output' })
 Check "工作树干净" ($dirty.Count -eq 0) "未提交改动已忽略子模块/产物"

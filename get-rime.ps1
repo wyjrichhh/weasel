@@ -316,8 +316,8 @@ if ($null -ne $response.assets -and $response.assets.Count -gt 0) {
           Write-Host "☑  $(Split-Path $src -Leaf)\$subpath has been copied to $dest"
         }
       }
-      function KillWeaselServer {
-        $processName = "WeaselServer"
+      function KillBangkeServer {
+        $processName = "BangkeServer"
         $process = Get-Process $processName -ErrorAction SilentlyContinue
         while ($process) {
           if ($process) {
@@ -334,7 +334,7 @@ if ($null -ne $response.assets -and $response.assets.Count -gt 0) {
         if ((Test-Path ".\include") `
         -and (Test-Path ".\lib") -and (Test-Path ".\lib64") `
         -and (Test-Path ".\output\Win32")) {
-          KillWeaselServer
+          KillBangkeServer
           Remove-Item include\rime_*.h -ErrorAction SilentlyContinue
           MyCopyItem -src $dir86 -subpath "dist\include\rime_*.h" -dest "include\"
           MyCopyItem -src $dir86 -subpath "dist\lib\rime.lib"     -dest "lib\"
@@ -357,9 +357,9 @@ if ($null -ne $response.assets -and $response.assets.Count -gt 0) {
         }
         try {
           $weaselRoot = (Get-ItemProperty -Path $registryPath -ErrorAction Stop).'WeaselRoot'
-          $servercmd = Join-Path -Path $weaselRoot -ChildPath "WeaselServer.exe"
-          KillWeaselServer
-          $processName = "WeaselServer"
+          $servercmd = Join-Path -Path $weaselRoot -ChildPath "BangkeServer.exe"
+          KillBangkeServer
+          $processName = "BangkeServer"
           $dllbit64 = Is64Bit
           MyCopyItem -src $(if ($dllbit64) { $dir64 } else { $dir86 }) -subpath "dist\lib\rime.dll" -dest $weaselRoot
           MyCopyItem -src $(if ($dllbit64) { $dir64 } else { $dir86 }) -subpath "dist\lib\rime.pdb" -dest $weaselRoot

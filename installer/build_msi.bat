@@ -4,11 +4,11 @@ cd /d %~dp0..
 
 if not exist env.bat copy env.bat.template env.bat
 call env.bat
-if not defined WEASEL_ROOT set WEASEL_ROOT=%CD%
+if not defined BANGKE_ROOT set BANGKE_ROOT=%CD%
 if not defined VERSION_MAJOR set VERSION_MAJOR=0
 if not defined VERSION_MINOR set VERSION_MINOR=1
 if not defined VERSION_PATCH set VERSION_PATCH=0
-set WEASEL_VERSION=%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%
+set BANGKE_VERSION=%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%
 
 set WIXEXE=%USERPROFILE%\.dotnet\tools\wix.exe
 if not exist "%WIXEXE%" (
@@ -24,13 +24,13 @@ if errorlevel 1 goto error
 if errorlevel 1 goto error
 
 "%WIXEXE%" build -arch x64 -ext WixToolset.UI.wixext installer\Bangke.wxs installer\Files.wxs ^
-  -d Version=%WEASEL_VERSION% ^
-  -d OutputDir=%WEASEL_ROOT%\output ^
-  -d ResourceDir=%WEASEL_ROOT%\resource ^
-  -o output\BangkeSetup-%WEASEL_VERSION%-x64.msi
+  -d Version=%BANGKE_VERSION% ^
+  -d OutputDir=%BANGKE_ROOT%\output ^
+  -d ResourceDir=%BANGKE_ROOT%\resource ^
+  -o output\BangkeSetup-%BANGKE_VERSION%-x64.msi
 if errorlevel 1 goto error
 
-echo MSI: output\BangkeSetup-%WEASEL_VERSION%-x64.msi
+echo MSI: output\BangkeSetup-%BANGKE_VERSION%-x64.msi
 exit /b 0
 
 :error

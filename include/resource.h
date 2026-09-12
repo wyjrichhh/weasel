@@ -1,8 +1,8 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by WeaselTSF.rc
+// Used by BangkeTSF.rc
 //
-#define IDI_WEASEL                      100
+#define IDI_BANGKE                      100
 #define IDI_EN                          101
 #define IDI_ZH                          102
 #define IDI_RELOAD                      103
@@ -12,14 +12,14 @@
 #define IDR_MENU_POPUP_HANT             108
 #define IDR_MENU_POPUP_HANS             109
 #define IDS_STR_UNDER_MAINTENANCE       302
-#define ID_WEASELTRAY_QUIT              40001
-#define ID_WEASELTRAY_DEPLOY            40002
-#define ID_WEASELTRAY_USERCONFIG        40007
-#define ID_WEASELTRAY_SETTINGS          40008
-#define ID_WEASELTRAY_DICT_MANAGEMENT   40010
-#define ID_WEASELTRAY_SYNC              40012
-#define ID_WEASELTRAY_RERUN_SERVICE     40015
-#define ID_WEASELTRAY_LOGDIR            40016
+#define ID_BANGKETRAY_QUIT              40001
+#define ID_BANGKETRAY_DEPLOY            40002
+#define ID_BANGKETRAY_USERCONFIG        40007
+#define ID_BANGKETRAY_SETTINGS          40008
+#define ID_BANGKETRAY_DICT_MANAGEMENT   40010
+#define ID_BANGKETRAY_SYNC              40012
+#define ID_BANGKETRAY_RERUN_SERVICE     40015
+#define ID_BANGKETRAY_LOGDIR            40016
 
 // Next default values for new objects
 //

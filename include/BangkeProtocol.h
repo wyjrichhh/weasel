@@ -1,13 +1,13 @@
 // 蚌壳拼音前端协议 v2:版本化二进制快照帧。
 // 管道响应与 AI 推送槽共用同一种帧;取代行文本+boost archive。
-// 数据结构本体仍在 WeaselIPCData.h(⑤ 步剥离 boost 后只剩纯结构)。
+// 数据结构本体仍在 BangkeIPCData.h(⑤ 步剥离 boost 后只剩纯结构)。
 #pragma once
 
 #include <cstdint>
 #include <string>
 #include <vector>
 
-#include <WeaselIPCData.h>
+#include <BangkeIPCData.h>
 
 namespace bangke {
 
@@ -27,7 +27,7 @@ struct FrameHeader {
   uint32_t magic;
   uint16_t version;
   uint16_t flags;
-  uint32_t ipc_sid;      // weasel 会话 id
+  uint32_t ipc_sid;      // bangke 会话 id
   uint32_t key_serial;   // server 每 ProcessKeyEvent 递增;帧的全序依据
   uint32_t payload_len;  // 头之后的字节数
 };
@@ -98,28 +98,28 @@ class Reader {
 };
 
 // ---- 结构体编解码(逐字段显式;新字段必须两侧同步,版本号随之递增) ----
-void PutText(Writer& w, const weasel::Text& t);
-bool GetText(Reader& r, weasel::Text& t);
-void PutCandidateInfo(Writer& w, const weasel::CandidateInfo& ci);
-bool GetCandidateInfo(Reader& r, weasel::CandidateInfo& ci);
-void PutContext(Writer& w, const weasel::Context& ctx);
-bool GetContext(Reader& r, weasel::Context& ctx);
-void PutStatus(Writer& w, const weasel::Status& s);
-bool GetStatus(Reader& r, weasel::Status& s);
-void PutConfig(Writer& w, const weasel::Config& c);
-bool GetConfig(Reader& r, weasel::Config& c);
-void PutUIStyle(Writer& w, const weasel::UIStyle& st);
-bool GetUIStyle(Reader& r, weasel::UIStyle& st);
+void PutText(Writer& w, const bangke::Text& t);
+bool GetText(Reader& r, bangke::Text& t);
+void PutCandidateInfo(Writer& w, const bangke::CandidateInfo& ci);
+bool GetCandidateInfo(Reader& r, bangke::CandidateInfo& ci);
+void PutContext(Writer& w, const bangke::Context& ctx);
+bool GetContext(Reader& r, bangke::Context& ctx);
+void PutStatus(Writer& w, const bangke::Status& s);
+bool GetStatus(Reader& r, bangke::Status& s);
+void PutConfig(Writer& w, const bangke::Config& c);
+bool GetConfig(Reader& r, bangke::Config& c);
+void PutUIStyle(Writer& w, const bangke::UIStyle& st);
+bool GetUIStyle(Reader& r, bangke::UIStyle& st);
 
 // ---- 帧级 API ----
 // 组帧;传 nullptr 的部分不写入且不置对应 flag。
 std::vector<uint8_t> BuildFrame(uint32_t ipc_sid,
                                 uint32_t key_serial,
                                 const std::wstring* commit,
-                                const weasel::Context* ctx,
-                                const weasel::Status* status,
-                                const weasel::Config* config,
-                                const weasel::UIStyle* style);
+                                const bangke::Context* ctx,
+                                const bangke::Status* status,
+                                const bangke::Config* config,
+                                const bangke::UIStyle* style);
 
 // 解帧:校验 magic/version/长度后依 flags 解码;任何不一致返回 false。
 // hdr 始终回填(便于诊断);输出结构仅在成功时写入。
@@ -127,10 +127,10 @@ bool ParseFrame(const uint8_t* data,
                 size_t len,
                 FrameHeader* hdr,
                 std::wstring* commit,
-                weasel::Context* ctx,
-                weasel::Status* status,
-                weasel::Config* config,
-                weasel::UIStyle* style);
+                bangke::Context* ctx,
+                bangke::Status* status,
+                bangke::Config* config,
+                bangke::UIStyle* style);
 
 // 前缀容错版:cap 是容量上限而非精确长度(管道缓冲按容量传入,帧自描述长度,
 // 尾部残留无害)。帧的实际解码边界仍由 payload_len 决定。
@@ -138,9 +138,9 @@ bool ParseFramePrefix(const uint8_t* data,
                       size_t cap,
                       FrameHeader* hdr,
                       std::wstring* commit,
-                      weasel::Context* ctx,
-                      weasel::Status* status,
-                      weasel::Config* config,
-                      weasel::UIStyle* style);
+                      bangke::Context* ctx,
+                      bangke::Status* status,
+                      bangke::Config* config,
+                      bangke::UIStyle* style);
 
 }  // namespace bangke

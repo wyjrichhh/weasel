@@ -1,9 +1,9 @@
 ﻿#pragma once
-#include <WeaselIPCData.h>
+#include <BangkeIPCData.h>
 #include <windows.h>
 #include <string>
 
-namespace weasel {
+namespace bangke {
 
 // v2 帧响应解析:管道体以 bangke::kFrameMagic 起始即解码;
 // 否则返回失败(不再有文本协议回退)
@@ -24,4 +24,4 @@ struct ResponseParser {
   bool operator()(LPWSTR buffer, UINT length);
 };
 
-}  // namespace weasel
+}  // namespace bangke

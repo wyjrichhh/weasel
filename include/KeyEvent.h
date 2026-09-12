@@ -14,7 +14,7 @@ struct KeyInfo {
   operator UINT32() { return *reinterpret_cast<UINT32*>(this); }
 };
 
-namespace weasel {
+namespace bangke {
 struct KeyEvent {
   UINT keycode : 16;
   UINT mask : 16;
@@ -25,12 +25,12 @@ struct KeyEvent {
     return *reinterpret_cast<UINT32 const*>(this);
   }
 };
-}  // namespace weasel
+}  // namespace bangke
 
 bool ConvertKeyEvent(UINT vkey,
                      KeyInfo kinfo,
                      const LPBYTE keyState,
-                     weasel::KeyEvent& result);
+                     bangke::KeyEvent& result);
 
 namespace ibus {
 // keycodes

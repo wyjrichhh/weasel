@@ -6,17 +6,17 @@ if not exist env.bat copy env.bat.template env.bat
 
 if exist env.bat call env.bat
 
-if not defined WEASEL_ROOT set WEASEL_ROOT=%CD%
+if not defined BANGKE_ROOT set BANGKE_ROOT=%CD%
 
 if not defined VERSION_MAJOR set VERSION_MAJOR=0
 if not defined VERSION_MINOR set VERSION_MINOR=1
 if not defined VERSION_PATCH set VERSION_PATCH=0
 
-if not defined WEASEL_VERSION set WEASEL_VERSION=%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%
-if not defined WEASEL_BUILD set WEASEL_BUILD=0
+if not defined BANGKE_VERSION set BANGKE_VERSION=%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%
+if not defined BANGKE_BUILD set BANGKE_BUILD=0
 
 rem use numeric build version for release build
-set PRODUCT_VERSION=%WEASEL_VERSION%.%WEASEL_BUILD%
+set PRODUCT_VERSION=%BANGKE_VERSION%.%BANGKE_BUILD%
 rem for non-release build, try to use git commit hash as product build version
 if not defined RELEASE_BUILD (
   rem check if git is installed and available, then get the short commit id of head
@@ -25,21 +25,21 @@ if not defined RELEASE_BUILD (
     rem FILEVERSION 第四段取总提交数:标签匹配法在无匹配标签时静默得 0,
     rem 同版本号重打会被 MSI 按"版本不更高"跳过(bangke.dll 陈旧文件之坑)
     for /f "delims=" %%i in ('git rev-list HEAD --count') do (
-      set WEASEL_BUILD=%%i
+      set BANGKE_BUILD=%%i
     )
     rem get short commmit id of head
-    for /F %%i in ('git rev-parse --short HEAD') do (set PRODUCT_VERSION=%WEASEL_VERSION%.%WEASEL_BUILD%.%%i)
+    for /F %%i in ('git rev-parse --short HEAD') do (set PRODUCT_VERSION=%BANGKE_VERSION%.%BANGKE_BUILD%.%%i)
   )
 )
 
 rem FILE_VERSION is always 4 numbers; same as PRODUCT_VERSION in release build
-if not defined FILE_VERSION set FILE_VERSION=%WEASEL_VERSION%.%WEASEL_BUILD%
+if not defined FILE_VERSION set FILE_VERSION=%BANGKE_VERSION%.%BANGKE_BUILD%
 
 echo PRODUCT_VERSION=%PRODUCT_VERSION%
-echo WEASEL_VERSION=%WEASEL_VERSION%
-echo WEASEL_BUILD=%WEASEL_BUILD%
-echo WEASEL_ROOT=%WEASEL_ROOT%
-echo WEASEL_BUNDLED_RECIPES=%WEASEL_BUNDLED_RECIPES%
+echo BANGKE_VERSION=%BANGKE_VERSION%
+echo BANGKE_BUILD=%BANGKE_BUILD%
+echo BANGKE_ROOT=%BANGKE_ROOT%
+echo BANGKE_BUNDLED_RECIPES=%BANGKE_BUNDLED_RECIPES%
 echo.
 
 if defined GITHUB_ENV (
@@ -76,7 +76,7 @@ set build_data=0
 set build_opencc=0
 set build_rime=0
 set rime_build_variant=release
-set build_weasel=0
+set build_bangke=0
 set build_settings=0
 
 rem parse the command line options
@@ -98,30 +98,30 @@ rem parse the command line options
   if "%1" == "opencc" set build_opencc=1
   if "%1" == "rime" set build_rime=1
   if "%1" == "librime" set build_rime=1
-  if "%1" == "weasel" set build_weasel=1
+  if "%1" == "bangke" set build_bangke=1
   if "%1" == "settings" set build_settings=1
   if "%1" == "all" (
     set build_boost=1
     set build_data=1
     set build_opencc=1
     set build_rime=1
-    set build_weasel=1
+    set build_bangke=1
   )
   shift
   goto parse_cmdline_options
 :end_parsing_cmdline_options
 
-if %build_weasel% == 0 (
+if %build_bangke% == 0 (
 if %build_boost% == 0 (
 if %build_data% == 0 (
 if %build_opencc% == 0 (
 if %build_rime% == 0 (
 if %build_settings% == 0 (
-  set build_weasel=1
+  set build_bangke=1
 ))))))
 
 rem quit BangkeServer.exe before building
-cd /d %WEASEL_ROOT%
+cd /d %BANGKE_ROOT%
 if exist output\BangkeServer.exe (
   output\BangkeServer.exe /q
 )
@@ -137,7 +137,7 @@ rem build booost
 if %build_boost% == 1 (
   call :build_boost
   if errorlevel 1 exit /b 1
-  cd /d %WEASEL_ROOT%
+  cd /d %BANGKE_ROOT%
 )
 
 rem -------------------------------------------------------------------------
@@ -148,7 +148,7 @@ if %build_rime% == 1 (
   if not exist librime\build.bat (
     git submodule update --init --recursive
   )
-  cd %WEASEL_ROOT%\librime
+  cd %BANGKE_ROOT%\librime
   rem clean cache before building
   for %%a in ( build dist lib ^
     deps\glog\build ^
@@ -162,14 +162,14 @@ if %build_rime% == 1 (
 
   rem build x64 librime
   set ARCH=x64
-  call :build_librime_platform x64 %WEASEL_ROOT%\lib64 %WEASEL_ROOT%\output
+  call :build_librime_platform x64 %BANGKE_ROOT%\lib64 %BANGKE_ROOT%\output
   rem clean the modified file
   rem git checkout .
   rem git submodule foreach git checkout .
 )
 
 rem -------------------------------------------------------------------------
-if %build_weasel% == 1 (
+if %build_bangke% == 1 (
   if not exist output\data\essay.txt (
     set build_data=1
   )
@@ -180,20 +180,20 @@ if %build_weasel% == 1 (
 if %build_data% == 1 call :build_data
 if %build_opencc% == 1 call :build_opencc_data
 
-if %build_weasel% == 0 goto after_weasel
+if %build_bangke% == 0 goto after_bangke
 
-cd /d %WEASEL_ROOT%
+cd /d %BANGKE_ROOT%
 
-set WEASEL_PROJECT_PROPERTIES=BOOST_ROOT^
+set BANGKE_PROJECT_PROPERTIES=BOOST_ROOT^
   PLATFORM_TOOLSET^
   VERSION_MAJOR^
   VERSION_MINOR^
   VERSION_PATCH^
   PRODUCT_VERSION^
   FILE_VERSION^
-  WEASEL_BUILD
+  BANGKE_BUILD
 
-cscript.exe render.js weasel.props %WEASEL_PROJECT_PROPERTIES%
+cscript.exe render.js bangke.props %BANGKE_PROJECT_PROPERTIES%
 
 del msbuild*.log
 
@@ -201,10 +201,10 @@ if defined SDKVER set build_sdk_option=/p:WindowsTargetPlatformVersion=%SDKVER%
 if not defined SDKVER set build_sdk_option=
 
 
-msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="x64" /fl2 %build_sdk_option%
+msbuild.exe bangke.sln %build_option% /p:Configuration=%build_config% /p:Platform="x64" /fl2 %build_sdk_option%
 if errorlevel 1 goto error
 
-:after_weasel
+:after_bangke
 if %build_settings% == 1 (
   call :build_settings
   if errorlevel 1 goto error
@@ -237,13 +237,13 @@ rem build boost
 
 rem ---------------------------------------------------------------------------
 :build_data
-  copy %WEASEL_ROOT%\LICENSE.txt output\
-  copy %WEASEL_ROOT%\README.md output\README.txt
-  copy %WEASEL_ROOT%\plum\rime-install.bat output\
+  copy %BANGKE_ROOT%\LICENSE.txt output\
+  copy %BANGKE_ROOT%\README.md output\README.txt
+  copy %BANGKE_ROOT%\plum\rime-install.bat output\
   set plum_dir=plum
   set rime_dir=output/data
   set WSLENV=plum_dir:rime_dir
-  bash plum/rime-install %WEASEL_BUNDLED_RECIPES%
+  bash plum/rime-install %BANGKE_BUNDLED_RECIPES%
   call :install_rime_ice
   if errorlevel 1 goto error
   exit /b
@@ -281,14 +281,14 @@ powershell -NoProfile -Command "$f='output\data\luna_pinyin.schema.yaml'; $t=[IO
 exit /b 0
 
 :build_opencc_data
-  if not exist %WEASEL_ROOT%\librime\share\opencc\TSCharacters.ocd2 (
-    cd %WEASEL_ROOT%\librime
+  if not exist %BANGKE_ROOT%\librime\share\opencc\TSCharacters.ocd2 (
+    cd %BANGKE_ROOT%\librime
     call build.bat deps %rime_build_variant%
     if errorlevel 1 goto error
   )
-  cd %WEASEL_ROOT%
+  cd %BANGKE_ROOT%
   if not exist output\data\opencc mkdir output\data\opencc
-  copy %WEASEL_ROOT%\librime\share\opencc\*.* output\data\opencc\
+  copy %BANGKE_ROOT%\librime\share\opencc\*.* output\data\opencc\
   if errorlevel 1 goto error
   exit /b
 
@@ -296,7 +296,7 @@ rem ---------------------------------------------------------------------------
 rem %1 : ARCH
 rem %2 : push | pop , push to backup when pop to restore
 :stash_build
-  pushd %WEASEL_ROOT%\librime
+  pushd %BANGKE_ROOT%\librime
   for %%a in ( build dist lib ^
     deps\glog\build ^
     deps\googletest\build ^
@@ -316,15 +316,15 @@ rem %2 : push | pop , push to backup when pop to restore
 
 rem ---------------------------------------------------------------------------
 rem %1 : ARCH
-rem %2 : target_path of rime.lib, base %WEASEL_ROOT% or abs path
-rem %3 : target_path of rime.dll, base %WEASEL_ROOT% or abs path
+rem %2 : target_path of rime.lib, base %BANGKE_ROOT% or abs path
+rem %3 : target_path of rime.dll, base %BANGKE_ROOT% or abs path
 :build_librime_platform
   rem restore backuped %1 build
   call :stash_build %1 pop
 
-  cd %WEASEL_ROOT%\librime
+  cd %BANGKE_ROOT%\librime
   if not exist env.bat (
-    copy %WEASEL_ROOT%\env.bat env.bat
+    copy %BANGKE_ROOT%\env.bat env.bat
   )
   if not exist lib\opencc.lib (
     call build.bat deps %rime_build_variant%
@@ -339,28 +339,28 @@ rem %3 : target_path of rime.dll, base %WEASEL_ROOT% or abs path
     goto error
   )
 
-  cd %WEASEL_ROOT%\librime
+  cd %BANGKE_ROOT%\librime
   call :stash_build %1 push
 
-  copy /Y %WEASEL_ROOT%\librime\dist_%1\include\rime_*.h %WEASEL_ROOT%\include\
+  copy /Y %BANGKE_ROOT%\librime\dist_%1\include\rime_*.h %BANGKE_ROOT%\include\
   if errorlevel 1 goto error
-  copy /Y %WEASEL_ROOT%\librime\dist_%1\lib\rime.lib %2\
+  copy /Y %BANGKE_ROOT%\librime\dist_%1\lib\rime.lib %2\
   if errorlevel 1 goto error
-  copy /Y %WEASEL_ROOT%\librime\dist_%1\lib\rime.dll %3\
+  copy /Y %BANGKE_ROOT%\librime\dist_%1\lib\rime.dll %3\
   if errorlevel 1 goto error
 
   exit /b
 rem ---------------------------------------------------------------------------
 
 :build_settings
-  cd /d %WEASEL_ROOT%
+  cd /d %BANGKE_ROOT%
   if not defined QT_DIR set QT_DIR=C:\Libraries\Qt\6.8.3\msvc2022_64
   if not exist "%QT_DIR%\lib\cmake\Qt6" (
     echo Error: Qt6 not found at %QT_DIR%. Set QT_DIR in env.bat.
     exit /b 1
   )
   where cmake >nul 2>&1 || set PATH=%DEVTOOLS_PATH%%PATH%
-  cmake -S BangkeSettings -B BangkeSettings\build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH=%QT_DIR% -DVERSION_MAJOR=%VERSION_MAJOR% -DVERSION_MINOR=%VERSION_MINOR% -DVERSION_PATCH=%VERSION_PATCH% -DVERSION_BUILD=%WEASEL_BUILD%
+  cmake -S BangkeSettings -B BangkeSettings\build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH=%QT_DIR% -DVERSION_MAJOR=%VERSION_MAJOR% -DVERSION_MINOR=%VERSION_MINOR% -DVERSION_PATCH=%VERSION_PATCH% -DVERSION_BUILD=%BANGKE_BUILD%
   if errorlevel 1 goto error
   cmake --build BangkeSettings\build --config %build_config%
   if errorlevel 1 goto error
@@ -371,9 +371,9 @@ rem ---------------------------------------------------------------------------
   exit /b
 :error
 
-cd %WEASEL_ROOT%
-echo error building weasel...
+cd %BANGKE_ROOT%
+echo error building bangke...
 exit /b 1
 
 :end
-cd %WEASEL_ROOT%
+cd %BANGKE_ROOT%

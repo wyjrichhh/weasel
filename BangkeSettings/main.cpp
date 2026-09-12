@@ -5,7 +5,7 @@
 #include "MainWindow.h"
 #include "Configurator.h"
 #include "Theme.h"
-#include <WeaselUtility.h>
+#include <BangkeUtility.h>
 
 namespace {
 
@@ -49,7 +49,7 @@ void showUsage(QWidget* parent) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  // WeaselTSF 以此互斥量探测部署进程是否在运行，勿改名
+  // BangkeTSF 以此互斥量探测部署进程是否在运行，勿改名
   HANDLE hMutex = CreateMutexW(NULL, TRUE, L"BangkeDeployerExclusiveMutex");
   if (!hMutex || GetLastError() == ERROR_ALREADY_EXISTS)
     return 1;

@@ -17,7 +17,7 @@ Phase 0 基线：weasel 0.17.4（d73f629），2026-09-04 全量构建 + 打字�
 ## 本地补丁（已提交）
 
 1. **b2 msvc.jam**（`C:\Libraries\boost_1_84_0\tools\build\src\tools\msvc.jam`，**不进 git**，重建 boost 环境时重打）：首分支 `if [ MATCH "(14.3)"...]` 改为 `(14.[1-9])`。原因：b2 4.10 的版本正则不认 MSVC 14.44，走老分支拼出不存在的 `bin\Hostx64\vcvarsall.bat` 依赖目标，全部编译目标被 skip。
-2. **afxres.h → windows.h**（`WeaselTSF/WeaselTSF.rc`、`WeaselServer/WeaselServer.rc`，已提交）：`.rc` 里的 `afxres.h` 是 MFC 头，官方 CI 的 runner 镜像自带 MFC 所以没暴露；替换成 `windows.h` 后永久去掉 MFC 组件依赖。注意两个 `.rc` 都是 **UTF-16LE**，改完要保编码。
+2. **afxres.h → windows.h**（`BangkeTSF/BangkeTSF.rc`、`BangkeServer/BangkeServer.rc`，已提交）：`.rc` 里的 `afxres.h` 是 MFC 头，官方 CI 的 runner 镜像自带 MFC 所以没暴露；替换成 `windows.h` 后永久去掉 MFC 组件依赖。注意两个 `.rc` 都是 **UTF-16LE**，改完要保编码。
 
 ## 构建序列
 
@@ -40,11 +40,11 @@ cmd /c "set TEXTSERVICE_PROFILE=hans&& C:\Windows\System32\regsvr32.exe /s C:\Wi
 cmd /c "set TEXTSERVICE_PROFILE=hans&& C:\Windows\SysWOW64\regsvr32.exe /s C:\Windows\SysWOW64\weasel.dll"
 New-Item HKLM:\SOFTWARE\Rime\Weasel -Force
 Set-ItemProperty HKLM:\SOFTWARE\Rime\Weasel WeaselRoot 'C:\dev\weasel\output'
-Set-ItemProperty HKLM:\SOFTWARE\Rime\Weasel ServerExecutable 'WeaselServer.exe'
-New-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' WeaselServer -PropertyType String -Value 'C:\dev\weasel\output\WeaselServer.exe' -Force
+Set-ItemProperty HKLM:\SOFTWARE\Rime\Weasel ServerExecutable 'BangkeServer.exe'
+New-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' BangkeServer -PropertyType String -Value 'C:\dev\weasel\output\BangkeServer.exe' -Force
 ```
 
-首次部署**不需要**跑 `WeaselDeployer.exe /deploy`（它是先弹方案选择对话框再部署，无桌面会话里会永远挂起等输入）——直接启动 `WeaselServer.exe`，`Initialize()` 的 `start_maintenance` 会自动完成首次部署（编译词库约 1-3 分钟）。
+首次部署**不需要**跑 `WeaselDeployer.exe /deploy`（它是先弹方案选择对话框再部署，无桌面会话里会永远挂起等输入）——直接启动 `BangkeServer.exe`，`Initialize()` 的 `start_maintenance` 会自动完成首次部署（编译词库约 1-3 分钟）。
 
 ## 远程驱动（Mac → 17-Windows）
 

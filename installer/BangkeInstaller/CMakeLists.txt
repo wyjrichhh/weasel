@@ -41,4 +41,4 @@ set_target_properties(BangkeInstaller PROPERTIES
 # Qt 运行库与 BangkeSettings 同目录共存（output\），无需单独 windeployqt
 add_custom_command(TARGET BangkeInstaller POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          $<TARGET_FILE:BangkeInstaller> $ENV{WEASEL_OUT})
+          $<TARGET_FILE:BangkeInstaller> $ENV{BANGKE_OUT})

@@ -15,7 +15,7 @@
     <RootNamespace>TestResponseParser</RootNamespace>
     <Keyword>Win32Proj</Keyword>
   </PropertyGroup>
-  <Import Project="..\..\weasel.props" />
+  <Import Project="..\..\bangke.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -110,7 +110,7 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\WeaselIPC\WeaselIPC.vcxproj">
+    <ProjectReference Include="..\..\BangkeIPC\BangkeIPC.vcxproj">
       <Project>{ce11a2df-8d20-4b07-a935-4b0d03f0303d}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>

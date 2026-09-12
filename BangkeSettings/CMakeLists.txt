@@ -23,9 +23,9 @@ endif()
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()
 
-set(WEASEL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
-if(NOT EXISTS ${WEASEL_ROOT}/lib64/rime.lib)
-  message(FATAL_ERROR "${WEASEL_ROOT}/lib64/rime.lib not found; run 'build.bat rime' first")
+set(BANGKE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
+if(NOT EXISTS ${BANGKE_ROOT}/lib64/rime.lib)
+  message(FATAL_ERROR "${BANGKE_ROOT}/lib64/rime.lib not found; run 'build.bat rime' first")
 endif()
 
 qt_add_executable(BangkeSettings WIN32
@@ -40,22 +40,22 @@ qt_add_executable(BangkeSettings WIN32
   StylePage.cpp StylePage.h
   DictPage.cpp DictPage.h
   BangkeSettings.rc
-  ${WEASEL_ROOT}/WeaselIPC/WeaselClientImpl.cpp
-  ${WEASEL_ROOT}/WeaselIPC/PipeChannel.cpp
-  ${WEASEL_ROOT}/RimeWithWeasel/WeaselUtility.cpp
+  ${BANGKE_ROOT}/BangkeIPC/BangkeClientImpl.cpp
+  ${BANGKE_ROOT}/BangkeIPC/PipeChannel.cpp
+  ${BANGKE_ROOT}/BangkeRime/BangkeUtility.cpp
 )
 
 target_include_directories(BangkeSettings PRIVATE
-  ${WEASEL_ROOT}/include
-  ${WEASEL_ROOT}/WeaselIPC
-  ${WEASEL_ROOT}/RimeWithWeasel
-  ${WEASEL_ROOT}/librime/include
+  ${BANGKE_ROOT}/include
+  ${BANGKE_ROOT}/BangkeIPC
+  ${BANGKE_ROOT}/BangkeRime
+  ${BANGKE_ROOT}/librime/include
   $ENV{BOOST_ROOT}
 )
 
 target_link_directories(BangkeSettings PRIVATE
   $ENV{BOOST_ROOT}/stage/lib
-  ${WEASEL_ROOT}/lib64
+  ${BANGKE_ROOT}/lib64
 )
 
 target_link_libraries(BangkeSettings PRIVATE Qt6::Widgets rime.lib)

@@ -21,7 +21,7 @@ class GeneralPage : public QWidget {
   RimeLeversApi* api_ = nullptr;
   RimeCustomSettings* settings_ = nullptr;
   // 注释显示是 weasel 样式键,写 weasel.custom.yaml(与 default 分开)
-  RimeCustomSettings* weaselStyle_ = nullptr;
+  RimeCustomSettings* bangkeStyle_ = nullptr;
   QSpinBox* pageSize_ = nullptr;
   QComboBox* shiftL_ = nullptr;
   QComboBox* shiftR_ = nullptr;

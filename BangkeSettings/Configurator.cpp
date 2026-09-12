@@ -9,15 +9,15 @@
 #include <vector>
 
 #include "Levers.h"
-#include <WeaselConstants.h>
-#include <WeaselIPC.h>
-#include <WeaselUtility.h>
+#include <BangkeConstants.h>
+#include <BangkeIPC.h>
+#include <BangkeUtility.h>
 #pragma warning(disable : 4005)
 #include <rime_api.h>
 #pragma warning(default : 4005)
 
 static void CreateFileIfNotExist(std::string filename) {
-  std::filesystem::path file_path = WeaselUserDataPath() / u8tow(filename);
+  std::filesystem::path file_path = BangkeUserDataPath() / u8tow(filename);
   DWORD dwAttrib = GetFileAttributes(file_path.c_str());
   if (!(INVALID_FILE_ATTRIBUTES != dwAttrib &&
         0 == (dwAttrib & FILE_ATTRIBUTE_DIRECTORY))) {
@@ -36,22 +36,22 @@ Configurator::~Configurator() {
 }
 
 void Configurator::Initialize() {
-  RIME_STRUCT(RimeTraits, weasel_traits);
-  std::string shared_dir = wtou8(WeaselSharedDataPath().wstring());
-  std::string user_dir = wtou8(WeaselUserDataPath().wstring());
-  weasel_traits.shared_data_dir = shared_dir.c_str();
-  weasel_traits.user_data_dir = user_dir.c_str();
-  weasel_traits.prebuilt_data_dir = weasel_traits.shared_data_dir;
-  std::string distribution_name = wtou8(get_weasel_ime_name());
-  weasel_traits.distribution_name = distribution_name.c_str();
-  weasel_traits.distribution_code_name = WEASEL_CODE_NAME;
-  weasel_traits.distribution_version = WEASEL_VERSION;
-  weasel_traits.app_name = "rime.bangke";
-  std::string log_dir = WeaselLogPath().u8string();
-  weasel_traits.log_dir = log_dir.c_str();
+  RIME_STRUCT(RimeTraits, bangke_traits);
+  std::string shared_dir = wtou8(BangkeSharedDataPath().wstring());
+  std::string user_dir = wtou8(BangkeUserDataPath().wstring());
+  bangke_traits.shared_data_dir = shared_dir.c_str();
+  bangke_traits.user_data_dir = user_dir.c_str();
+  bangke_traits.prebuilt_data_dir = bangke_traits.shared_data_dir;
+  std::string distribution_name = wtou8(get_bangke_ime_name());
+  bangke_traits.distribution_name = distribution_name.c_str();
+  bangke_traits.distribution_code_name = BANGKE_CODE_NAME;
+  bangke_traits.distribution_version = BANGKE_VERSION;
+  bangke_traits.app_name = "rime.bangke";
+  std::string log_dir = BangkeLogPath().u8string();
+  bangke_traits.log_dir = log_dir.c_str();
   RimeApi* rime_api = rime_get_api();
   assert(rime_api);
-  rime_api->setup(&weasel_traits);
+  rime_api->setup(&bangke_traits);
   rime_api->deployer_initialize(NULL);
 }
 
@@ -67,7 +67,7 @@ int Configurator::UpdateWorkspace(bool report_errors) {
     return 1;
   }
 
-  weasel::Client client;
+  bangke::Client client;
   if (client.Connect())
     client.StartMaintenance();
 
@@ -87,7 +87,7 @@ int Configurator::UpdateWorkspace(bool report_errors) {
 int Configurator::EnsureAiDefaults() {
   // 与插件契约对齐:model_path 相对路径按 user_data_dir 解析,
   // 因此模型必须落到用户目录;接线走 luna_pinyin.custom.yaml patch
-  const std::filesystem::path user_dir = WeaselUserDataPath();
+  const std::filesystem::path user_dir = BangkeUserDataPath();
 
   // 宽字面量经 wtou8 落盘:窄字面量受源文件编码影响,不冒险
   static const wchar_t kAiWiringYaml[] =
@@ -181,7 +181,7 @@ int Configurator::EnsureAiDefaults() {
 
   // 模型随安装器铺在安装根目录 predict_models(与 data\ 平级);
   // 首部署拷入用户目录,按哨兵文件判缺,不重复拷
-  const std::filesystem::path install_root = WeaselSharedDataPath().parent_path();
+  const std::filesystem::path install_root = BangkeSharedDataPath().parent_path();
   const std::filesystem::path src = install_root / L"predict_models";
   const std::filesystem::path dst = user_dir / L"predict_models";
   if (std::filesystem::exists(src / L"zh-base-ct2-int8", ec) &&
@@ -194,7 +194,7 @@ int Configurator::EnsureAiDefaults() {
 
 int Configurator::CleanupResidue() {
   // 静态：勿依赖实例状态（构造器会写用户目录，SYSTEM 下路径错误）
-  // 被应用进程加载的 TSF dll 删不掉时转由下次重启删除；WeaselServer 自启键
+  // 被应用进程加载的 TSF dll 删不掉时转由下次重启删除；BangkeServer 自启键
   // 仅在目标文件已成幽灵时移除，避免误伤共存的官方小狼毫
   const wchar_t* residues[] = {L"C:\\Windows\\System32\\bangke.dll",
                                L"C:\\Windows\\System32\\bangke.dll.old"};
@@ -301,7 +301,7 @@ int Configurator::SyncUserData() {
     return 1;
   }
 
-  weasel::Client client;
+  bangke::Client client;
   if (client.Connect())
     client.StartMaintenance();
 
@@ -334,7 +334,7 @@ bool Configurator::BeginDictSession() {
   }
   m_hDictMutex = hMutex;
 
-  weasel::Client client;
+  bangke::Client client;
   if (client.Connect())
     client.StartMaintenance();
 
@@ -350,7 +350,7 @@ void Configurator::EndDictSession() {
   CloseHandle(m_hDictMutex);
   m_hDictMutex = nullptr;
 
-  weasel::Client client;
+  bangke::Client client;
   if (client.Connect())
     client.EndMaintenance();
 }
