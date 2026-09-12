@@ -336,7 +336,8 @@ class BeachScene : public QWidget {
     const qreal wt = m_wave < 0.55 ? m_wave / 0.55 : 1.0 - (m_wave - 0.55) / 0.45;
     const qreal eased = 1.0 - (1.0 - wt) * (1.0 - wt);
     const qreal waveY = h * 0.72 - 24 * eased;
-    p.setPen(QPen(QColor(255, 255, 255, 90 + 90 * eased), 3.0, Qt::RoundCap));
+    p.setPen(QPen(QColor(255, 255, 255, 90 + 90 * eased), 3.0, Qt::SolidLine,
+                  Qt::RoundCap));
     QPainterPath foam;
     for (int x = 0; x <= w; x += 8) {
       const qreal yy = waveY + 2.2 * sin(x * 0.04 + m_wave * 6.28);
