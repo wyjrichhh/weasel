@@ -196,6 +196,16 @@ int Configurator::CleanupResidue() {
   // 静态：勿依赖实例状态（构造器会写用户目录，SYSTEM 下路径错误）
   // 被应用进程加载的 TSF dll 删不掉时转由下次重启删除；BangkeServer 自启键
   // 仅在目标文件已成幽灵时移除，避免误伤共存的官方小狼毫
+  // TSF 机器级注册(DllRegisterServer 写入 HKLM CTF\TIP)卸载无人反注册,一并清
+  {
+    HKEY ctf = nullptr;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\CTF\\TIP", 0,
+                      DELETE, &ctf) == ERROR_SUCCESS) {
+      RegDeleteTreeW(
+          ctf, L"{9D44BD49-B647-4010-9ADC-16DA253F5CCA}");
+      RegCloseKey(ctf);
+    }
+  }
   const wchar_t* residues[] = {L"C:\\Windows\\System32\\bangke.dll",
                                L"C:\\Windows\\System32\\bangke.dll.old"};
   for (const wchar_t* f : residues) {
