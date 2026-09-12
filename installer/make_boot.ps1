@@ -62,7 +62,7 @@ $devcmd = Join-Path $vs "Common7\Tools\VsDevCmd.bat"
 $exe = Join-Path $build "BangkeBoot.exe"
 $cmd = "`"$devcmd`" -arch=amd64 -host_arch=amd64 && cd /d `"$($build.Replace('\', '\'))`" && " +
        "rc /nologo /foboot.res boot_payload.rc && " +
-       "cl /nologo /O2 /MT /utf-8 /std:c++17 /DUNICODE /D_UNICODE `"$($PSScriptRoot.Replace('\', '\'))\BangkeBoot\main.cpp`" boot.res /FeBangkeBoot.exe /link /SUBSYSTEM:WINDOWS user32.lib gdi32.lib shlwapi.lib"
+       "cl /nologo /O2 /MT /utf-8 /std:c++17 /DUNICODE /D_UNICODE `"$($PSScriptRoot.Replace('\', '\'))\BangkeBoot\main.cpp`" boot.res /FeBangkeBoot.exe /link /SUBSYSTEM:WINDOWS user32.lib gdi32.lib shlwapi.lib shell32.lib"
 $out = cmd /c $cmd 2>&1
 $code = $LASTEXITCODE
 if ($code -ne 0 -or -not (Test-Path $exe)) {
