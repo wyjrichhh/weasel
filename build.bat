@@ -22,12 +22,9 @@ if not defined RELEASE_BUILD (
   rem check if git is installed and available, then get the short commit id of head
   git --version >nul 2>&1
   if not errorlevel 1 (
-    for /f "delims=" %%i in ('git tag --sort=-creatordate ^| findstr /r "%WEASEL_VERSION%"') do (
-      set LAST_TAG=%%i
-      goto found_tag
-    )
-    :found_tag
-    for /f "delims=" %%i in ('git rev-list %LAST_TAG%..HEAD --count') do (
+    rem FILEVERSION 第四段取总提交数:标签匹配法在无匹配标签时静默得 0,
+    rem 同版本号重打会被 MSI 按"版本不更高"跳过(bangke.dll 陈旧文件之坑)
+    for /f "delims=" %%i in ('git rev-list HEAD --count') do (
       set WEASEL_BUILD=%%i
     )
     rem get short commmit id of head
