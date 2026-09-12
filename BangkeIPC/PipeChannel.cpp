@@ -6,6 +6,10 @@ using namespace bangke;
 using namespace std;
 using namespace boost;
 
+// 客户端单次管道 IO 的等待上限;server 正常响应在毫秒级,
+// 触发上限即按坏连接处理(断连重连),不再冻结宿主应用
+static const DWORD kPipeIoTimeoutMs = 3000;
+
 #define _ThrowLastError throw ::GetLastError()
 #define _ThrowCode(__c) throw __c
 #define _ThrowIfNot(__c)                 \
@@ -16,9 +20,10 @@ using namespace boost;
   }
 
 PipeChannelBase::PipeChannelBase(std::wstring&& pn_cmd,
-                                 size_t bs = 4 * 1024,
-                                 SECURITY_ATTRIBUTES* s = NULL)
-    : pname(pn_cmd), buff_size(bs), sa(s) {};
+                                 size_t bs,
+                                 SECURITY_ATTRIBUTES* s,
+                                 bool overlapped)
+    : pname(pn_cmd), buff_size(bs), io_overlapped(overlapped), sa(s) {};
 
 PipeChannelBase::~PipeChannelBase() {
   // Thread-specific pointers are cleaned up automatically
@@ -38,10 +43,14 @@ bool PipeChannelBase::_Ensure() {
   return true;
 }
 
+// 无界等待是应用冻结源:server 不在时 WaitNamedPipe 立即失败,
+// 原先的 while 会原地忙转;有界重试(≤4s)后照常抛错走断连路径
 HANDLE PipeChannelBase::_Connect(const wchar_t* name) {
   HANDLE pipe = INVALID_HANDLE_VALUE;
-  while (_Invalid(pipe = _TryConnect()))
-    ::WaitNamedPipe(name, 500);
+  for (int retry = 0; _Invalid(pipe = _TryConnect());) {
+    if (!::WaitNamedPipe(name, 500) || ++retry >= 8)
+      _ThrowLastError;
+  }
   DWORD mode = PIPE_READMODE_MESSAGE;
   if (!SetNamedPipeHandleState(pipe, &mode, NULL, NULL)) {
     _ThrowLastError;
@@ -57,7 +66,8 @@ void PipeChannelBase::_Reconnect() {
 
 HANDLE PipeChannelBase::_TryConnect() {
   auto pipe = ::CreateFile(pname.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL,
-                           OPEN_EXISTING, 0, NULL);
+                           OPEN_EXISTING,
+                           io_overlapped ? FILE_FLAG_OVERLAPPED : 0, NULL);
   if (!_Invalid(pipe)) {
     // connected to the pipe
     return pipe;
@@ -68,9 +78,50 @@ HANDLE PipeChannelBase::_TryConnect() {
   return INVALID_HANDLE_VALUE;
 }
 
+// OVERLAPPED 读写带超时:句柄必须以 FILE_FLAG_OVERLAPPED 创建
+// (在同步句柄上 overlapped 调用立即失败,p4 曾因此回滚)。
+// 超时即 CancelIoEx 并置 ERROR_TIMEOUT,由既有异常路径断连
+static bool _IoWithTimeout(HANDLE pipe,
+                           bool is_write,
+                           void* buf,
+                           DWORD len,
+                           DWORD timeout_ms,
+                           DWORD* transferred) {
+  OVERLAPPED ov{};
+  ov.hEvent = ::CreateEventW(NULL, FALSE, FALSE, NULL);
+  if (!ov.hEvent)
+    return false;
+  BOOL ok = is_write ? ::WriteFile(pipe, buf, len, transferred, &ov)
+                     : ::ReadFile(pipe, buf, len, transferred, &ov);
+  if (!ok && ::GetLastError() != ERROR_IO_PENDING) {
+    ::CloseHandle(ov.hEvent);
+    return false;
+  }
+  if (!ok || *transferred == 0) {
+    // pending:等待有界时间
+    if (WaitForSingleObject(ov.hEvent, timeout_ms) != WAIT_OBJECT_0) {
+      ::CancelIoEx(pipe, NULL);
+      ::GetOverlappedResult(pipe, &ov, transferred, FALSE);
+      ::CloseHandle(ov.hEvent);
+      ::SetLastError(ERROR_TIMEOUT);
+      return false;
+    }
+    if (!::GetOverlappedResult(pipe, &ov, transferred, FALSE)) {
+      ::CloseHandle(ov.hEvent);
+      return false;
+    }
+  }
+  ::CloseHandle(ov.hEvent);
+  return *transferred > 0 || !is_write;
+}
+
 size_t PipeChannelBase::_WritePipe(HANDLE pipe, size_t s, char* b) {
-  DWORD lwritten;
-  if (!::WriteFile(pipe, b, s, &lwritten, NULL) || lwritten <= 0) {
+  DWORD lwritten = 0;
+  bool ok = io_overlapped
+                ? _IoWithTimeout(pipe, true, b, (DWORD)s, kPipeIoTimeoutMs,
+                                 &lwritten)
+                : (::WriteFile(pipe, b, s, &lwritten, NULL) && lwritten > 0);
+  if (!ok || lwritten <= 0) {
     _ThrowLastError;
   }
   ::FlushFileBuffers(pipe);
@@ -86,14 +137,23 @@ void PipeChannelBase::_FinalizePipe(HANDLE& p) {
 }
 
 void PipeChannelBase::_Receive(HANDLE pipe, LPVOID msg, size_t rec_len) {
-  DWORD lread;
-  BOOL success = ::ReadFile(pipe, msg, rec_len, &lread, NULL);
+  DWORD lread = 0;
+  bool success =
+      io_overlapped
+          ? _IoWithTimeout(pipe, false, msg, (DWORD)rec_len,
+                           kPipeIoTimeoutMs, &lread)
+          : (::ReadFile(pipe, msg, rec_len, &lread, NULL) != FALSE);
   if (!success) {
     _ThrowIfNot(ERROR_MORE_DATA);
 
     auto ctx = _GetContext();
     memset(ctx->buffer.get(), 0, buff_size);
-    success = ::ReadFile(pipe, ctx->buffer.get(), buff_size, &lread, NULL);
+    success =
+        io_overlapped
+            ? _IoWithTimeout(pipe, false, ctx->buffer.get(),
+                             (DWORD)buff_size, kPipeIoTimeoutMs, &lread)
+            : (::ReadFile(pipe, ctx->buffer.get(), buff_size, &lread, NULL) !=
+               FALSE);
     if (!success) {
       _ThrowLastError;
     }

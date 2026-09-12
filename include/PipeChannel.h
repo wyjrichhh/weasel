@@ -21,7 +21,10 @@ class PipeChannelBase {
         : buffer(std::make_unique<char[]>(bs)), has_body(false) {}
   };
 
-  PipeChannelBase(std::wstring&& pn_cmd, size_t bs, SECURITY_ATTRIBUTES* s);
+  PipeChannelBase(std::wstring&& pn_cmd,
+                   size_t bs,
+                   SECURITY_ATTRIBUTES* s,
+                   bool overlapped = false);
   ~PipeChannelBase();
 
  protected:
@@ -59,6 +62,9 @@ class PipeChannelBase {
   // Thread-local pipe handle for isolation
   mutable boost::thread_specific_ptr<HANDLE> hpipe_ptr;
   const size_t buff_size;
+  // 客户端 true:句柄以 FILE_FLAG_OVERLAPPED 打开,读写带超时,
+  // server 卡死时按键快速失败而非冻结宿主应用;服务端保持阻塞语义
+  const bool io_overlapped;
   // Thread-local context for buffer and state
   mutable boost::thread_specific_ptr<ChannelContext> context;
 
@@ -86,8 +92,9 @@ class PipeChannel : public PipeChannelBase {
  public:
   PipeChannel(std::wstring&& pn_cmd,
               SECURITY_ATTRIBUTES* s = NULL,
-              size_t bs = 64 * 1024)
-      : PipeChannelBase(std::move(pn_cmd), bs, s) {}
+              size_t bs = 64 * 1024,
+              bool overlapped = false)
+      : PipeChannelBase(std::move(pn_cmd), bs, s, overlapped) {}
 
  public:
   /* Common pipe operations */

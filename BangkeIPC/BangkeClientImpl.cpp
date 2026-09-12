@@ -5,7 +5,9 @@
 using namespace bangke;
 
 ClientImpl::ClientImpl()
-    : session_id(0), channel(GetPipeName()), is_ime(false) {
+    : session_id(0),
+      channel(GetPipeName(), NULL, 64 * 1024, /*overlapped=*/true),
+      is_ime(false) {
   _InitializeClientInfo();
 }
 
