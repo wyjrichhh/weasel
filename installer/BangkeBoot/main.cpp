@@ -76,6 +76,8 @@ static bool ExtractPayload(const std::wstring& dir) {
   std::string line;
   for (size_t i = 0; i <= mlen; ++i) {
     if (i == mlen || manifest[i] == '\n') {
+      if (!line.empty() && line.back() == '\r')
+        line.pop_back();  // CRLF 清单,\r 混进路径即建文件失败
       const size_t bar = line.find('|');
       if (bar != std::string::npos) {
         items.push_back({atoi(line.substr(0, bar).c_str()),
