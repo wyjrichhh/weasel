@@ -17,7 +17,9 @@ $version = $msi.BaseName -replace '^BangkeSetup-', '' -replace '-x64$', ''
 $payload = [System.Collections.Generic.List[string]]::new()
 $payload.Add("BangkeInstaller.exe")
 $payload.Add($msi.Name)
-foreach ($n in @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6Network.dll")) {
+# dxcompiler/dxil 是 Qt6Gui 的直接依赖,漏了即启动即崩(windeployqt 铺过它们)
+foreach ($n in @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6Network.dll",
+                 "dxcompiler.dll", "dxil.dll")) {
   if (Test-Path (Join-Path $output $n)) { $payload.Add($n) }
 }
 foreach ($d in @("platforms", "styles", "imageformats", "tls", "networkinformation", "generic")) {
